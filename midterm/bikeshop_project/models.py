@@ -111,7 +111,7 @@ class Staff(models.Model):
 
 
 class Order(models.Model):
-    order_status = models.CharField(max_length=20, choices=ORDER_STATUS)
+    order_status = models.IntegerField(choices=ORDER_STATUS)
     order_date = models.DateField()
     expected_delivery_date = models.DateField()
     shipped_date = models.DateField(null=True, blank=True)

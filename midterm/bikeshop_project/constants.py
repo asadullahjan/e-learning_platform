@@ -1,8 +1,8 @@
-# choices.py
+# constants.py
 
 ORDER_STATUS = [
-    ("Pending", "pending"),
-    ("Processing", "processing"),
-    ("Rejected", "rejected"),
-    ("Completed", "completed"),
+    (1, "pending"),
+    (2, "processing"),
+    (3, "rejected"),
+    (4, "completed"),
 ]
