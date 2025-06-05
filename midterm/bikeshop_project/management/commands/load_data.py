@@ -1,4 +1,5 @@
 import csv
+from decimal import Decimal
 import os
 
 from django.core.management.base import BaseCommand
@@ -162,11 +163,14 @@ class Command(BaseCommand):
             for row in reader:
                 store = Store.objects.get(id=row["store_id"])
                 product = Product.objects.get(id=row["product_id"])
+
                 Stock.objects.update_or_create(
+                    store=store,
+                    product=product,
                     defaults={
                         "store": store,
                         "product": product,
-                        "quantity": row["quantity"],
+                        "quantity": int(row["quantity"].strip() or 0),
                     },
                 )
 
@@ -257,10 +261,12 @@ class Command(BaseCommand):
                 product = Product.objects.get(id=row["product_id"])
 
                 OrderItem.objects.update_or_create(
+                    order=order,
+                    product=product,
                     defaults={
-                        "quantity": row["quantity"],
+                        "quantity": int(row["quantity"].strip() or 0),
                         "price": row["list_price"],
-                        "discount": row["discount"],
+                        "discount": Decimal(row["discount"].strip() or 0),
                         "order": order,
                         "product": product,
                     },
