@@ -12,6 +12,7 @@ class OrderListAPIView(generics.ListAPIView):
 
         customer_id = self.request.query_params.get("customer_id")
         store_id = self.request.query_params.get("store_id")
+        staff_id = self.request.query_params.get("staff_id")
         start_date = self.request.query_params.get("start_date")
         end_date = self.request.query_params.get("end_date")
 
@@ -19,7 +20,8 @@ class OrderListAPIView(generics.ListAPIView):
             queryset = queryset.filter(customer=customer_id)
         if store_id:
             queryset = queryset.filter(store=store_id)
-
+        if staff_id:
+            queryset = queryset.filter(staff=staff_id)
         if start_date and end_date:
             queryset = queryset.filter(
                 order_date__range=[start_date, end_date]
