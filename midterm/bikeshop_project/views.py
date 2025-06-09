@@ -4,8 +4,12 @@ from rest_framework import generics
 
 from django.db.models import Count
 from django.db.models.functions import ExtractWeekDay
-from .models import Order, Staff
-from .serializers import OrderSerializer
+from .models import Order, Staff, Product
+from .serializers import (
+    OrderSerializer,
+    ProductSerializer,
+    OrderCreateSerializer,
+)
 
 
 # Create your views here.
@@ -73,3 +77,23 @@ class TopContributingStaffAPIView(APIView):
         )
 
         return Response(data)
+
+
+class BikesByBrandAPIView(generics.ListAPIView):
+    serializer_class = ProductSerializer
+
+    def get_queryset(self):
+        brand_id = self.kwargs.get("brand_id")
+        data = Product.objects.all().filter(brand_id=brand_id)
+
+        return data
+
+
+class CreateNewOrderAPIView(APIView):
+    def post(self, request):
+        serializer = OrderCreateSerializer(data=request.data)
+
+        if serializer.is_valid():
+            order = serializer.save()
+            return Response(OrderSerializer(order).data, status=201)
+        return Response(serializer.errors, status=400)
