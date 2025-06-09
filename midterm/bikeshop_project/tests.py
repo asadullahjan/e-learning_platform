@@ -2,6 +2,7 @@ from rest_framework.test import APITestCase
 from django.urls import reverse
 from .models import Order, Customer, Store, Staff
 from datetime import date
+from model_bakery import baker
 
 
 class OrderApiListTest(APITestCase):
@@ -26,7 +27,6 @@ class OrderApiListTest(APITestCase):
             order_status=1,
         )
 
-        # Additional order for filter tests
         cls.create_order(
             customer=cls.customer_b,
             order_date=date(2023, 7, 1),
@@ -95,3 +95,25 @@ class OrderApiListTest(APITestCase):
         response = self.client.get(url, {"staff_id": self.staff.id})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 2)
+
+
+class OrdersByWeekdayAPIView(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        baker.make(Order, order_date=date(2025, 6, 9), _quantity=2)
+        baker.make(Order, order_date=date(2025, 6, 8), _quantity=4)
+        baker.make(Order, order_date=date(2025, 6, 6), _quantity=1)
+
+    def test_orders_by_weekday(self):
+        url = reverse("order-list-by-weekday")
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 3)
+
+        monday_data = next(
+            (item for item in response.data if item["weekday"] == "Monday"),
+            None,
+        )
+        self.assertIsNotNone(monday_data)
+        self.assertEqual(monday_data["total"], 2)

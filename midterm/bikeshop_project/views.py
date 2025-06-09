@@ -1,4 +1,9 @@
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework import generics
+
+from django.db.models import Count
+from django.db.models.functions import ExtractWeekDay
 from .models import Order
 from .serializers import OrderSerializer
 
@@ -32,3 +37,28 @@ class OrderListAPIView(generics.ListAPIView):
             queryset = queryset.filter(order_date__lte=end_date)
 
         return queryset
+
+
+class OrdersByWeekdayAPIView(APIView):
+    def get(self, request):
+        data = (
+            Order.objects.annotate(weekday=ExtractWeekDay("order_date"))
+            .values("weekday")
+            .annotate(total=Count("id"))
+            .order_by("-total")
+        )
+
+        weekday_map = {
+            1: "Sunday",
+            2: "Monday",
+            3: "Tuesday",
+            4: "Wednesday",
+            5: "Thursday",
+            6: "Friday",
+            7: "Saturday",
+        }
+
+        for entry in data:
+            entry["weekday"] = weekday_map[entry["weekday"]]
+
+        return Response(data)
