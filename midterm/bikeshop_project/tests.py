@@ -117,3 +117,34 @@ class OrdersByWeekdayAPIView(APITestCase):
         )
         self.assertIsNotNone(monday_data)
         self.assertEqual(monday_data["total"], 2)
+
+
+class TopContributingStaff(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        staff1 = baker.make(Staff, first_name="staff1", last_name="Staff")
+        staff2 = baker.make(Staff, first_name="staff2", last_name="Staff")
+        staff3 = baker.make(Staff, first_name="staff3", last_name="Staff")
+
+        baker.make(Order, staff=staff1, _quantity=5)
+        baker.make(Order, staff=staff2, _quantity=3)
+        baker.make(Order, staff=staff3, _quantity=6)
+
+    def test_orders_by_weekday(self):
+        url = reverse("top-contributing-staff")
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 3)
+
+        print(response.data)
+        staff = next(
+            (
+                staff
+                for staff in response.data
+                if staff["first_name"] == "staff3"
+            ),
+            None,
+        )
+        self.assertIsNotNone(staff)
+        self.assertEqual(staff["order_count"], 6)

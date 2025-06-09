@@ -4,7 +4,7 @@ from rest_framework import generics
 
 from django.db.models import Count
 from django.db.models.functions import ExtractWeekDay
-from .models import Order
+from .models import Order, Staff
 from .serializers import OrderSerializer
 
 
@@ -60,5 +60,16 @@ class OrdersByWeekdayAPIView(APIView):
 
         for entry in data:
             entry["weekday"] = weekday_map[entry["weekday"]]
+
+        return Response(data)
+
+
+class TopContributingStaffAPIView(APIView):
+    def get(self, request):
+        data = (
+            Staff.objects.annotate(order_count=Count("orders"))
+            .values("first_name", "last_name", "order_count")
+            .order_by("-order_count")
+        )
 
         return Response(data)
