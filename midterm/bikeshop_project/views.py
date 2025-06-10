@@ -2,9 +2,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import generics
 from django.shortcuts import get_object_or_404
-from django.db.models import Count
+from django.db.models import Count, F, Sum
 from django.db.models.functions import ExtractWeekDay
-from .models import Order, Staff, Product
+from .models import Order, OrderItem, Staff, Product, Stock
 from .serializers import (
     OrderSerializer,
     ProductSerializer,
@@ -101,9 +101,11 @@ class CreateNewOrderAPIView(APIView):
 
 
 class UpdateOrderAPIView(APIView):
-    def put(self, request, pk):
+    def patch(self, request, pk):
         order = get_object_or_404(Order, pk=pk)
-        serializer = OrderUpdateSerializer(order, data=request.data)
+        serializer = OrderUpdateSerializer(
+            order, data=request.data, partial=True
+        )
 
         if serializer.is_valid():
             updated_order = serializer.save()

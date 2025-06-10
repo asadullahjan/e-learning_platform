@@ -126,6 +126,35 @@ class Order(models.Model):
         Staff, on_delete=models.SET_NULL, null=True, related_name="orders"
     )
 
+    def update_items(self, order_items_data):
+        self.order_items.all().delete()
+
+        for item in order_items_data:
+            product = item["product"]
+            quantity = item["quantity"]
+
+            stock = Stock.objects.select_for_update().get(
+                store=self.store, product=product
+            )
+
+            if stock.quantity < quantity:
+                raise ValueError(
+                    f"Not enough stock for {product.name}."
+                    + f"Available: {stock.quantity}"
+                )
+
+            stock.quantity -= quantity
+            stock.save()
+
+            OrderItem.objects.create(
+                order=self,
+                product=product,
+                quantity=quantity,
+                price=product.price,
+            )
+
+        self.save()
+
     def __str__(self):
         return f"Order #{self.id} - {self.order_status}"
 

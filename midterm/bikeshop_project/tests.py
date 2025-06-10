@@ -1,6 +1,16 @@
 from rest_framework.test import APITestCase
 from django.urls import reverse
-from .models import Order, Customer, Store, Staff, Brand, Product
+from .models import (
+    Order,
+    Customer,
+    Store,
+    Staff,
+    Brand,
+    Product,
+    Category,
+    Stock,
+    OrderItem,
+)
 from datetime import date
 from model_bakery import baker
 
@@ -186,7 +196,6 @@ class CreateOrder(APITestCase):
         baker.make(Store)
 
     def test_order_create(self):
-        # Use reverse with brand_id as a URL argument
         url = reverse(
             "create-order",
         )
@@ -208,3 +217,46 @@ class CreateOrder(APITestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["id"], 1)
+
+
+class UpdateOrder(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        brand = Brand.objects.create(name="test brand")
+        category = Category.objects.create(name="test category")
+        cls.p1 = Product.objects.create(
+            name="test product",
+            model_year="1",
+            price=15,
+            brand=brand,
+            category=category,
+        )
+        store = baker.make(Store)
+        Stock.objects.create(store=store, quantity=20, product=cls.p1)
+        cls.order = baker.make(Order, store=store)
+
+    def test_order_update(self):
+        url = reverse("update-order", kwargs={"pk": self.order.id})
+        response = self.client.patch(
+            url,
+            {
+                "order_status": 1,
+                "order_date": "2025-06-12",
+                "order_items": [
+                    {"product": self.p1.id, "quantity": 2},
+                ],
+            },
+            content_type="application/json",
+        )
+
+        stock = Stock.objects.get(store=self.order.store, product=self.p1.id)
+        order_items = OrderItem.objects.filter(order=self.order.id)
+
+        self.assertEqual(len(order_items), 1)
+        self.assertEqual(order_items[0].quantity, 2)
+        self.assertEqual(stock.quantity, 18)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["id"], 1)
+        self.assertEqual(response.data["order_status"], 1)
+        self.assertEqual(response.data["order_date"], "2025-06-12")

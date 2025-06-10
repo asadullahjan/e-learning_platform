@@ -1,5 +1,6 @@
 from datetime import date
 from rest_framework import serializers
+from django.db import transaction
 from .models import (
     Brand,
     Category,
@@ -8,7 +9,7 @@ from .models import (
     Product,
     Order,
     Store,
-    # Stock,
+    Stock,
     Staff,
 )
 
@@ -126,52 +127,45 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ["order_date", "staff", "order_status", "order_items"]
+        fields = [
+            "order_date",
+            "expected_delivery_date",
+            "shipped_date",
+            "staff",
+            "order_status",
+            "order_items",
+        ]
 
-    def validate_order_date(self, value):
-        if value < date.today():
-            raise serializers.ValidationError(
-                "Order date cannot be in the past."
-            )
-        return value
-
-    def update(self, instance, validated_data):
-        order_items_data = validated_data.pop("order_items", [])
-
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-
-        instance.order_items.all().delete()
-
-        total_price = 0
-
-        for item in order_items_data:
-            product = Product.objects.get(id=item["product"])
-            quantity = item["quantity"]
-
-            if product.stock < quantity:
+    def validate(self, data):
+        if "expected_delivery_date" in data and "order_date" in data:
+            if data["expected_delivery_date"] < data["order_date"]:
                 raise serializers.ValidationError(
-                    f"Not enough stock for {product.name}. "
-                    f"Available: {product.stock}"
+                    "Expected delivery date must be after the order date."
                 )
 
-            product.stock -= quantity
-            product.save()
-
-            total_price += product.price * quantity
-
-            OrderItem.objects.create(
-                order=instance,
-                product=product,
-                quantity=quantity,
-                price=product.price,
+        products = [item["product"] for item in data.get("order_items", [])]
+        if len(products) != len(set(products)):
+            raise serializers.ValidationError(
+                "Duplicate products found in order items."
             )
 
-        instance.total_price = total_price
-        instance.save()
+        return data
 
-        return instance
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            order_items_data = validated_data.pop("order_items", [])
+
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
+
+            if order_items_data is not None:
+                try:
+                    instance.update_items(order_items_data)
+                except ValueError as e:
+                    raise serializers.ValidationError(str(e))
+
+            return instance
 
 
 # {
