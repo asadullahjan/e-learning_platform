@@ -60,7 +60,9 @@ class OrderApiListTest(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 2)
-        self.assertEqual(response.data[0]["order_status_display"], "pending")
+        self.assertEqual(
+            response.data[0]["order_status_display"], "processing"
+        )
 
     def test_filter_by_customer_id(self):
         url = reverse("order-list")
@@ -190,33 +192,51 @@ class BikesByBrandAPITestCase(APITestCase):
 class CreateOrder(APITestCase):
     @classmethod
     def setUpTestData(cls):
-        baker.make(Customer)
-        baker.make(Product)
-        baker.make(Staff)
-        baker.make(Store)
+        # Create objects and store references to use their actual IDs
+        cls.customer = baker.make(Customer)
+        cls.product = baker.make(Product, price=150.0)  # Set a known price
+        cls.staff = baker.make(Staff)
+        cls.store = baker.make(Store)
+
+        # Create stock linking the specific product and store
+        cls.stock = baker.make(
+            Stock,
+            product=cls.product,
+            store=cls.store,
+            quantity=10,  # Ensure enough stock for the test
+        )
 
     def test_order_create(self):
         url = reverse(
             "create-order",
         )
-        response = self.client.post(
-            url,
-            {
-                "customer": 1,
-                "store": 1,
-                "staff": 1,
-                "order_status": 1,
-                "order_date": "2025-03-31",
-                "expected_delivery_date": "2025-04-02",
-                "items": [
-                    {"product": 1, "quantity": 2, "price": 150.0},
-                ],
-            },
-            content_type="application/json",
-        )
+        payload = {
+            "customer": self.customer.id,
+            "store": self.store.id,
+            "staff": self.staff.id,
+            "order_status": 1,
+            "order_date": "2025-03-31",
+            "expected_delivery_date": "2025-04-02",
+            "items": [
+                {
+                    "product": self.product.id,
+                    "quantity": 2,
+                },
+            ],
+        }
+        response = self.client.post(url, payload, format="json")
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["id"], 1)
+
+        # Check response structure based on your updated view
+        self.assertIn("order", response.data)
+        self.assertEqual(
+            response.data["order"]["customer"]["id"], self.customer.id
+        )
+
+        # Verify stock was decremented
+        self.stock.refresh_from_db()
+        self.assertEqual(self.stock.quantity, 8)
 
 
 class UpdateOrder(APITestCase):

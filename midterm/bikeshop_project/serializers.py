@@ -62,7 +62,23 @@ class OrderSerializer(serializers.ModelSerializer):
 class OrderItemCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
-        fields = ["product", "quantity", "price"]
+        fields = ["product", "quantity"]
+
+        def validate(self, data):
+            """Validate individual order item"""
+            quantity = data.get("quantity", 0)
+
+            if quantity <= 0:
+                raise serializers.ValidationError(
+                    "Quantity must be greater than 0"
+                )
+
+            # You can add more OrderItem-specific validation here
+            return data
+
+    def create(self, validated_data):
+        """Create OrderItem with any specific logic"""
+        return OrderItem.objects.create(**validated_data)
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):
@@ -81,12 +97,74 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             "items",
         ]
 
+    def validate(self, data):
+        """Validate the entire order"""
+        items_data = data.get("items", [])
+        store = data.get("store")
+
+        if not items_data:
+            raise serializers.ValidationError(
+                "Order must have at least one item"
+            )
+
+        # Check for duplicate products
+        products = [item["product"] for item in items_data]
+        if len(products) != len(set(products)):
+            raise serializers.ValidationError(
+                "Duplicate products found in order items"
+            )
+
+        # Validate stock availability for each item
+        for item_data in items_data:
+            product = item_data["product"]
+            quantity = item_data["quantity"]
+
+            try:
+                stock = Stock.objects.get(store=store, product=product)
+                if stock.quantity < quantity:
+                    raise serializers.ValidationError(
+                        f"Not enough stock for {product.name}. "
+                        f"Available: {stock.quantity}, Requested: {quantity}"
+                    )
+            except Stock.DoesNotExist:
+                raise serializers.ValidationError(
+                    f"Product {product.name} is not available in this store"
+                )
+
+        # Validate dates
+        if data.get("expected_delivery_date") and data.get("order_date"):
+            if data["expected_delivery_date"] < data["order_date"]:
+                raise serializers.ValidationError(
+                    "Expected delivery date must be after the order date"
+                )
+
+        return data
+
     def create(self, validated_data):
-        items = validated_data.pop("items")
-        order = Order.objects.create(**validated_data)
-        for item in items:
-            OrderItem.objects.create(order=order, **item)
-        return order
+        """Create order with items using transaction"""
+        with transaction.atomic():
+            items_data = validated_data.pop("items")
+
+            # Create the main order
+            order = Order.objects.create(**validated_data)
+
+            # Create order items using nested serializer
+            for item_data in items_data:
+                # Add order reference to item data
+                item_data["order"] = order
+                item_data["price"] = item_data["product"].price
+
+                # Use nested serializer for creation
+                OrderItemCreateSerializer().create(item_data)
+
+                # Update stock quantity
+                stock = Stock.objects.select_for_update().get(
+                    store=order.store, product=item_data["product"]
+                )
+                stock.quantity -= item_data["quantity"]
+                stock.save()
+
+            return order
 
 
 class BrandSerializer(serializers.ModelSerializer):
