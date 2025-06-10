@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import generics
-
+from django.shortcuts import get_object_or_404
 from django.db.models import Count
 from django.db.models.functions import ExtractWeekDay
 from .models import Order, Staff, Product
@@ -9,6 +9,7 @@ from .serializers import (
     OrderSerializer,
     ProductSerializer,
     OrderCreateSerializer,
+    OrderUpdateSerializer,
 )
 
 
@@ -96,4 +97,15 @@ class CreateNewOrderAPIView(APIView):
         if serializer.is_valid():
             order = serializer.save()
             return Response(OrderSerializer(order).data, status=201)
+        return Response(serializer.errors, status=400)
+
+
+class UpdateOrderAPIView(APIView):
+    def put(self, request, pk):
+        order = get_object_or_404(Order, pk=pk)
+        serializer = OrderUpdateSerializer(order, data=request.data)
+
+        if serializer.is_valid():
+            updated_order = serializer.save()
+            return Response(OrderSerializer(updated_order).data)
         return Response(serializer.errors, status=400)

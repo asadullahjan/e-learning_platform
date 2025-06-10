@@ -1,6 +1,6 @@
 from rest_framework.test import APITestCase
 from django.urls import reverse
-from .models import Order, Customer, Store, Staff, Brand, Product, OrderItem
+from .models import Order, Customer, Store, Staff, Brand, Product
 from datetime import date
 from model_bakery import baker
 
@@ -149,32 +149,32 @@ class TopContributingStaff(APITestCase):
         self.assertEqual(staff["order_count"], 6)
 
 
-# class BikesByBrandAPITestCase(APITestCase):
-#     @classmethod
-#     def setUpTestData(cls):
-#         # Create 2 brands
-#         cls.brand1 = baker.make(Brand, name="BrandOne")
-#         cls.brand2 = baker.make(Brand, name="BrandTwo")
+class BikesByBrandAPITestCase(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Create 2 brands
+        cls.brand1 = baker.make(Brand, name="BrandOne")
+        cls.brand2 = baker.make(Brand, name="BrandTwo")
 
-#         # Create 3 products for brand1 and 2 for brand2
-#         cls.products_brand1 = baker.make(
-#             Product, brand=cls.brand1, _quantity=3
-#         )
-#         cls.products_brand2 = baker.make(
-#             Product, brand=cls.brand2, _quantity=2
-#         )
+        # Create 3 products for brand1 and 2 for brand2
+        cls.products_brand1 = baker.make(
+            Product, brand=cls.brand1, _quantity=3
+        )
+        cls.products_brand2 = baker.make(
+            Product, brand=cls.brand2, _quantity=2
+        )
 
-#     def test_bikes_by_brand(self):
-#         # Use reverse with brand_id as a URL argument
-#         url = reverse("bikes-by-brand", kwargs={"brand_id": self.brand1.id})
-#         response = self.client.get(url)
+    def test_bikes_by_brand(self):
+        # Use reverse with brand_id as a URL argument
+        url = reverse("bikes-by-brand", kwargs={"brand_id": self.brand1.id})
+        response = self.client.get(url)
 
-#         self.assertEqual(response.status_code, 200)
-#         self.assertEqual(len(response.data), 3)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 3)
 
-#         # Confirm all returned products belong to brand1
-#         for product in response.data:
-#             self.assertEqual(product["brand"]["id"], self.brand1.id)
+        # Confirm all returned products belong to brand1
+        for product in response.data:
+            self.assertEqual(product["brand"]["id"], self.brand1.id)
 
 
 class CreateOrder(APITestCase):
@@ -193,17 +193,18 @@ class CreateOrder(APITestCase):
         response = self.client.post(
             url,
             {
-                "order_status": 1,
-                "items": [{"quantity": 10, "product": 1, "price": 200}],
                 "customer": 1,
                 "store": 1,
                 "staff": 1,
-                "expected_delivery_date": "2025-04-02",
+                "order_status": 1,
                 "order_date": "2025-03-31",
+                "expected_delivery_date": "2025-04-02",
+                "items": [
+                    {"product": 1, "quantity": 2, "price": 150.0},
+                ],
             },
+            content_type="application/json",
         )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(len(response.data), 1)
-
         self.assertEqual(response.data["id"], 1)

@@ -5,6 +5,7 @@ from .views import (
     TopContributingStaffAPIView,
     BikesByBrandAPIView,
     CreateNewOrderAPIView,
+    UpdateOrderAPIView,
 )
 
 urlpatterns = [
@@ -28,5 +29,10 @@ urlpatterns = [
         "api/createOrder",
         CreateNewOrderAPIView.as_view(),
         name="create-order",
+    ),
+    path(
+        "api/updateOrder/<int:pk>/",
+        UpdateOrderAPIView.as_view(),
+        name="update-order",
     ),
 ]
