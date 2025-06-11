@@ -43,6 +43,12 @@ class OrderSerializer(serializers.ModelSerializer):
     order_status_display = serializers.CharField(
         source="get_order_status_display", read_only=True
     )
+    total_amount = serializers.SerializerMethodField()
+
+    def get_total_amount(self, ojb):
+        return sum(
+            item.quantity * item.price for item in ojb.order_items.all()
+        )
 
     class Meta:
         model = Order
@@ -56,6 +62,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "order_date",
             "expected_delivery_date",
             "shipped_date",
+            "total_amount",
         ]
 
 

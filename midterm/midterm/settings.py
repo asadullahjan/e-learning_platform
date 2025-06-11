@@ -36,6 +36,8 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     "bikeshop_project",
     "rest_framework",
+    "drf_yasg",
+    "django_filters",
     "django_extensions",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -131,6 +133,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,  # or any number you want per page
+    # "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
 }
 
 if "test" in sys.argv or "pytest" in sys.modules:
