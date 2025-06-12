@@ -1,25 +1,43 @@
-from django.utils import timezone
 from decimal import Decimal
+from django.utils import timezone
+from django.db.models import F, Q, Sum
 import django_filters
-from django.db.models import Sum, F, Q
 from .models import Order
 
 
 class OrderFilter(django_filters.FilterSet):
-    customer_id = django_filters.NumberFilter(field_name="customer")
-    store_id = django_filters.NumberFilter(field_name="store")
-    staff_id = django_filters.NumberFilter(field_name="staff")
+    """Filter for orders based on customer, store, dates, and other criteria."""
+
+    customer_id = django_filters.NumberFilter(
+        field_name="customer",
+    )
+    store_id = django_filters.NumberFilter(
+        field_name="store",
+    )
+    staff_id = django_filters.NumberFilter(
+        field_name="staff",
+    )
     order_status = django_filters.NumberFilter()
 
     start_date = django_filters.DateFilter(
-        field_name="order_date", lookup_expr="gte"
+        field_name="order_date",
+        lookup_expr="gte",
+        help_text="Filter orders placed on or after this date (YYYY-MM-DD).",
     )
     end_date = django_filters.DateFilter(
-        field_name="order_date", lookup_expr="lte"
+        field_name="order_date",
+        lookup_expr="lte",
+        help_text="Filter orders placed on or before this date (YYYY-MM-DD).",
     )
 
-    min_amount = django_filters.NumberFilter(method="filter_min_amount")
-    max_amount = django_filters.NumberFilter(method="filter_max_amount")
+    min_total = django_filters.NumberFilter(
+        method="filter_min_total",
+        help_text="Filter orders with total amount (quantity × price) greater than or equal to this value.",
+    )
+    max_total = django_filters.NumberFilter(
+        method="filter_max_total",
+        help_text="Filter orders with total amount (quantity × price) less than or equal to this value.",
+    )
 
     delayed_orders = django_filters.BooleanFilter(
         method="filter_delayed_orders",
@@ -43,14 +61,16 @@ class OrderFilter(django_filters.FilterSet):
         model = Order
         fields = []
 
-    def filter_min_amount(self, queryset, name, value):
+    def filter_min_total(self, queryset, name, value):
+        """Filter orders with total amount >= value."""
         return queryset.annotate(
             total_amount=Sum(
                 F("order_items__quantity") * F("order_items__price")
             )
         ).filter(total_amount__gte=value)
 
-    def filter_max_amount(self, queryset, name, value):
+    def filter_max_total(self, queryset, name, value):
+        """Filter orders with total amount <= value."""
         return queryset.annotate(
             total_amount=Sum(
                 F("order_items__quantity") * F("order_items__price")
@@ -58,6 +78,7 @@ class OrderFilter(django_filters.FilterSet):
         ).filter(total_amount__lte=value)
 
     def filter_delayed_orders(self, queryset, name, value):
+        """Filter delayed orders, excluding rejected orders."""
         if value:
             today = timezone.now().date()
             return queryset.filter(
@@ -78,6 +99,7 @@ class OrderFilter(django_filters.FilterSet):
         return queryset
 
     def filter_premium_orders(self, queryset, name, value):
+        """Filter high-value orders with total amount >= $1000 and above average."""
         if value:
             queryset = queryset.annotate(
                 total_amount=Sum(

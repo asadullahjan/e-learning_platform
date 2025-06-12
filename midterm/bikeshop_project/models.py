@@ -128,31 +128,28 @@ class Order(models.Model):
 
     def update_items(self, order_items_data):
         self.order_items.all().delete()
-
+        order_items = []
         for item in order_items_data:
             product = item["product"]
             quantity = item["quantity"]
-
             stock = Stock.objects.select_for_update().get(
                 store=self.store, product=product
             )
-
             if stock.quantity < quantity:
                 raise ValueError(
-                    f"Not enough stock for {product.name}."
-                    + f"Available: {stock.quantity}"
+                    f"Not enough stock for {product.name}. Available: {stock.quantity}"
                 )
-
             stock.quantity -= quantity
             stock.save()
-
-            OrderItem.objects.create(
-                order=self,
-                product=product,
-                quantity=quantity,
-                price=product.price,
+            order_items.append(
+                OrderItem(
+                    order=self,
+                    product=product,
+                    quantity=quantity,
+                    price=product.price,
+                )
             )
-
+        OrderItem.objects.bulk_create(order_items)
         self.save()
 
     def __str__(self):

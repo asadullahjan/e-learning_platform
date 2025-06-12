@@ -1,206 +1,293 @@
 from decimal import Decimal
-from rest_framework.test import APITestCase
-from django.urls import reverse
-from .models import (
-    Order,
-    Customer,
-    Store,
-    Staff,
-    Brand,
-    Product,
-    Category,
-    Stock,
-    OrderItem,
-)
 from datetime import date, timedelta
-from django.db.models import F, Sum
+
+from django.urls import reverse
+
+from freezegun import freeze_time
 from model_bakery import baker
 from rest_framework import status
-from django.utils import timezone
-from freezegun import freeze_time
+from rest_framework.test import APITestCase
+
+from .models import (
+    Brand,
+    Category,
+    Customer,
+    Order,
+    OrderItem,
+    Product,
+    Staff,
+    Stock,
+    Store,
+)
 
 
 class OrderApiListTest(APITestCase):
+    """Tests for the OrderListAPIView endpoint."""
+
     @classmethod
     def setUpTestData(cls):
-        # Create test data with more descriptive names
+        """Set up test data for order list tests."""
         cls.customer_a = Customer.objects.create(
             first_name="Alice", last_name="Johnson", email="alice@example.com"
         )
         cls.customer_b = Customer.objects.create(
             first_name="Bob", last_name="Smith", email="bob@example.com"
         )
-
         cls.store = Store.objects.create(name="Downtown Store")
         cls.staff = Staff.objects.create(
             first_name="Staff", last_name="Member", store=cls.store
         )
-
-        # Use constants for order statuses for better readability
-        cls.STATUS_PROCESSING = 1
-        cls.STATUS_SHIPPED = 4
+        cls.STATUS_PENDING = 1
+        cls.STATUS_PROCESSING = 2
         cls.STATUS_REJECTED = 3
-
-        # Create base test data
-        cls.order_a = cls._create_order(
-            customer=cls.customer_a,
-            order_date=date(2023, 6, 1),
-            order_status=cls.STATUS_PROCESSING,
-        )
-
-        cls.order_b = cls._create_order(
-            customer=cls.customer_b,
-            order_date=date(2023, 7, 1),
-            shipped_date=date(2023, 7, 1),
-            order_status=cls.STATUS_SHIPPED,
-        )
-
-        # Store the URL to avoid repetition
+        cls.STATUS_COMPLETED = 4
         cls.url = reverse("order-list")
 
-    @classmethod
-    def _create_order(cls, customer, order_date, order_status, **kwargs):
-        """Helper method to create orders with consistent defaults."""
-        defaults = {
-            "customer": customer,
-            "store": cls.store,
-            "staff": cls.staff,
-            "order_status": order_status,
-            "order_date": order_date,
-            "expected_delivery_date": order_date + timedelta(days=2),
-        }
-        defaults.update(kwargs)
-        return Order.objects.create(**defaults)
+    def _create_order(cls, customer, order_date, order_status):
+        """Create an order with default values."""
+        return Order.objects.create(
+            customer=customer,
+            store=cls.store,
+            staff=cls.staff,
+            order_status=order_status,
+            order_date=order_date,
+            expected_delivery_date=order_date + timedelta(days=2),
+        )
 
     def _get_orders(self, params=None):
-        """Helper method to make GET requests to the order list endpoint."""
-        response = self.client.get(self.url, params or {})
-        self.assertEqual(response.status_code, 200)
-        return response.data
+        """Make GET request to order list endpoint and verify response."""
+        resp = self.client.get(self.url, params or {})
+        self.assertEqual(
+            resp.status_code,
+            status.HTTP_200_OK,
+            f"Expected 200, got {resp.status_code}: {resp.data}",
+        )
+        return resp.data
 
     def test_get_order_list_returns_all_orders(self):
-        """Test that GET /orders returns all orders."""
+        """Test retrieving all orders."""
+        self._create_order(
+            customer=self.customer_a,
+            order_date=date(2023, 6, 1),
+            order_status=self.STATUS_PENDING,
+        )
+        self._create_order(
+            customer=self.customer_b,
+            order_date=date(2023, 7, 1),
+            order_status=self.STATUS_COMPLETED,
+        )
         orders = self._get_orders()
-
-        self.assertEqual(len(orders), 2)
+        self.assertEqual(
+            len(orders), 2, f"Expected 2 orders, got {len(orders)}"
+        )
         self.assertEqual(orders[0]["order_status_display"], "completed")
 
-    def test_filter_by_customer_id_returns_customer_orders_only(self):
+    def test_filter_by_customer_id_returns_customer_orders(self):
         """Test filtering orders by customer ID."""
+        self._create_order(
+            customer=self.customer_a,
+            order_date=date(2023, 6, 1),
+            order_status=self.STATUS_PENDING,
+        )
+        self._create_order(
+            customer=self.customer_b,
+            order_date=date(2023, 7, 1),
+            order_status=self.STATUS_COMPLETED,
+        )
         orders = self._get_orders({"customer_id": self.customer_a.id})
-
-        self.assertEqual(len(orders), 1)
+        self.assertEqual(
+            len(orders), 1, f"Expected 1 order, got {len(orders)}"
+        )
         self.assertEqual(orders[0]["customer"]["first_name"], "Alice")
 
-    def test_filter_by_customer_id_with_invalid_id_returns_empty(self):
-        """Test filtering with non-existent customer ID returns empty result."""
+    def test_filter_by_customer_id_invalid_id_returns_empty(self):
+        """Test filtering with non-existent customer ID."""
+        self._create_order(
+            customer=self.customer_a,
+            order_date=date(2023, 6, 1),
+            order_status=self.STATUS_PENDING,
+        )
         orders = self._get_orders({"customer_id": 99999})
-
-        self.assertEqual(len(orders), 0)
+        self.assertEqual(
+            len(orders), 0, f"Expected 0 orders, got {len(orders)}"
+        )
 
     def test_filter_by_start_date_includes_orders_from_date(self):
         """Test filtering orders by start date."""
-        # Should include both orders (June 1st and July 1st)
+        self._create_order(
+            customer=self.customer_a,
+            order_date=date(2023, 6, 1),
+            order_status=self.STATUS_PENDING,
+        )
+        self._create_order(
+            customer=self.customer_b,
+            order_date=date(2023, 7, 1),
+            order_status=self.STATUS_COMPLETED,
+        )
         orders = self._get_orders({"start_date": "2023-06-01"})
-        self.assertEqual(len(orders), 2)
-
-        # Should include no orders (after July 1st)
+        self.assertEqual(
+            len(orders), 2, f"Expected 2 orders, got {len(orders)}"
+        )
         orders = self._get_orders({"start_date": "2023-07-02"})
-        self.assertEqual(len(orders), 0)
+        self.assertEqual(
+            len(orders), 0, f"Expected 0 orders, got {len(orders)}"
+        )
 
     def test_filter_by_date_range_includes_orders_in_range(self):
         """Test filtering orders by date range."""
-        # Should include only June order
-        orders = self._get_orders(
-            {"start_date": "2023-05-01", "end_date": "2023-06-30"}
+        self._create_order(
+            customer=self.customer_a,
+            order_date=date(2023, 6, 1),
+            order_status=self.STATUS_PENDING,
         )
-        self.assertEqual(len(orders), 1)
-
-        # Should include only July order
-        orders = self._get_orders(
-            {"start_date": "2023-07-01", "end_date": "2023-07-31"}
+        self._create_order(
+            customer=self.customer_b,
+            order_date=date(2023, 7, 1),
+            order_status=self.STATUS_COMPLETED,
         )
-        self.assertEqual(len(orders), 1)
+        orders = self._get_orders(
+            {
+                "start_date": "2023-05-01",
+                "end_date": "2023-06-30",
+            }
+        )
+        self.assertEqual(
+            len(orders), 1, f"Expected 1 order, got {len(orders)}"
+        )
+        orders = self._get_orders(
+            {
+                "start_date": "2023-07-01",
+                "end_date": "2023-07-31",
+            }
+        )
+        self.assertEqual(
+            len(orders), 1, f"Expected 1 order, got {len(orders)}"
+        )
 
     def test_filter_by_store_id_returns_store_orders(self):
         """Test filtering orders by store ID."""
+        self._create_order(
+            customer=self.customer_a,
+            order_date=date(2023, 6, 1),
+            order_status=self.STATUS_PENDING,
+        )
+        self._create_order(
+            customer=self.customer_b,
+            order_date=date(2023, 7, 1),
+            order_status=self.STATUS_COMPLETED,
+        )
         orders = self._get_orders({"store_id": self.store.id})
-
-        self.assertEqual(len(orders), 2)
+        self.assertEqual(
+            len(orders), 2, f"Expected 2 orders, got {len(orders)}"
+        )
 
     def test_filter_by_staff_id_returns_staff_orders(self):
         """Test filtering orders by staff ID."""
-        orders = self._get_orders({"staff_id": self.staff.id})
-
-        self.assertEqual(len(orders), 2)
-
-    @freeze_time("2023-06-15")  # Mock current date for consistent testing
-    def test_filter_delayed_orders_returns_only_delayed_orders(self):
-        """Test filtering for delayed orders excludes rejected orders."""
-        # Create delayed shipped order (shipped after expected delivery)
-        late_shipped_order = self._create_order(
+        self._create_order(
             customer=self.customer_a,
             order_date=date(2023, 6, 1),
-            order_status=self.STATUS_SHIPPED,
-            expected_delivery_date=date(2023, 6, 5),
-            shipped_date=date(2023, 6, 10),
+            order_status=self.STATUS_PENDING,
+        )
+        self._create_order(
+            customer=self.customer_b,
+            order_date=date(2023, 7, 1),
+            order_status=self.STATUS_COMPLETED,
+        )
+        orders = self._get_orders({"staff_id": self.staff.id})
+        self.assertEqual(
+            len(orders), 2, f"Expected 2 orders, got {len(orders)}"
         )
 
-        # Create delayed unshipped order (not shipped by expected delivery date)
-        unshipped_delayed_order = self.order_a
+    @freeze_time("2023-06-15")
+    def test_filter_delayed_orders_returns_only_delayed(self):
+        """Test filtering for delayed orders, excluding rejected orders."""
+        late_completed = self._create_order(
+            customer=self.customer_a,
+            order_date=date(2023, 6, 1),
+            order_status=self.STATUS_COMPLETED,
+        )
+        late_completed.expected_delivery_date = date(2023, 6, 5)
+        late_completed.shipped_date = date(2023, 6, 10)
+        late_completed.save()
 
-        # Create rejected delayed order (should be excluded)
-        rejected_order = self._create_order(
+        unshipped_delayed = self._create_order(
+            customer=self.customer_a,
+            order_date=date(2023, 5, 1),
+            order_status=self.STATUS_PROCESSING,
+        )
+        unshipped_delayed.expected_delivery_date = date(2023, 5, 5)
+        unshipped_delayed.shipped_date = None
+        unshipped_delayed.save()
+
+        rejected = self._create_order(
             customer=self.customer_a,
             order_date=date(2023, 5, 1),
             order_status=self.STATUS_REJECTED,
-            expected_delivery_date=date(2023, 5, 3),
-            shipped_date=None,
         )
+        rejected.expected_delivery_date = date(2023, 5, 3)
+        rejected.shipped_date = None
+        rejected.save()
 
         orders = self._get_orders({"delayed_orders": True})
-        print(orders)
-        # Should only return the 2 delayed orders, not the rejected one
-        self.assertEqual(len(orders), 2)
-
-        order_ids = {order["id"] for order in orders}
         self.assertEqual(
-            order_ids, {late_shipped_order.id, unshipped_delayed_order.id}
+            len(orders), 2, f"Expected 2 orders, got {len(orders)}"
         )
-        self.assertNotIn(rejected_order.id, order_ids)
+        order_ids = {order["id"] for order in orders}
+        self.assertEqual(order_ids, {late_completed.id, unshipped_delayed.id})
+        self.assertNotIn(rejected.id, order_ids)
 
-    def test_filter_delayed_orders_with_no_delayed_orders_returns_empty(self):
-        """Test delayed orders filter returns empty when no delayed orders exist."""
-        with freeze_time("2023-05-01"):  # Before any orders are delayed
-            orders = self._get_orders({"delayed_orders": True})
-            self.assertEqual(len(orders), 0)
+    @freeze_time("2023-05-01")
+    def test_filter_delayed_orders_no_delayed_returns_empty(self):
+        """Test delayed orders filter with no delayed orders."""
+        self._create_order(
+            customer=self.customer_a,
+            order_date=date(2023, 6, 1),
+            order_status=self.STATUS_PENDING,
+        )
+        orders = self._get_orders({"delayed_orders": True})
+        self.assertEqual(
+            len(orders), 0, f"Expected 0 orders, got {len(orders)}"
+        )
 
     def test_multiple_filters_work_together(self):
-        """Test that multiple filters can be applied simultaneously."""
-        orders = self._get_orders(
-            {"customer_id": self.customer_a.id, "start_date": "2023-06-01"}
+        """Test combining multiple filters."""
+        self._create_order(
+            customer=self.customer_a,
+            order_date=date(2023, 6, 1),
+            order_status=self.STATUS_PENDING,
         )
-
-        self.assertEqual(len(orders), 1)
+        self._create_order(
+            customer=self.customer_b,
+            order_date=date(2023, 7, 1),
+            order_status=self.STATUS_COMPLETED,
+        )
+        orders = self._get_orders(
+            {
+                "customer_id": self.customer_a.id,
+                "start_date": "2023-06-01",
+            }
+        )
+        self.assertEqual(
+            len(orders), 1, f"Expected 1 order, got {len(orders)}"
+        )
         self.assertEqual(orders[0]["customer"]["first_name"], "Alice")
 
-    def test_invalid_date_format_returns_appropriate_response(self):
-        """Test handling of invalid date formats."""
-        response = self.client.get(self.url, {"start_date": "invalid-date"})
-        # Adjust assertion based on your API's error handling
-        self.assertIn(
-            response.status_code, [400, 422]
-        )  # Bad Request or Unprocessable Entity
+    def test_invalid_date_format_returns_error(self):
+        """Test handling invalid date formats."""
+        resp = self.client.get(self.url, {"start_date": "invalid-date"})
+        self.assertEqual(
+            resp.status_code,
+            status.HTTP_400_BAD_REQUEST,
+            f"Expected 400, got {resp.status_code}: {resp.data}",
+        )
 
 
 class OrdersByWeekdayAPIViewTest(APITestCase):
-    """
-    IMPROVED: More comprehensive test coverage, edge cases, data validation
-    """
+    """Tests for the OrdersByWeekdayAPIView endpoint."""
 
     @classmethod
     def setUpTestData(cls):
-        # Create necessary related objects
+        """Set up test data for weekday analysis tests."""
         cls.brand = baker.make(Brand)
         cls.category = baker.make(Category)
         cls.product = baker.make(
@@ -212,10 +299,8 @@ class OrdersByWeekdayAPIViewTest(APITestCase):
         cls.store = baker.make(Store)
         cls.customer = baker.make(Customer)
         cls.staff = baker.make(Staff, store=cls.store)
-
-        # Create orders on specific days with order items
         cls.monday_orders = []
-        for i in range(3):
+        for _ in range(3):
             order = baker.make(
                 Order,
                 order_date=date(2025, 6, 9),  # Monday
@@ -228,11 +313,9 @@ class OrdersByWeekdayAPIViewTest(APITestCase):
                 order=order,
                 product=cls.product,
                 quantity=2,
-                price=100.00,
+                price=Decimal("100.00"),
             )
             cls.monday_orders.append(order)
-
-        # Create orders on other days
         cls.tuesday_order = baker.make(
             Order,
             order_date=date(2025, 6, 10),  # Tuesday
@@ -245,9 +328,8 @@ class OrdersByWeekdayAPIViewTest(APITestCase):
             order=cls.tuesday_order,
             product=cls.product,
             quantity=1,
-            price=150.00,
+            price=Decimal("150.00"),
         )
-
         cls.friday_order = baker.make(
             Order,
             order_date=date(2025, 6, 13),  # Friday
@@ -260,80 +342,70 @@ class OrdersByWeekdayAPIViewTest(APITestCase):
             order=cls.friday_order,
             product=cls.product,
             quantity=3,
-            price=75.00,
+            price=Decimal("75.00"),
         )
 
     def test_orders_by_weekday_success(self):
-        """Test successful weekday analysis"""
+        """Test retrieving weekday order statistics."""
         url = reverse("order-list-by-weekday")
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("summary", response.data)
-        self.assertIn("weekday_data", response.data)
-
-        # Check summary data
-        summary = response.data["summary"]
-        self.assertEqual(
-            summary["total_orders"], 5
-        )  # 3 Monday + 1 Tuesday + 1 Friday
-
-        # Check weekday data structure
-        weekday_data = response.data["weekday_data"]
-        self.assertTrue(len(weekday_data) > 0)
-
-        # Find Monday data (should be highest)
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIn("summary", resp.data)
+        self.assertIn("weekday_data", resp.data)
+        summary = resp.data["summary"]
+        self.assertEqual(summary["total_orders"], 5)
+        self.assertEqual(summary["total_revenue"], 975.0)  # 3*200 + 150 + 225
+        weekday_data = resp.data["weekday_data"]
         monday_data = next(
-            (item for item in weekday_data if item["weekday"] == "Monday"),
-            None,
+            item for item in weekday_data if item["weekday"] == "Monday"
         )
-        self.assertIsNotNone(monday_data)
         self.assertEqual(monday_data["total_orders"], 3)
-        self.assertEqual(
-            monday_data["total_revenue"], 600.0
-        )  # 3 orders * 2 items * 100.00
-        self.assertGreater(monday_data["percentage_of_total"], 0)
+        self.assertEqual(monday_data["total_revenue"], 600.0)
+        self.assertEqual(monday_data["avg_order_value"], 200.0)
+        self.assertAlmostEqual(monday_data["percentage_of_total"], 60.0)
 
     def test_orders_by_weekday_with_date_filter(self):
-        """Test weekday analysis with date filtering"""
+        """Test weekday analysis with date range filter."""
         url = reverse("order-list-by-weekday")
-        response = self.client.get(
-            url, {"start_date": "2025-06-09", "end_date": "2025-06-10"}
+        resp = self.client.get(
+            url,
+            {
+                "start_date": "2025-06-09",
+                "end_date": "2025-06-10",
+            },
         )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        summary = resp.data["summary"]
+        self.assertEqual(summary["total_orders"], 4)  # Monday + Tuesday
+        self.assertEqual(summary["total_revenue"], 750.0)  # 600 + 150
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        summary = response.data["summary"]
-        self.assertEqual(
-            summary["total_orders"], 4
-        )  # Monday + Tuesday orders only
-
-    def test_orders_by_weekday_invalid_date(self):
-        """Test error handling for invalid date format"""
+    def test_invalid_date_filter_returns_error(self):
+        """Test handling invalid date format in filter."""
         url = reverse("order-list-by-weekday")
-        response = self.client.get(url, {"start_date": "invalid-date"})
+        resp = self.client.get(url, {"start_date": "invalid-date"})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("error", response.data)
-
-    def test_orders_by_weekday_no_data(self):
-        """Test response when no orders exist in date range"""
+    def test_no_orders_in_date_range_returns_empty(self):
+        """Test response when no orders exist in date range."""
         url = reverse("order-list-by-weekday")
-        response = self.client.get(
-            url, {"start_date": "2020-01-01", "end_date": "2020-01-31"}
+        resp = self.client.get(
+            url,
+            {
+                "start_date": "2020-01-01",
+                "end_date": "2020-01-31",
+            },
         )
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["summary"]["total_orders"], 0)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["summary"]["total_orders"], 0)
+        self.assertEqual(len(resp.data["weekday_data"]), 0)
 
 
 class TopContributingStaffAPIViewTest(APITestCase):
-    """
-    IMPROVED: More comprehensive staff performance testing
-    """
+    """Tests for the TopContributingStaffAPIView endpoint."""
 
     @classmethod
     def setUpTestData(cls):
-        # Create test data
+        """Set up test data for staff performance tests."""
         cls.store = baker.make(Store, name="Test Store")
         cls.brand = baker.make(Brand)
         cls.category = baker.make(Category)
@@ -344,38 +416,34 @@ class TopContributingStaffAPIViewTest(APITestCase):
             price=Decimal("200.00"),
         )
         cls.customer = baker.make(Customer)
-
-        # Create staff with different performance levels
         cls.high_performer = baker.make(
             Staff,
-            first_name="High",
-            last_name="Performer",
+            first_name="John",
+            last_name="High",
             store=cls.store,
             active=True,
         )
         cls.medium_performer = baker.make(
             Staff,
-            first_name="Medium",
-            last_name="Performer",
+            first_name="Jane",
+            last_name="Medium",
             store=cls.store,
             active=True,
         )
         cls.low_performer = baker.make(
             Staff,
-            first_name="Low",
-            last_name="Performer",
+            first_name="Joe",
+            last_name="Low",
             store=cls.store,
             active=True,
         )
-        cls.inactive_staff = baker.make(
+        cls.inactive = baker.make(
             Staff,
             first_name="Inactive",
             last_name="Staff",
             store=cls.store,
             active=False,
         )
-
-        # Create orders for high performer (10 orders)
         for i in range(10):
             order = baker.make(
                 Order,
@@ -389,10 +457,8 @@ class TopContributingStaffAPIViewTest(APITestCase):
                 order=order,
                 product=cls.product,
                 quantity=2,
-                price=200.00,
+                price=Decimal("200.00"),
             )
-
-        # Create orders for medium performer (5 orders)
         for i in range(5):
             order = baker.make(
                 Order,
@@ -406,10 +472,8 @@ class TopContributingStaffAPIViewTest(APITestCase):
                 order=order,
                 product=cls.product,
                 quantity=1,
-                price=200.00,
+                price=Decimal("200.00"),
             )
-
-        # Create orders for low performer (2 orders)
         for i in range(2):
             order = baker.make(
                 Order,
@@ -423,184 +487,382 @@ class TopContributingStaffAPIViewTest(APITestCase):
                 order=order,
                 product=cls.product,
                 quantity=1,
-                price=100.00,
+                price=Decimal("100.00"),
             )
 
-    def test_top_contributing_staff_success(self):
-        """Test successful staff ranking"""
+    def test_successful_staff_ranking(self):
+        """Test retrieving top staff rankings."""
         url = reverse("top-contributing-staff")
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("period_info", response.data)
-        self.assertIn("staff_data", response.data)
-
-        staff_data = response.data["staff_data"]
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIn("period_info", resp.data)
+        self.assertIn("staff_data", resp.data)
+        staff_data = resp.data["staff_data"]
         self.assertEqual(len(staff_data), 3)  # Only active staff
-
-        # Check ranking (high performer should be first)
-        self.assertEqual(staff_data[0]["name"], "High Performer")
+        self.assertEqual(staff_data[0]["name"], "John High")
         self.assertEqual(staff_data[0]["rank"], 1)
         self.assertEqual(staff_data[0]["order_count"], 10)
+        self.assertEqual(staff_data[0]["total_revenue"], 4000.0)
 
-    def test_top_contributing_staff_with_limit(self):
-        """Test staff ranking with custom limit"""
+    def test_staff_ranking_with_limit(self):
+        """Test limiting the number of staff returned."""
         url = reverse("top-contributing-staff")
-        response = self.client.get(url, {"limit": 2})
+        resp = self.client.get(url, {"limit": "2"})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data["staff_data"]), 2)
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        staff_data = response.data["staff_data"]
-        self.assertEqual(len(staff_data), 2)
-
-    def test_top_contributing_staff_with_min_orders(self):
-        """Test filtering by minimum orders"""
+    def test_filter_by_minimum_orders(self):
+        """Test filtering staff by minimum order count."""
         url = reverse("top-contributing-staff")
-        response = self.client.get(url, {"min_orders": 5})
+        resp = self.client.get(url, {"min_orders": 5})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        staff_data = resp.data["staff_data"]
+        self.assertEqual(len(staff_data), 2)  # High and medium performers
+        self.assertEqual(
+            {s["name"] for s in staff_data}, {"John High", "Jane Medium"}
+        )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        staff_data = response.data["staff_data"]
-        # Should only include high and medium performers
-        self.assertEqual(len(staff_data), 2)
-
-    def test_top_contributing_staff_invalid_parameters(self):
-        """Test error handling for invalid parameters"""
+    def test_invalid_parameters_return_error(self):
+        """Test handling invalid parameters."""
         url = reverse("top-contributing-staff")
+        resp = self.client.get(url, {"limit": 0})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
-        # Test invalid limit
-        response = self.client.get(url, {"limit": 0})
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        resp = self.client.get(url, {"period": "invalid"})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
-        # Test invalid period
-        response = self.client.get(url, {"period": "invalid"})
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_top_contributing_staff_different_periods(self):
-        """Test different time periods"""
+    def test_different_periods(self):
+        """Test staff ranking with different time periods."""
         url = reverse("top-contributing-staff")
-
-        periods = ["week", "month", "quarter", "year"]
-        for period in periods:
-            response = self.client.get(url, {"period": period})
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.assertEqual(response.data["period_info"]["period"], period)
+        for period in ["week", "month", "quarter", "year"]:
+            resp = self.client.get(url, {"period": period})
+            self.assertEqual(resp.status_code, status.HTTP_200_OK)
+            self.assertEqual(resp.data["period_info"]["period"], period)
 
 
-class BikesByBrandAPITestCase(APITestCase):
+class BikesByBrandAPITest(APITestCase):
+    """Tests for the BikesByBrandAPIView endpoint."""
+
     @classmethod
     def setUpTestData(cls):
-        # Create 2 brands
+        """Set up test data for bikes by brand tests."""
         cls.brand1 = baker.make(Brand, name="BrandOne")
         cls.brand2 = baker.make(Brand, name="BrandTwo")
+        cls.products1 = baker.make(Product, brand=cls.brand1, _quantity=3)
+        cls.products2 = baker.make(Product, brand=cls.brand2, _quantity=2)
 
-        # Create 3 products for brand1 and 2 for brand2
-        cls.products_brand1 = baker.make(
-            Product, brand=cls.brand1, _quantity=3
-        )
-        cls.products_brand2 = baker.make(
-            Product, brand=cls.brand2, _quantity=2
-        )
-
-    def test_bikes_by_brand(self):
-        # Use reverse with brand_id as a URL argument
+    def test_retrieve_bikes_by_brand(self):
+        """Test retrieving bikes for a specific brand."""
         url = reverse("bikes-by-brand", kwargs={"brand_id": self.brand1.id})
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 3)
-
-        # Confirm all returned products belong to brand1
-        for product in response.data:
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            len(resp.data), 3, f"Expected 3 products, got {len(resp.data)}"
+        )
+        for product in resp.data:
             self.assertEqual(product["brand"]["id"], self.brand1.id)
 
 
 class CreateOrder(APITestCase):
+    """Tests for the CreateNewOrderAPIView endpoint."""
+
     @classmethod
     def setUpTestData(cls):
-        # Create objects and store references to use their actual IDs
+        """Set up test data for order creation tests."""
         cls.customer = baker.make(Customer)
-        cls.product = baker.make(Product, price=150.0)  # Set a known price
+        cls.product = Product.objects.create(
+            name="Test Product",
+            price=Decimal("150.00"),
+            brand=baker.make(Brand),
+            category=baker.make(Category),
+            model_year=2023,
+        )
         cls.staff = baker.make(Staff)
         cls.store = baker.make(Store)
-
-        # Create stock linking the specific product and store
-        cls.stock = baker.make(
-            Stock,
+        cls.stock = Stock.objects.create(
             product=cls.product,
             store=cls.store,
-            quantity=10,  # Ensure enough stock for the test
+            quantity=10,
         )
 
-    def test_order_create(self):
-        url = reverse(
-            "create-order",
-        )
+    def test_create_order_success(self):
+        """Test successful order creation."""
+        url = reverse("create-order")
         payload = {
-            "customer": self.customer.id,
-            "store": self.store.id,
-            "staff": self.staff.id,
+            "customer": str(self.customer.id),
+            "store": str(self.store.id),
+            "staff": str(self.staff.id),
             "order_status": 1,
-            "order_date": "2025-03-31",
-            "expected_delivery_date": "2025-04-02",
-            "items": [
-                {
-                    "product": self.product.id,
-                    "quantity": 2,
-                },
+            "order_date": "2025-06-12",
+            "expected_delivery_date": "2025-06-14",
+            "order_items": [
+                {"product": self.product.id, "quantity": 2},
             ],
         }
-        response = self.client.post(url, payload, format="json")
-
-        self.assertEqual(response.status_code, 201)
-
-        # Check response structure based on your updated view
-        self.assertIn("order", response.data)
+        resp = self.client.post(url, payload, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.assertIn("order", resp.data)
         self.assertEqual(
-            response.data["order"]["customer"]["id"], self.customer.id
+            resp.data["order"]["customer"]["id"], self.customer.id
         )
-
-        # Verify stock was decremented
         self.stock.refresh_from_db()
         self.assertEqual(self.stock.quantity, 8)
 
+    def test_create_order_no_items(self):
+        """Test creating order with no items."""
+        url = reverse("create-order")
+        payload = {
+            "customer": str(self.customer.id),
+            "store": str(self.store.id),
+            "staff": str(self.staff.id),
+            "order_status": 1,
+            "order_date": "2025-06-12",
+            "expected_delivery_date": "2025-06-14",
+            "order_items": [],
+        }
+        resp = self.client.post(url, payload, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.assertIn(
+            "Order must have at least one item",
+            str(resp.data),
+        )
+
+    def test_create_order_duplicate_items(self):
+        """Test creating order with duplicate products."""
+        url = reverse("create-order")
+        payload = {
+            "customer": str(self.customer.id),
+            "store": str(self.store.id),
+            "staff": str(self.staff.id),
+            "order_status": 1,
+            "order_date": "2025-06-12",
+            "expected_delivery_date": "2025-06-14",
+            "order_items": [
+                {"product": self.product.id, "quantity": 2},
+                {"product": self.product.id, "quantity": 3},
+            ],
+        }
+        resp = self.client.post(url, payload, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.assertIn(
+            "Duplicate products found",
+            str(resp.data),
+        )
+
+    def test_create_order_insufficient_stock(self):
+        """Test creating order with insufficient stock."""
+        url = reverse("create-order")
+        payload = {
+            "customer": str(self.customer.id),
+            "store": str(self.store.id),
+            "staff": str(self.staff.id),
+            "order_status": 1,
+            "order_date": "2025-06-12",
+            "expected_delivery_date": "2025-06-14",
+            "order_items": [
+                {"product": self.product.id, "quantity": 15},
+            ],
+        }
+        resp = self.client.post(url, payload, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT)
+
+        self.assertIn("Not enough stock", str(resp.data))
+        # self.assertIn("Not enough stock", str(resp.data["non_field_errors"]))
+        self.stock.refresh_from_db()
+        self.assertEqual(self.stock.quantity, 10)
+
+    def test_create_order_no_stock(self):
+        """Test creating order with non-existent stock."""
+        product_no_stock = Product.objects.create(
+            name="No Stock Product",
+            price=Decimal("100.00"),
+            brand=baker.make(Brand),
+            category=baker.make(Category),
+            model_year=2023,
+        )
+        url = reverse("create-order")
+        payload = {
+            "customer": str(self.customer.id),
+            "store": str(self.store.id),
+            "staff": str(self.staff.id),
+            "order_status": 1,
+            "order_date": "2025-06-12",
+            "expected_delivery_date": "2025-06-14",
+            "order_items": [
+                {"product": product_no_stock.id, "quantity": 1},
+            ],
+        }
+        resp = self.client.post(url, payload, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT)
+
+        self.assertIn(
+            "is not available in this store",
+            str(resp.data),
+        )
+
+    def test_create_order_invalid_dates(self):
+        """Test creating order with invalid dates."""
+        url = reverse("create-order")
+        payload = {
+            "customer": str(self.customer.id),
+            "store": str(self.store.id),
+            "staff": str(self.staff.id),
+            "order_status": 1,
+            "order_date": "2025-06-12",
+            "expected_delivery_date": "2025-06-10",
+            "order_items": [
+                {"product": self.product.id, "quantity": 2},
+            ],
+        }
+        resp = self.client.post(url, payload, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.assertIn(
+            "Expected delivery date must be after",
+            str(resp.data),
+        )
+
 
 class UpdateOrder(APITestCase):
+    """Tests for the UpdateOrderAPIView endpoint."""
+
     @classmethod
     def setUpTestData(cls):
-        brand = Brand.objects.create(name="test brand")
-        category = Category.objects.create(name="test category")
-        cls.p1 = Product.objects.create(
-            name="test product",
-            model_year="1",
-            price=15,
-            brand=brand,
-            category=category,
+        """Set up test data for order update tests."""
+        cls.brand = Brand.objects.create(name="Test Brand")
+        cls.category = Category.objects.create(name="Test Category")
+        cls.product = Product.objects.create(
+            name="Test Product",
+            model_year=2023,
+            price=Decimal("15.00"),
+            brand=cls.brand,
+            category=cls.category,
         )
-        store = baker.make(Store)
-        Stock.objects.create(store=store, quantity=20, product=cls.p1)
-        cls.order = baker.make(Order, store=store)
+        cls.store = baker.make(Store)
+        cls.stock = Stock.objects.create(
+            store=cls.store,
+            product=cls.product,
+            quantity=20,
+        )
+        cls.order = baker.make(Order, store=cls.store)
 
-    def test_order_update(self):
+    def test_order_update_success(self):
+        """Test successful order update."""
         url = reverse("update-order", kwargs={"pk": self.order.id})
-        response = self.client.patch(
-            url,
-            {
-                "order_status": 1,
-                "order_date": "2025-06-12",
-                "order_items": [
-                    {"product": self.p1.id, "quantity": 2},
-                ],
-            },
-            content_type="application/json",
-        )
-
-        stock = Stock.objects.get(store=self.order.store, product=self.p1.id)
+        payload = {
+            "order_status": 1,
+            "order_date": "2025-06-12",
+            "order_items": [
+                {"product": self.product.id, "quantity": 2},
+            ],
+        }
+        resp = self.client.patch(url, payload, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["id"], self.order.id)
+        self.assertEqual(resp.data["order_status"], 1)
+        self.assertEqual(resp.data["order_date"], "2025-06-12")
         order_items = OrderItem.objects.filter(order=self.order.id)
-
         self.assertEqual(len(order_items), 1)
         self.assertEqual(order_items[0].quantity, 2)
-        self.assertEqual(stock.quantity, 18)
+        self.stock.refresh_from_db()
+        self.assertEqual(self.stock.quantity, 18)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["id"], 1)
-        self.assertEqual(response.data["order_status"], 1)
-        self.assertEqual(response.data["order_date"], "2025-06-12")
+    def test_order_update_insufficient_stock(self):
+        """Test updating order with insufficient stock."""
+        url = reverse("update-order", kwargs={"pk": self.order.id})
+        payload = {
+            "order_status": 1,
+            "order_date": "2025-06-12",
+            "order_items": [
+                {"product": self.product.id, "quantity": 25},
+            ],
+        }
+        resp = self.client.patch(url, payload, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT)
+
+        self.assertIn("Not enough stock", str(resp.data))
+        # self.assertIn("Not enough stock", str(resp.data["non_field_errors"]))
+        self.stock.refresh_from_db()
+        self.assertEqual(self.stock.quantity, 20)
+        self.assertEqual(
+            OrderItem.objects.filter(order=self.order.id).count(), 0
+        )
+
+    def test_order_update_no_stock(self):
+        """Test updating order with non-existent stock."""
+        product_no_stock = baker.make(
+            Product,
+            name="No Stock Product",
+            price=Decimal("100.00"),
+            model_year=2025,
+        )
+        url = reverse("update-order", kwargs={"pk": self.order.id})
+        payload = {
+            "order_status": 1,
+            "order_date": "2025-06-12",
+            "order_items": [
+                {"product": product_no_stock.id, "quantity": 1},
+            ],
+        }
+        resp = self.client.patch(url, payload, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT)
+
+        self.assertIn(
+            "is not available in this store",
+            str(resp.data),
+        )
+        self.stock.refresh_from_db()
+        self.assertEqual(self.stock.quantity, 20)
+        self.assertEqual(
+            OrderItem.objects.filter(order=self.order.id).count(), 0
+        )
+
+    def test_order_update_duplicate_products(self):
+        """Test updating order with duplicate products."""
+        url = reverse("update-order", kwargs={"pk": self.order.id})
+        payload = {
+            "order_status": 1,
+            "order_date": "2025-06-12",
+            "order_items": [
+                {"product": self.product.id, "quantity": 2},
+                {"product": self.product.id, "quantity": 3},
+            ],
+        }
+        resp = self.client.patch(url, payload, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.assertIn(
+            "Duplicate products found",
+            str(resp.data),
+        )
+        self.stock.refresh_from_db()
+        self.assertEqual(self.stock.quantity, 20)
+        self.assertEqual(
+            OrderItem.objects.filter(order=self.order.id).count(), 0
+        )
+
+    def test_order_update_invalid_dates(self):
+        """Test updating order with invalid dates."""
+        url = reverse("update-order", kwargs={"pk": self.order.id})
+        payload = {
+            "order_status": 1,
+            "order_date": "2025-06-12",
+            "expected_delivery_date": "2025-06-10",
+            "order_items": [
+                {"product": self.product.id, "quantity": 2},
+            ],
+        }
+        resp = self.client.patch(url, payload, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.assertIn(
+            "Expected delivery date must be after",
+            str(resp.data),
+        )
+        self.stock.refresh_from_db()
+        self.assertEqual(self.stock.quantity, 20)
+        self.assertEqual(
+            OrderItem.objects.filter(order=self.order.id).count(), 0
+        )
