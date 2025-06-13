@@ -596,8 +596,8 @@ class OrderCreateAPIView(generics.CreateAPIView):
 class OrderUpdateAPIView(generics.UpdateAPIView):
     """Update an existing order with partial changes."""
 
-    queryset = Order.objects.all()  # Required for UpdateAPIView
-    serializer_class = OrderUpdateSerializer  # Fixes the assertion error
+    queryset = Order.objects.all()
+    serializer_class = OrderUpdateSerializer
 
     @swagger_auto_schema(
         operation_description="Update an existing order.",

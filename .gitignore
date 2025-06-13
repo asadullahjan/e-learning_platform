@@ -16,4 +16,3 @@ __pycache__
 env
 
 output_file.txt
-db.sqlite3
