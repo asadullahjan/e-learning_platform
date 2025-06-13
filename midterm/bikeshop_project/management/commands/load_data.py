@@ -282,7 +282,7 @@ class Command(BaseCommand):
         updates = []
 
         for row in staff_data:
-            if row["manager_id"]:
+            if row["manager_id"] and row["manager_id"] != "NULL":
                 staff_id = int(row["staff_id"])
                 manager_id = int(row["manager_id"])
 

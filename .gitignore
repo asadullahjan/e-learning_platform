@@ -1,2 +1,19 @@
-env
+# Static collection directory (DON'T commit this)
+static
+# Media uploads
+media/
+# Python bytecode
 __pycache__
+*.py[cod]
+# Environment files
+.env
+*.sqlite3
+# VSCode or PyCharm config
+.vscode/
+.idea/
+
+#virtual env
+env
+
+output_file.txt
+db.sqlite3
