@@ -547,7 +547,7 @@ class BikesByBrandAPIView(generics.ListAPIView):
             if model_year:
                 queryset = queryset.filter(model_year=model_year)
             if in_stock == "true":
-                queryset = queryset.filter(stock__quantity__gt=0).distinct()
+                queryset = queryset.filter(stocks__quantity__gt=0).distinct()
         except (ValueError, TypeError) as e:
             return Response(
                 {"error": f"{str(e)}"},
