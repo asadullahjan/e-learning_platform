@@ -21,35 +21,45 @@ from .models import (
 class BaseOrderSerializer(serializers.ModelSerializer):
     """Base serializer providing shared validation logic for order creation and updates."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # If this is an update operation (instance exists), make fields optional
+        if self.instance is not None:
+            for field_name, field in self.fields.items():
+                field.required = False
+
     def validate(self, data):
         """Validate order data for stock availability, duplicate products, and date consistency."""
         # Extract order items and store from data
         order_items = data.get("order_items", [])
         store = data.get("store")
 
-        # Ensure order has at least one item
-        if not order_items:
-            raise serializers.ValidationError(
-                "Order must have at least one item",
-                code="empty_order",
-            )
+        # For updates, get existing order items if none provided
+        if self.instance and not order_items:
+            # Skip validation if no order_items provided in update
+            order_items = []
 
-        # Check for duplicate products in order items
-        products = [item["product"] for item in order_items]
-        if len(products) != len(set(products)):
-            raise serializers.ValidationError(
-                "Duplicate products found in order items",
-                code="duplicate_products",
-            )
+        # Only validate if order_items are provided or this is a create operation
+        if order_items or not self.instance:
+            # Ensure order has at least one item (only for create or when items provided)
+            if not order_items and not self.instance:
+                raise serializers.ValidationError(
+                    "Order must have at least one item",
+                    code="empty_order",
+                )
 
-        # Ensure store is provided if order items are included
-        if order_items and not store:
-            raise serializers.ValidationError(
-                {
-                    "store": "Store must be provided to check stock availability."
-                },
-                code="missing_store",
-            )
+            # Check for duplicate products in order items
+            if order_items:
+                products = [item["product"] for item in order_items]
+                if len(products) != len(set(products)):
+                    raise serializers.ValidationError(
+                        "Duplicate products found in order items",
+                        code="duplicate_products",
+                    )
+
+        # For updates, use existing store if not provided
+        if self.instance and not store:
+            store = self.instance.store
 
         # Validate stock availability for each order item
         if order_items and store:
@@ -72,9 +82,17 @@ class BaseOrderSerializer(serializers.ModelSerializer):
                         status_code=status.HTTP_409_CONFLICT,
                     )
 
-        # Ensure expected delivery date is after order date
+        # Date validation
         order_date = data.get("order_date")
         expected_delivery_date = data.get("expected_delivery_date")
+
+        # For updates, get existing dates if not provided
+        if self.instance:
+            order_date = order_date or self.instance.order_date
+            expected_delivery_date = (
+                expected_delivery_date or self.instance.expected_delivery_date
+            )
+
         if expected_delivery_date and order_date:
             if expected_delivery_date < order_date:
                 raise serializers.ValidationError(

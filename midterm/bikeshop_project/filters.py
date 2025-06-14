@@ -46,14 +46,14 @@ class OrderFilter(django_filters.FilterSet):
     )
 
     # Filter orders with total amount >= specified value
-    min_total = django_filters.NumberFilter(
-        method="filter_min_total",
+    min_amount = django_filters.NumberFilter(
+        method="filter_min_amount",
         help_text="Filter orders with total amount (quantity × price) greater than or equal to this value.",
     )
 
     # Filter orders with total amount <= specified value
-    max_total = django_filters.NumberFilter(
-        method="filter_max_total",
+    max_amount = django_filters.NumberFilter(
+        method="filter_max_amount",
         help_text="Filter orders with total amount (quantity × price) less than or equal to this value.",
     )
 
@@ -81,7 +81,7 @@ class OrderFilter(django_filters.FilterSet):
         model = Order
         fields = []  # No default fields; all filters are explicitly defined
 
-    def filter_min_total(self, queryset, name, value):
+    def filter_min_amount(self, queryset, name, value):
         """Filter orders with total amount greater than or equal to the specified value."""
         # Annotate queryset with total amount (quantity * price)
         return queryset.annotate(
@@ -90,7 +90,7 @@ class OrderFilter(django_filters.FilterSet):
             )
         ).filter(total_amount__gte=value)
 
-    def filter_max_total(self, queryset, name, value):
+    def filter_max_amount(self, queryset, name, value):
         """Filter orders with total amount less than or equal to the specified value."""
         # Annotate queryset with total amount (quantity * price)
         return queryset.annotate(
