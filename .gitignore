@@ -14,5 +14,6 @@ __pycache__
 
 #virtual env
 env
+finalterm_env
 
 output_file.txt
