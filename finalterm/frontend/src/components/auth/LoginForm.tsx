@@ -5,9 +5,9 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { authService, LoginData } from "@/services/authService";
 import { useAuthStore } from "@/store/authStore";
-import { Button } from "./ui/button";
-import Input from "./ui/Input";
-import Typography from "./ui/Typography";
+import { Button } from "../ui/button";
+import Input from "../ui/Input";
+import Typography from "../ui/Typography";
 
 export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);

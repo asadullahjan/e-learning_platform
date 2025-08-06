@@ -5,10 +5,10 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { authService, RegisterData } from "@/services/authService";
 import { useAuthStore } from "@/store/authStore";
-import { Button } from "./ui/button";
-import Input from "./ui/Input";
-import Typography from "./ui/Typography";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "./ui/select";
+import { Button } from "../ui/button";
+import Input from "../ui/Input";
+import Typography from "../ui/Typography";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
 
 export default function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false);

@@ -48,7 +48,7 @@ class AuthService {
     return response.data;
   }
 
-  async updateProfile(data: Partial<User>): Promise<AuthResponse> {
+  async updateProfile(data: FormData): Promise<AuthResponse> {
     const response = await api.put("/auth/profile/update/", data);
     return response.data;
   }
