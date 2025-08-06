@@ -25,6 +25,7 @@ const typographyVariants = cva("text", {
       success: "text-success",
       warning: "text-warning",
       info: "text-info",
+      error: "text-error",
     },
     size: {
       default: "",

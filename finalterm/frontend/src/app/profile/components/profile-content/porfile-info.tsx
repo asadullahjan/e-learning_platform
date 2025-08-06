@@ -4,7 +4,7 @@ import Input from "@/components/ui/Input";
 import Typography from "@/components/ui/Typography";
 import { authService } from "@/services/authService";
 import { useAuthStore } from "@/store/authStore";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Logout from "../logout";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -24,7 +24,15 @@ const ProfileInfo = () => {
     role: user?.role,
   });
 
-  if (!user) return;
+  useEffect(() => {
+    setFormData({
+      username: user?.username,
+      email: user?.email,
+      first_name: user?.first_name,
+      last_name: user?.last_name,
+      role: user?.role,
+    });
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -32,7 +40,7 @@ const ProfileInfo = () => {
   };
 
   const handleEditProfile = async () => {
-    setIsEditing(!isEditing);
+    setIsEditing(true);
     if (isEditing) {
       try {
         const form = new FormData();
@@ -47,6 +55,7 @@ const ProfileInfo = () => {
         });
         setFieldErrors({});
         setUser(response.user);
+        setIsEditing(false);
       } catch (error: any) {
         console.error("Error updating profile:", error);
         if (error.response && error.response.status === 400) {
@@ -58,6 +67,8 @@ const ProfileInfo = () => {
     }
   };
 
+  if (!user) return;
+
   return (
     <Card>
       <CardContent>
@@ -68,7 +79,7 @@ const ProfileInfo = () => {
                 variant="h1"
                 size={"sm"}
               >
-                {user.username ? `${user.username}!` : "Profile"}
+                {user.username ? `${user.username}` : "Profile"}
               </Typography>
               <Typography variant="p">
                 Role: {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
@@ -110,7 +121,7 @@ const ProfileInfo = () => {
                   {fieldErrors.username && (
                     <Typography
                       variant="span"
-                      color="warning"
+                      color="error"
                     >
                       {fieldErrors.username}
                     </Typography>
@@ -134,7 +145,7 @@ const ProfileInfo = () => {
                   {fieldErrors.email && (
                     <Typography
                       variant="span"
-                      color="warning"
+                      color="error"
                     >
                       {fieldErrors.email}
                     </Typography>
@@ -158,7 +169,7 @@ const ProfileInfo = () => {
                   {fieldErrors.first_name && (
                     <Typography
                       variant="span"
-                      color="warning"
+                      color="error"
                     >
                       {fieldErrors.first_name}
                     </Typography>
@@ -182,7 +193,7 @@ const ProfileInfo = () => {
                   {fieldErrors.last_name && (
                     <Typography
                       variant="span"
-                      color="warning"
+                      color="error"
                     >
                       {fieldErrors.last_name}
                     </Typography>
