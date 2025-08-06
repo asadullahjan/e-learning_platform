@@ -43,12 +43,14 @@ INSTALLED_APPS = [
     "rest_framework",
     "crispy_forms",
     "channels",
+    "corsheaders",
     # Local apps
     "elearning",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -183,5 +185,23 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
-# Custom user model (we'll create this)
+# Custom user model
 AUTH_USER_MODEL = "elearning.User"
+
+# CORS settings (for API access)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+CORS_ALLOW_CREDENTIALS = True
+
+# CSRF settings (for form protection)
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+CSRF_COOKIE_HTTPONLY = False  # So JavaScript can read it
+CSRF_COOKIE_SAMESITE = "Lax"
+
+# Session settings
+SESSION_COOKIE_SAMESITE = "Lax"

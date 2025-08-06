@@ -1,0 +1,13 @@
+from django.urls import path
+from . import views
+
+app_name = 'elearning'
+
+urlpatterns = [
+    # Authentication endpoints
+    path('auth/register/', views.register, name='register'),
+    path('auth/login/', views.login_view, name='login'),
+    path('auth/logout/', views.logout_view, name='logout'),
+    path('auth/profile/', views.user_profile, name='profile'),
+    path('auth/profile/update/', views.update_profile, name='update_profile'),
+] 

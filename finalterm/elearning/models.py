@@ -13,6 +13,9 @@ class User(AbstractUser):
         ("teacher", "Teacher"),
     ]
 
+    # Override email field to make it unique
+    email = models.EmailField(unique=True)
+    
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
     profile_picture = models.ImageField(
         upload_to="profile_pics/", null=True, blank=True
