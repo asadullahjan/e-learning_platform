@@ -99,3 +99,53 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent !important;
 }
+
+/* Toast animations */
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(20%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(20%);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Toast state animations */
+[data-state="open"] {
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+[data-state="closed"] {
+  animation: slideOutToRight 0.3s ease-in;
+}
