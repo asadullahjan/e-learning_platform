@@ -37,6 +37,7 @@ export default function RegisterForm() {
       router.push("/dashboard");
     } catch (err: any) {
       const errorMessage =
+        err.response?.data?.username?.[0] ||
         err.response?.data?.email?.[0] ||
         err.response?.data?.password?.[0] ||
         err.response?.data?.role?.[0] ||
@@ -93,6 +94,32 @@ export default function RegisterForm() {
                   className="text-sm mt-1"
                 >
                   {errors.role.message}
+                </Typography>
+              )}
+            </div>
+            <div>
+              <Input
+                {...register("username", {
+                  required: "Username is required",
+                  minLength: { value: 3, message: "Username must be at least 3 characters" },
+                  pattern: {
+                    value: /^[a-zA-Z0-9_]+$/,
+                    message: "Username can only contain letters, numbers, and underscores",
+                  },
+                })}
+                id="username"
+                name="username"
+                type="text"
+                required
+                placeholder="Username"
+              />
+              {errors.username && (
+                <Typography
+                  variant="p"
+                  color="destructive"
+                  className="text-sm mt-1"
+                >
+                  {errors.username.message}
                 </Typography>
               )}
             </div>

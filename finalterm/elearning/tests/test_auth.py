@@ -16,13 +16,14 @@ class AuthenticationTest(APITestCase):
         self.login_url = "/api/auth/login/"
 
         self.valid_payload = {
+            "username": "testuser",
             "email": "test@example.com",
             "password": "testpass123",
             "role": "student",
         }
 
     def test_user_registration(self):
-        """Test user registration endpoint"""
+        """Test user registration endpoint"""   
         response = self.client.post(self.register_url, self.valid_payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("user", response.data)
@@ -50,7 +51,7 @@ class AuthenticationTest(APITestCase):
     def test_invalid_registration_data(self):
         """Test registration with invalid data"""
         invalid_payload = {
-            "username": "testuser",
+            "username": "te",  # Too short
             "email": "invalid-email",
             "password": "123",  # Too short
             "role": "invalid-role",
@@ -58,3 +59,25 @@ class AuthenticationTest(APITestCase):
 
         response = self.client.post(self.register_url, invalid_payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_duplicate_username_registration(self):
+        """Test registration with duplicate username"""
+        # Create first user
+        User.objects.create_user(
+            username="testuser",
+            email="test1@example.com",
+            password="testpass123",
+            role="student",
+        )
+
+        # Try to register with same username
+        duplicate_payload = {
+            "username": "testuser",
+            "email": "test2@example.com",
+            "password": "testpass123",
+            "role": "student",
+        }
+
+        response = self.client.post(self.register_url, duplicate_payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
