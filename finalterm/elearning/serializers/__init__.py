@@ -4,9 +4,12 @@ from .users import (
     UserLoginSerializer,
     UserSerializer,
 )
+from .courses import CourseSerializer, CourseDetailSerializer
 
 __all__ = [
     "UserRegistrationSerializer",
     "UserLoginSerializer",
     "UserSerializer",
+    "CourseSerializer",
+    "CourseDetailSerializer",
 ]
