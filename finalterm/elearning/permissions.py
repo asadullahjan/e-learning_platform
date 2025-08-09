@@ -15,3 +15,14 @@ class IsCourseOwner(BasePermission):
     def has_object_permission(self, request, view, obj):
         # Only the course creator can edit/delete
         return obj.teacher == request.user
+
+
+class IsCourseOwnerOrEnrollmentOwner(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        # Course owner can view enrollments for their course
+        if obj.course.teacher == request.user:
+            return True
+        # User can view their own enrollment
+        if obj.user == request.user:
+            return True
+        return False
