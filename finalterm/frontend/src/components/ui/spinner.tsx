@@ -15,6 +15,7 @@ const spinnerVariants = cva("w-4 h-4 animate-spin", {
       default: "w-6 h-6",
       xs: "w-4 h-4 ",
       sm: "w-6 h-6",
+      md: "w-6 h-6",
       lg: "w-8 h-8",
       xl: "w-10 h-10",
       icon: "h-6 w-6",

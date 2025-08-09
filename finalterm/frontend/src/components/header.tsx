@@ -14,6 +14,7 @@ import { Button } from "./ui/button";
 import { LogOutIcon, UserIcon } from "lucide-react";
 import ProfileAvatar from "@/app/profile/components/profile-header/profile-avatar";
 import { authService } from "@/services/authService";
+import Avatar from "./ui/avatar";
 
 export default function Header() {
   const { user, isLoading, setUser } = useAuthStore();
@@ -34,7 +35,11 @@ export default function Header() {
         <div className="flex justify-end items-center">
           <DropdownMenu>
             <DropdownMenuTrigger>
-              <ProfileAvatar className="w-10 h-10 md:w-10 md:h-10 border-none" />
+              <Avatar
+                src={user?.profile_picture}
+                alt={user?.username}
+                className="cursor-pointer"
+              />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
