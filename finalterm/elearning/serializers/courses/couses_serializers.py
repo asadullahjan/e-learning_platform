@@ -7,7 +7,7 @@ from elearning.serializers import UserSerializer
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
-        fields = ["id", "title", "description"]
+        fields = ["id", "title", "description", "published_at"]
         read_only_fields = ["id", "teacher"]
 
     def validate_title(self, value):
@@ -24,8 +24,8 @@ class CourseSerializer(serializers.ModelSerializer):
 class CourseDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
-        fields = ["id", "title", "description", "teacher"]
-        read_only_fields = ["id"]
+        fields = ["id", "title", "description", "published_at"]
+        read_only_fields = ["id", "teacher"]
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

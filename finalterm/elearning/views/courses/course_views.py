@@ -1,5 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 from elearning.models import Course
 from elearning.permissions import IsTeacher, IsCourseOwner
@@ -12,12 +14,20 @@ from elearning.serializers.courses.couses_serializers import (
 class CourseViewSet(viewsets.ModelViewSet):
     """ViewSet for course operations"""
 
-    def get_queryset(self):
-        # Everyone can see all courses
-        return Course.objects.all()
+    queryset = Course.objects.filter(published_at__isnull=False)
+
+    # Enable built-in filtering, search, ordering
+    filter_backends = [SearchFilter, OrderingFilter, DjangoFilterBackend]
+
+    # Search across multiple fields
+    search_fields = ["title", "description", "teacher__username"]
+
+    # Allow ordering by these fields
+    ordering_fields = ["published_at"]
+    ordering = ["-published_at"]
 
     def get_serializer_class(self):
-        if self.action == "retrieve":
+        if self.action == "retrieve" or self.action == "list":
             return CourseDetailSerializer
         return CourseSerializer
 
