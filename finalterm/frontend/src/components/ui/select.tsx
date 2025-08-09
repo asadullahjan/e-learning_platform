@@ -4,6 +4,7 @@ import * as _Select from "@radix-ui/react-select";
 import { ChevronDownIcon } from "lucide-react";
 
 const Select = _Select.Root;
+const SelectValue = _Select.Value;
 
 const SelectTrigger = ({ children, className, ...props }: _Select.SelectTriggerProps) => {
   return (
@@ -16,7 +17,7 @@ const SelectTrigger = ({ children, className, ...props }: _Select.SelectTriggerP
     >
       {children}
       <_Select.Icon>
-        <ChevronDownIcon className="w-4 h-4" />
+        <ChevronDownIcon className="w-4 h-4 ml-2" />
       </_Select.Icon>
     </_Select.Trigger>
   );
@@ -59,4 +60,4 @@ const SelectItem = React.forwardRef<
 });
 SelectItem.displayName = _Select.Item.displayName;
 
-export { Select, SelectContent, SelectItem, SelectTrigger };
+export { Select, SelectContent, SelectItem, SelectTrigger, SelectValue };
