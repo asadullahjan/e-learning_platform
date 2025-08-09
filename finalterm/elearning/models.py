@@ -51,3 +51,24 @@ class Course(models.Model):
     class Meta:
         db_table = "courses"
         ordering = ["-created_at"]
+
+
+class Enrollment(models.Model):
+    """
+    Model for course enrollments.
+    Junction table between User and Course.
+    One user can enroll in multiple courses and
+    one course can have multiple users.
+    """
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} enrolled in {self.course.title}"
+
+    class Meta:
+        db_table = "enrollments"
+        unique_together = ("user", "course")
+        ordering = ["-enrolled_at"]
