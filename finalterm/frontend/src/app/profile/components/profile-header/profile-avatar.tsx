@@ -4,17 +4,15 @@ import { Pen, UserIcon, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { authService } from "@/services/authService";
+import { cn } from "@/lib/utils";
+import { showToast } from "@/lib/toast";
 
-const ProfileAvatar = () => {
+const ProfileAvatar = ({ className, update = false }: { className?: string; update?: boolean }) => {
   const { user, setUser } = useAuthStore();
   const [profilePicture, setProfilePicture] = useState<string | null>(
     user?.profile_picture || null
   );
   const [isUploading, setIsUploading] = useState(false);
-  const [message, setMessage] = useState({
-    success: "",
-    error: "",
-  });
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -23,7 +21,6 @@ const ProfileAvatar = () => {
 
       // Upload immediately
       setIsUploading(true);
-      setMessage({ success: "", error: "" });
 
       try {
         const form = new FormData();
@@ -31,19 +28,13 @@ const ProfileAvatar = () => {
 
         const response = await authService.updateProfile(form);
         setUser(response.user);
-        setMessage({
-          success: "Profile picture updated successfully!",
-          error: "",
-        });
+        showToast.success("Profile picture updated successfully!");
 
         // Clear preview after successful upload
         setProfilePicture(null);
       } catch (error: any) {
         console.error("Error uploading profile picture:", error);
-        setMessage({
-          success: "",
-          error: "Failed to upload profile picture. Please try again.",
-        });
+        showToast.error("Failed to upload profile picture. Please try again.");
         // Clear preview on error
         setProfilePicture(null);
       } finally {
@@ -53,7 +44,12 @@ const ProfileAvatar = () => {
   };
 
   return (
-    <div className="relative group w-20 h-20 md:w-32 md:h-32 bg-white rounded-full overflow-hidden shadow-lg border-4 border-white">
+    <div
+      className={cn(
+        "relative group w-20 h-20 md:w-32 md:h-32 bg-white rounded-full overflow-hidden shadow-lg border-4 border-white",
+        className
+      )}
+    >
       {/* Loading overlay */}
       {isUploading && (
         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20">
@@ -61,22 +57,12 @@ const ProfileAvatar = () => {
         </div>
       )}
 
-      {/* Success/Error messages */}
-      {message.success && (
-        <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-3 py-1 rounded-md text-xs whitespace-nowrap z-30 shadow-lg">
-          {message.success}
-        </div>
-      )}
-      {message.error && (
-        <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-3 py-1 rounded-md text-xs whitespace-nowrap z-30 shadow-lg">
-          {message.error}
-        </div>
-      )}
-
       {/* Edit overlay */}
-      <div className="absolute inset-0 bg-black bg-opacity-0 opacity-0 group-hover:opacity-60 group-hover:bg-opacity-60 cursor-pointer transition-all duration-200 items-center justify-center z-10 pointer-events-none flex">
-        <Pen className="w-5 h-5 md:w-6 md:h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-      </div>
+      {update && (
+        <div className="absolute inset-0 bg-black bg-opacity-0 opacity-0 group-hover:opacity-60 group-hover:bg-opacity-60 cursor-pointer transition-all duration-200 items-center justify-center z-10 pointer-events-none flex">
+          <Pen className="w-5 h-5 md:w-6 md:h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+        </div>
+      )}
 
       <input
         type="file"
@@ -84,6 +70,7 @@ const ProfileAvatar = () => {
         className="hidden"
         id="profile-picture-input"
         onChange={handleFileChange}
+        disabled={!update}
       />
       <label
         htmlFor="profile-picture-input"
