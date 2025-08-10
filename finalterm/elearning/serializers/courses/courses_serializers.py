@@ -1,0 +1,118 @@
+from elearning.models import Course
+from rest_framework import serializers
+from django.utils import timezone
+from elearning.serializers import UserSerializer
+
+
+class CourseSerializer(serializers.ModelSerializer):
+    """Basic course serializer for create/update operations"""
+
+    class Meta:
+        model = Course
+        fields = [
+            "id",
+            "title",
+            "description",
+            "teacher",
+            "published_at",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "teacher",
+            "created_at",
+        ]
+        extra_kwargs = {
+            "published_at": {"required": False, "allow_null": True}
+        }
+
+    def validate_title(self, value):
+        if len(value) < 5:
+            raise serializers.ValidationError(
+                "Title must be at least 5 characters long"
+            )
+        return value
+
+    def validate_description(self, value):
+        if len(value) < 20:
+            raise serializers.ValidationError(
+                "Description must be at least 20 characters long"
+            )
+        return value
+
+    def validate_published_at(self, value):
+        if value and value < timezone.now():
+            raise serializers.ValidationError(
+                "Published date cannot be in the past"
+            )
+        return value
+
+
+class CourseListSerializer(CourseSerializer):
+    """Course serializer for list with basic info and teacher name"""
+
+    teacher_name = serializers.CharField(
+        source="teacher.username", read_only=True
+    )
+
+    class Meta(CourseSerializer.Meta):
+        fields = CourseSerializer.Meta.fields + ["teacher_name"]
+        read_only_fields = CourseSerializer.Meta.read_only_fields + [
+            "teacher_name"
+        ]
+
+
+class CourseDetailSerializer(CourseSerializer):
+    """Detailed course serializer with enrollment data and nested teacher"""
+
+    enrollment_count = serializers.SerializerMethodField()
+    total_enrollments = serializers.SerializerMethodField()
+    is_enrolled = serializers.SerializerMethodField()
+    can_enroll = serializers.SerializerMethodField()
+
+    class Meta(CourseSerializer.Meta):
+        fields = CourseSerializer.Meta.fields + [
+            "updated_at",
+            "enrollment_count",
+            "total_enrollments",
+            "is_enrolled",
+            "can_enroll",
+        ]
+        read_only_fields = CourseSerializer.Meta.read_only_fields + [
+            "updated_at",
+            "enrollment_count",
+            "total_enrollments",
+            "is_enrolled",
+            "can_enroll",
+        ]
+
+    def get_enrollment_count(self, obj):
+        return obj.enrollment_set.filter(is_active=True).count()
+
+    def get_total_enrollments(self, obj):
+        return obj.enrollment_set.count()
+
+    def get_is_enrolled(self, obj):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            return obj.enrollment_set.filter(
+                user=request.user, is_active=True
+            ).exists()
+        return False
+
+    def get_can_enroll(self, obj):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            is_enrolled = obj.enrollment_set.filter(
+                user=request.user, is_active=True
+            ).exists()
+            return obj.published_at and not is_enrolled
+        return False
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        # Add nested teacher data
+        data["teacher"] = UserSerializer(instance.teacher).data
+
+        return data

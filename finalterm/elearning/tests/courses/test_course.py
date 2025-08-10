@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework.test import APIClient, APITestCase
 from rest_framework import status
 
@@ -80,6 +81,7 @@ class CourseViewsTest(APITestCase):
             title="Test Course",
             description=description,
             teacher=self.teacher,
+            published_at=timezone.now(),
         )
         response = self.client.patch(
             f"/api/courses/{course.id}/",
@@ -98,6 +100,7 @@ class CourseViewsTest(APITestCase):
             title="Test Course",
             description=description,
             teacher=self.teacher,
+            published_at=timezone.now(),
         )
         response = self.client.put(
             f"/api/courses/{course.id}/",
@@ -116,6 +119,7 @@ class CourseViewsTest(APITestCase):
             title="Test Course",
             description=description,
             teacher=self.teacher,
+            published_at=timezone.now(),
         )
         response = self.client.delete(f"/api/courses/{course.id}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
@@ -128,11 +132,13 @@ class CourseViewsTest(APITestCase):
             title="Test Course",
             description=description,
             teacher=self.teacher,
+            published_at=timezone.now(),
         )
         Course.objects.create(
             title="Test Course 2",
             description=description,
             teacher=self.teacher,
+            published_at=timezone.now(),
         )
         response = self.client.get("/api/courses/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -145,6 +151,7 @@ class CourseViewsTest(APITestCase):
             title="Test Course",
             description=description,
             teacher=self.teacher2,
+            published_at=timezone.now(),
         )
         response = self.client.patch(
             f"/api/courses/{course.id}/", {"title": "Updated Course"}

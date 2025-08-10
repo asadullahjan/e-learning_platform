@@ -20,29 +20,31 @@
 2.1 Database Design and Normalization
 
 2.1.1 User Model Design
-  - Custom User model extending Django's AbstractUser
-  - Fields: username (unique), email (unique), password, role (teacher/student)
-  - Role field with choices: [('teacher', 'Teacher'), ('student', 'Student')]
-  - Reasoning: Separate roles enable different permissions and access levels
-  - Normalization: User data is properly normalized to avoid redundancy
+
+- Custom User model extending Django's AbstractUser
+- Fields: username (unique), email (unique), password, role (teacher/student)
+- Role field with choices: [('teacher', 'Teacher'), ('student', 'Student')]
+- Reasoning: Separate roles enable different permissions and access levels
+- Normalization: User data is properly normalized to avoid redundancy
 
 2.1.2 Course Model Design
-  - Fields: title (CharField, max_length=255), description (TextField), 
-    teacher (ForeignKey to User), created_at (DateTimeField, auto_now_add=True), 
-    updated_at (DateTimeField, auto_now=True), published_at (DateTimeField, nullable)
-  - Teacher field creates One-to-Many relationship (one teacher, many courses)
-  - Published_at field enables draft/published status functionality
-  - Reasoning: Teachers can create multiple courses, students will enroll in courses
-  - Normalization: Course data is normalized with proper foreign key relationships
+
+- Fields: title (CharField, max_length=255), description (TextField),
+  teacher (ForeignKey to User), created_at (DateTimeField, auto_now_add=True),
+  updated_at (DateTimeField, auto_now=True), published_at (DateTimeField, nullable)
+- Teacher field creates One-to-Many relationship (one teacher, many courses)
+- Published_at field enables draft/published status functionality
+- Reasoning: Teachers can create multiple courses, students will enroll in courses
+- Normalization: Course data is normalized with proper foreign key relationships
 
 2.1.3 Database Relationships
-  - User (Teacher) → Course: One-to-Many relationship
-  - Future relationships planned: Course → Enrollment (One-to-Many), User (Student) → Enrollment (One-to-Many)
-  - Foreign key constraints ensure data integrity
+
+- User (Teacher) → Course: One-to-Many relationship
+- Future relationships planned: Course → Enrollment (One-to-Many), User (Student) → Enrollment (One-to-Many)
+- Foreign key constraints ensure data integrity
 
 - **System architecture**
   - Django backend structure
-    
   - Next.js frontend architecture
   - API design principles
 - **Technology choices and reasoning**

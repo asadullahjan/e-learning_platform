@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
@@ -26,6 +27,7 @@ class EnrollmentViewsTest(APITestCase):
             title="Test Course",
             description="Test Description",
             teacher=self.teacher,
+            published_at=timezone.now(),
         )
         self.course2 = Course.objects.create(
             title="Test Course 2",
@@ -41,6 +43,13 @@ class EnrollmentViewsTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["course"], self.course.id)
         self.assertEqual(response.data["user"], self.student.id)
+
+    def test_enroll_in_unpublished_course(self):
+        self.client.force_authenticate(user=self.student)
+        response = self.client.post(
+            "/api/enrollments/", {"course": self.course2.id}
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_enroll_in_course_unauthenticated(self):
         response = self.client.post(
@@ -75,8 +84,8 @@ class EnrollmentViewsTest(APITestCase):
             "/api/enrollments/", {"course": self.course.id}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["active_enrollments"], 1)
-        self.assertEqual(response.data["total_enrollments"], 1)
+        # Non-owners get empty list (no access to other course enrollments)
+        self.assertEqual(response.data["count"], 0)
 
     def test_get_enrollments_for_student(self):
         self.client.force_authenticate(user=self.student)

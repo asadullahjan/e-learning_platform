@@ -1,3 +1,6 @@
-from .enrollment_serializers import EnrollmentSerializer
+from .enrollment_serializers import (
+    EnrollmentSerializer, 
+    EnrollmentDetailSerializer
+)
 
-__all__ = ["EnrollmentSerializer"]
+__all__ = ["EnrollmentSerializer", "EnrollmentDetailSerializer"]

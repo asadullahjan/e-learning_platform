@@ -5,8 +5,9 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from elearning.models import Course
 from elearning.permissions import IsTeacher, IsCourseOwner
-from elearning.serializers.courses.couses_serializers import (
+from elearning.serializers.courses import (
     CourseSerializer,
+    CourseListSerializer,
     CourseDetailSerializer,
 )
 
@@ -27,7 +28,9 @@ class CourseViewSet(viewsets.ModelViewSet):
     ordering = ["-published_at"]
 
     def get_serializer_class(self):
-        if self.action == "retrieve" or self.action == "list":
+        if self.action == "list":
+            return CourseListSerializer
+        elif self.action == "retrieve":
             return CourseDetailSerializer
         return CourseSerializer
 
