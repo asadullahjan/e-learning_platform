@@ -1,5 +1,5 @@
 import { Course, ListResponse } from "@/lib/types";
-import api from "@/services/api";
+import { courseService } from "@/services/courseService";
 import CourseCard from "./components/course-card";
 import Typography from "@/components/ui/Typography";
 import Filter from "./components/filter";
@@ -9,9 +9,8 @@ export default async function CoursesPage({
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
-  const courses = await api.get("/courses", { params: searchParams });
-  const coursesData = courses.data as ListResponse<Course>;
-  console.log(coursesData);
+  const coursesData = (await courseService.server.getCourses(searchParams)) as ListResponse<Course>;
+
   return (
     <div className="flex flex-col gap-4">
       <Filter />

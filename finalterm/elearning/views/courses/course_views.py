@@ -1,5 +1,5 @@
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
@@ -37,7 +37,7 @@ class CourseViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
             # Anyone can view courses (no authentication required)
-            return []
+            return [AllowAny()]
         elif self.action == "create":
             return [IsAuthenticated(), IsTeacher()]
         elif self.action in ["update", "partial_update", "destroy"]:

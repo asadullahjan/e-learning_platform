@@ -12,7 +12,7 @@ type CourseHeaderProps = {
 
 const CourseHeader = ({ course, isTeacher, isCourseOwner }: CourseHeaderProps) => {
   return (
-    <Card className="mb-8">
+    <Card className="mb-20 pb-10  relative overflow-visible">
       <CardHeader className="pb-4">
         <h1 className="text-3xl font-bold text-gray-900">{course.title}</h1>
       </CardHeader>
@@ -25,6 +25,7 @@ const CourseHeader = ({ course, isTeacher, isCourseOwner }: CourseHeaderProps) =
           isTeacher={isTeacher}
           isCourseOwner={isCourseOwner}
           courseId={course.id}
+          isEnrolled={course.is_enrolled}
         />
 
         {/* Teacher Info */}
@@ -37,6 +38,26 @@ const CourseHeader = ({ course, isTeacher, isCourseOwner }: CourseHeaderProps) =
           />
         </div>
       </CardContent>
+
+      {/* Floating Stats Card - Absolute positioned at bottom center */}
+      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 z-1">
+        <Card className="shadow border-0 bg-white">
+          <CardContent className="px-8 py-4">
+            <div className="flex gap-12">
+              <div className="flex flex-col items-center">
+                <span className="text-2xl font-bold text-blue-600">{course.enrollment_count}</span>
+                <span className="text-sm text-gray-600 font-medium">Active Students</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-2xl font-bold text-green-600">
+                  {course.total_enrollments}
+                </span>
+                <span className="text-sm text-gray-600 font-medium">Total Enrollments</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </Card>
   );
 };

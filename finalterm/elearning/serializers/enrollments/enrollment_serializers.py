@@ -4,7 +4,7 @@ from elearning.serializers import CourseSerializer, UserSerializer
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):
-    """Basic enrollment serializer"""
+    """Basic enrollment serializer for general use"""
 
     class Meta:
         model = Enrollment
@@ -39,18 +39,35 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class EnrollmentDetailSerializer(EnrollmentSerializer):
-    """Detailed enrollment serializer with nested data"""
+class StudentEnrollmentSerializer(serializers.ModelSerializer):
+    """Enrollment serializer for students - shows course details"""
 
     course = CourseSerializer(read_only=True)
+
+    class Meta:
+        model = Enrollment
+        fields = [
+            "id",
+            "course",
+            "enrolled_at",
+            "is_active",
+            "unenrolled_at",
+        ]
+        read_only_fields = ["id", "enrolled_at"]
+
+
+class TeacherEnrollmentSerializer(serializers.ModelSerializer):
+    """Enrollment serializer for teachers - shows student details"""
+
     user = UserSerializer(read_only=True)
 
-    class Meta(EnrollmentSerializer.Meta):
-        fields = EnrollmentSerializer.Meta.fields + [
-            "course_details",
-            "user_details",
-        ]
-        read_only_fields = EnrollmentSerializer.Meta.read_only_fields + [
-            "course",
+    class Meta:
+        model = Enrollment
+        fields = [
+            "id",
             "user",
+            "enrolled_at",
+            "is_active",
+            "unenrolled_at",
         ]
+        read_only_fields = ["id", "enrolled_at"]

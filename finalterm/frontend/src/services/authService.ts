@@ -28,29 +28,60 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface ProfileUpdateData {
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  profile_picture?: File;
+}
+
 class AuthService {
   async login(data: LoginData): Promise<AuthResponse> {
-    const response = await api.post("/auth/login/", data);
+    const response = await api.post<AuthResponse>("/auth/login/", data);
     return response.data;
   }
 
   async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await api.post("/auth/register/", data);
+    const response = await api.post<AuthResponse>("/auth/register/", data);
     return response.data;
   }
 
   async logout(): Promise<{ message: string }> {
-    const response = await api.post("/auth/logout/");
+    const response = await api.post<{ message: string }>("/auth/logout/");
     return response.data;
   }
 
   async getProfile(): Promise<User> {
-    const response = await api.get("/auth/profile/");
+    const response = await api.get<User>("/auth/profile/");
     return response.data;
   }
 
   async updateProfile(data: FormData): Promise<AuthResponse> {
-    const response = await api.put("/auth/profile/update/", data);
+    const response = await api.put<AuthResponse>("/auth/profile/update/", data);
+    return response.data;
+  }
+
+  // Additional methods for better auth management
+  async refreshToken(): Promise<{ access: string }> {
+    const response = await api.post<{ access: string }>("/auth/refresh/");
+    return response.data;
+  }
+
+  async changePassword(data: {
+    old_password: string;
+    new_password: string;
+  }): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>("/auth/change-password/", data);
+    return response.data;
+  }
+
+  async resetPassword(email: string): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>("/auth/reset-password/", { email });
+    return response.data;
+  }
+
+  async verifyEmail(token: string): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>("/auth/verify-email/", { token });
     return response.data;
   }
 }

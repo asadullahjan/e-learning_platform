@@ -15,4 +15,17 @@ export type Course = {
   created_at: string;
   updated_at: string;
   published_at: string;
+  enrollment_count: number;
+  total_enrollments: number;
+  is_enrolled: boolean;
+  can_enroll: boolean;
+};
+
+export type Enrollment = {
+  id: string;
+  course: Course;
+  user: User;
+  is_active: boolean;
+  enrolled_at: string;
+  unenrolled_at: string | null;
 };

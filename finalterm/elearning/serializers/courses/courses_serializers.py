@@ -68,7 +68,6 @@ class CourseDetailSerializer(CourseSerializer):
     enrollment_count = serializers.SerializerMethodField()
     total_enrollments = serializers.SerializerMethodField()
     is_enrolled = serializers.SerializerMethodField()
-    can_enroll = serializers.SerializerMethodField()
 
     class Meta(CourseSerializer.Meta):
         fields = CourseSerializer.Meta.fields + [
@@ -76,14 +75,12 @@ class CourseDetailSerializer(CourseSerializer):
             "enrollment_count",
             "total_enrollments",
             "is_enrolled",
-            "can_enroll",
         ]
         read_only_fields = CourseSerializer.Meta.read_only_fields + [
             "updated_at",
             "enrollment_count",
             "total_enrollments",
             "is_enrolled",
-            "can_enroll",
         ]
 
     def get_enrollment_count(self, obj):
@@ -94,19 +91,11 @@ class CourseDetailSerializer(CourseSerializer):
 
     def get_is_enrolled(self, obj):
         request = self.context.get("request")
+        print("DEBUG - request in serializer:", request.user)
         if request and request.user.is_authenticated:
             return obj.enrollment_set.filter(
                 user=request.user, is_active=True
             ).exists()
-        return False
-
-    def get_can_enroll(self, obj):
-        request = self.context.get("request")
-        if request and request.user.is_authenticated:
-            is_enrolled = obj.enrollment_set.filter(
-                user=request.user, is_active=True
-            ).exists()
-            return obj.published_at and not is_enrolled
         return False
 
     def to_representation(self, instance):

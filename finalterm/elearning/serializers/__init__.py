@@ -6,7 +6,11 @@ from .users import (
     UserDetailSerializer,
 )
 from .courses import CourseSerializer, CourseDetailSerializer
-from .enrollments import EnrollmentSerializer, EnrollmentDetailSerializer
+from .enrollments import (
+    EnrollmentSerializer,
+    StudentEnrollmentSerializer,
+    TeacherEnrollmentSerializer,
+)
 
 __all__ = [
     "UserRegistrationSerializer",
@@ -16,5 +20,6 @@ __all__ = [
     "CourseSerializer",
     "CourseDetailSerializer",
     "EnrollmentSerializer",
-    "EnrollmentDetailSerializer",
+    "StudentEnrollmentSerializer",
+    "TeacherEnrollmentSerializer",
 ]

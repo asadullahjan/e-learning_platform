@@ -38,7 +38,12 @@ const UserAvatar = ({
       <div className="flex items-center gap-2">
         {avatar}
         <div className="flex flex-col">
-          <Typography variant={"span"}>{displayName}</Typography>
+          <Typography
+            variant={"span"}
+            className="font-semibold"
+          >
+            {displayName}
+          </Typography>
           <Typography variant={"span"}>{user.role}</Typography>
         </div>
       </div>
@@ -56,7 +61,12 @@ const UserAvatar = ({
         <div className="flex items-center gap-2">
           {avatar}
           <div className="flex flex-col">
-            <Typography variant={"span"}>{displayName}</Typography>
+            <Typography
+              variant={"span"}
+              className="font-semibold"
+            >
+              {displayName}
+            </Typography>
             <Typography variant={"span"}>{user.role}</Typography>
           </div>
         </div>
