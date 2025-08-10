@@ -6,10 +6,8 @@ app_name = "elearning"
 
 # Create router for ViewSets
 router = DefaultRouter()
-router.register(r"courses", views.courses.CourseViewSet, basename="course")
-router.register(
-    r"enrollments", views.enrollments.EnrollmentViewSet, basename="enrollment"
-)
+router.register(r"courses", views.CourseViewSet, basename="course")
+router.register(r"enrollments", views.EnrollmentViewSet, basename="enrollment")
 
 urlpatterns = [
     # Authentication endpoints

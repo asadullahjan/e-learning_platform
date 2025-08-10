@@ -3,9 +3,9 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
-from elearning.models import Course
-from elearning.permissions import IsTeacher, IsCourseOwner
-from elearning.serializers.courses import (
+from ..models import Course
+from ..permissions import IsTeacher, IsCourseOwner
+from ..serializers import (
     CourseSerializer,
     CourseListSerializer,
     CourseDetailSerializer,

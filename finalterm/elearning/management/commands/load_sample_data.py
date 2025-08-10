@@ -1,6 +1,6 @@
 from datetime import datetime
 from django.core.management.base import BaseCommand
-from elearning.models import Course, User
+from ...models import Course, User
 
 
 class Command(BaseCommand):

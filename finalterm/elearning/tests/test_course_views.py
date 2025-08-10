@@ -3,7 +3,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient, APITestCase
 from rest_framework import status
 
-from elearning.models import Course
+from ..models import Course
 
 User = get_user_model()
 

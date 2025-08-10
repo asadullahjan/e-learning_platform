@@ -1,7 +1,7 @@
-from elearning.models import Course
+from ..models import Course
 from rest_framework import serializers
 from django.utils import timezone
-from elearning.serializers import UserSerializer
+from .user_serializers import UserSerializer
 
 
 class CourseSerializer(serializers.ModelSerializer):

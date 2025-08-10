@@ -1,12 +1,16 @@
 # Import all serializers for easy access
-from .users import (
+from .user_serializers import (
     UserRegistrationSerializer,
     UserLoginSerializer,
     UserSerializer,
     UserDetailSerializer,
 )
-from .courses import CourseSerializer, CourseDetailSerializer
-from .enrollments import (
+from .course_serializers import (
+    CourseSerializer,
+    CourseDetailSerializer,
+    CourseListSerializer,
+)
+from .enrollment_serializers import (
     EnrollmentSerializer,
     StudentEnrollmentSerializer,
     TeacherEnrollmentSerializer,
@@ -18,6 +22,7 @@ __all__ = [
     "UserSerializer",
     "UserDetailSerializer",
     "CourseSerializer",
+    "CourseListSerializer",
     "CourseDetailSerializer",
     "EnrollmentSerializer",
     "StudentEnrollmentSerializer",

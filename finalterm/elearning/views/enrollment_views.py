@@ -1,9 +1,9 @@
 from rest_framework import viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
-from elearning.models import Course, Enrollment
-from elearning.permissions import IsCourseOwnerOrEnrollmentOwner
-from elearning.serializers.enrollments import (
+from ..models import Course, Enrollment
+from ..permissions import IsCourseOwnerOrEnrollmentOwner
+from ..serializers import (
     EnrollmentSerializer,
     StudentEnrollmentSerializer,
     TeacherEnrollmentSerializer,

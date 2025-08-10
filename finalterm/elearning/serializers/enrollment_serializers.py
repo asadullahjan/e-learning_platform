@@ -1,6 +1,7 @@
-from elearning.models import Enrollment
+from ..models import Enrollment
 from rest_framework import serializers
-from elearning.serializers import CourseSerializer, UserSerializer
+from .course_serializers import CourseSerializer
+from .user_serializers import UserSerializer
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):
