@@ -148,14 +148,16 @@ ASGI_APPLICATION = "elearning_project.asgi.application"
 
 # Channel Layers for WebSockets
 CHANNEL_LAYERS = {
-    "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
+    # "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
     # TODO: For deployment, use RedisChannelLayer
-    # "default": {
-    #     "BACKEND": "channels_redis.core.RedisChannelLayer",
-    #     "CONFIG": {
-    #         "hosts": [("127.0.0.1", 6379)],
-    #     },
-    # },
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379, 2)],
+            "capacity": 1500,
+            "expiry": 3600,
+        },
+    },
 }
 
 
