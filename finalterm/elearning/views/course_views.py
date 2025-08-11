@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
-from ..models import Course
+from ..models import ChatRoom, ChatParticipant, Course
 from ..permissions import IsTeacher, IsCourseOwner
 from ..serializers import (
     CourseSerializer,
@@ -45,4 +45,19 @@ class CourseViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
-        serializer.save(teacher=self.request.user)
+        # First save the course
+        course = serializer.save(teacher=self.request.user)
+
+        # Create the chatroom for the course
+        chatroom = ChatRoom.objects.create(
+            name=f"{course.title} Chat",
+            course=course,
+            chat_type="course",
+            is_public=True,
+            created_by=self.request.user,
+        )
+
+        # Add the course creator as admin participant
+        ChatParticipant.objects.create(
+            chat_room=chatroom, user=self.request.user, role="admin"
+        )

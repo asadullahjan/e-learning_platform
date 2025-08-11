@@ -88,7 +88,7 @@ class ChatRoom(models.Model):
         ("course", "Course"),
     ]
 
-    title = models.CharField(max_length=255)
+    name = models.CharField(max_length=255)
     chat_type = models.CharField(max_length=10, choices=CHAT_TYPE_CHOICES)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     course = models.ForeignKey(
@@ -99,7 +99,7 @@ class ChatRoom(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.title + " (" + self.get_chat_type_display() + ")"
+        return self.name + " (" + self.get_chat_type_display() + ")"
 
     class Meta:
         db_table = "chat_rooms"
@@ -127,7 +127,7 @@ class ChatMessage(models.Model):
 
     def __str__(self):
         sender_name = self.sender.username if self.sender else "Deleted User"
-        return f"{sender_name} in {self.chat_room.title}"
+        return f"{sender_name} in {self.chat_room.name}"
 
     class Meta:
         db_table = "chat_messages"
@@ -140,7 +140,7 @@ class ChatParticipant(models.Model):
     """
 
     ROLE_CHOICES = [
-        ("owner", "Owner"),
+        ("admin", "Admin"),
         ("participant", "Participant"),
     ]
 
@@ -159,7 +159,7 @@ class ChatParticipant(models.Model):
 
     def __str__(self):
         return (
-            f"{self.user.username} in {self.chat_room.title}"
+            f"{self.user.username} in {self.chat_room.name}"
             f" ({self.get_role_display()})"
         )
 

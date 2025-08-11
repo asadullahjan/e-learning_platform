@@ -3,6 +3,7 @@ from .auth_views import register, login_view, logout_view
 from .profile_views import user_profile, update_profile
 from .course_views import CourseViewSet
 from .enrollment_views import EnrollmentViewSet
+from .chats.chat_room_views import ChatRoomViewSet
 
 __all__ = [
     "register",
@@ -12,4 +13,5 @@ __all__ = [
     "update_profile",
     "CourseViewSet",
     "EnrollmentViewSet",
+    "ChatRoomViewSet",
 ]

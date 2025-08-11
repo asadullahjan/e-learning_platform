@@ -8,6 +8,11 @@ app_name = "elearning"
 router = DefaultRouter()
 router.register(r"courses", views.CourseViewSet, basename="course")
 router.register(r"enrollments", views.EnrollmentViewSet, basename="enrollment")
+router.register(
+    r"chatrooms",
+    views.ChatRoomViewSet,
+    basename="chatroom",
+)
 
 urlpatterns = [
     # Authentication endpoints
