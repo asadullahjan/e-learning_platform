@@ -1,13 +1,12 @@
 from django.contrib.auth import get_user_model
-from rest_framework.test import APITestCase
 from rest_framework import status
 from rest_framework.test import APIClient
-
+from elearning.tests.test_base import BaseAPITestCase
 
 User = get_user_model()
 
 
-class AuthenticationTest(APITestCase):
+class AuthenticationTest(BaseAPITestCase):
     """Test authentication endpoints"""
 
     def setUp(self):
@@ -23,9 +22,9 @@ class AuthenticationTest(APITestCase):
         }
 
     def test_user_registration(self):
-        """Test user registration endpoint"""   
+        """Test user registration endpoint"""
         response = self.client.post(self.register_url, self.valid_payload)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertStatusCode(response, status.HTTP_201_CREATED)
         self.assertIn("user", response.data)
 
         # Check user was created
@@ -45,7 +44,7 @@ class AuthenticationTest(APITestCase):
         login_data = {"email": "test@example.com", "password": "testpass123"}
 
         response = self.client.post(self.login_url, login_data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertStatusCode(response, status.HTTP_200_OK)
         self.assertIn("user", response.data)
 
     def test_invalid_registration_data(self):
@@ -58,7 +57,7 @@ class AuthenticationTest(APITestCase):
         }
 
         response = self.client.post(self.register_url, invalid_payload)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertStatusCode(response, status.HTTP_400_BAD_REQUEST)
 
     def test_duplicate_username_registration(self):
         """Test registration with duplicate username"""
@@ -79,5 +78,5 @@ class AuthenticationTest(APITestCase):
         }
 
         response = self.client.post(self.register_url, duplicate_payload)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertStatusCode(response, status.HTTP_400_BAD_REQUEST)
         self.assertIn("username", response.data)

@@ -28,7 +28,6 @@ class UserModelTest(TestCase):
             password="testpass123",
             role="teacher",
         )
-        print(user)
         expected_str = "testuser (Teacher)"
         self.assertEqual(str(user), expected_str)
 

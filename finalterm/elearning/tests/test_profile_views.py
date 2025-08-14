@@ -1,13 +1,14 @@
 from django.contrib.auth import get_user_model
-from rest_framework.test import APITestCase
 from rest_framework import status
 from rest_framework.test import APIClient
+
+from elearning.tests.test_base import BaseAPITestCase
 
 
 User = get_user_model()
 
 
-class UserProfileTest(APITestCase):
+class UserProfileTest(BaseAPITestCase):
     """Test user profile endpoints"""
 
     def setUp(self):
@@ -28,7 +29,7 @@ class UserProfileTest(APITestCase):
     def test_get_user_profile(self):
         """Test getting user profile"""
         response = self.client.get(self.profile_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertStatusCode(response, status.HTTP_200_OK)
 
         data = response.data
         self.assertEqual(data["email"], "test@example.com")
@@ -40,7 +41,7 @@ class UserProfileTest(APITestCase):
         update_data = {"first_name": "Jane", "last_name": "Smith"}
 
         response = self.client.put(self.update_url, update_data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertStatusCode(response, status.HTTP_200_OK)
 
         # Check user was updated
         self.user.refresh_from_db()
@@ -51,4 +52,4 @@ class UserProfileTest(APITestCase):
         self.client.force_authenticate(user=None)
 
         response = self.client.get(self.profile_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)

@@ -1,14 +1,15 @@
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.test import APIClient, APITestCase
+from rest_framework.test import APIClient
 
 from ..models import Course, Enrollment
+from elearning.tests.test_base import BaseAPITestCase, debug_on_failure
 
 User = get_user_model()
 
 
-class EnrollmentViewsTest(APITestCase):
+class EnrollmentViewsTest(BaseAPITestCase):
     def setUp(self):
         self.client = APIClient()
         self.teacher = User.objects.create_user(
@@ -72,7 +73,9 @@ class EnrollmentViewsTest(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
-        self.assertEqual(response.data["results"][0]["course"], self.course.id)
+        self.assertEqual(
+            response.data["results"][0]["user"]["id"], self.student.id
+        )
 
     def test_get_enrollments_for_course_for_student(self):
         self.client.force_authenticate(user=self.student)
@@ -96,4 +99,43 @@ class EnrollmentViewsTest(APITestCase):
         response = self.client.get("/api/enrollments/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
-        self.assertEqual(response.data["results"][0]["course"], self.course.id)
+        self.assertEqual(
+            response.data["results"][0]["course"]["id"], self.course.id
+        )
+
+    @debug_on_failure
+    def test_get_enrollments_for_teacher(self):
+        """Test that teachers can view their own enrollments with course
+        details"""
+        self.client.force_authenticate(user=self.teacher)
+        # Create a course taught by another teacher
+        other_teacher = User.objects.create_user(
+            username="otherteacher",
+            email="other@example.com",
+            password="testpass123",
+            role="teacher",
+        )
+        other_course = Course.objects.create(
+            title="Other Course",
+            description="Other Description",
+            teacher=other_teacher,
+            published_at=timezone.now(),
+        )
+        # Enroll the teacher in the other course
+        Enrollment.objects.create(
+            user=self.teacher,
+            course=other_course,
+        )
+
+        response = self.log_response(self.client.get("/api/enrollments/"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("count", response.data)
+        self.assertIn("results", response.data)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(
+            response.data["results"][0]["course"]["id"], other_course.id
+        )
+        # Verify course details are included (not user details)
+        self.assertIn("course", response.data["results"][0])
+        self.assertNotIn("user", response.data["results"][0])
