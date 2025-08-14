@@ -4,6 +4,8 @@ from .profile_views import user_profile, update_profile
 from .course_views import CourseViewSet
 from .enrollment_views import EnrollmentViewSet
 from .chats.chat_room_views import ChatRoomViewSet
+from .chats.chat_participant_views import ChatParticipantViewSet
+from .chats.chat_message_views import ChatMessageViewSet
 
 __all__ = [
     "register",
@@ -14,4 +16,6 @@ __all__ = [
     "CourseViewSet",
     "EnrollmentViewSet",
     "ChatRoomViewSet",
+    "ChatParticipantViewSet",
+    "ChatMessageViewSet",
 ]

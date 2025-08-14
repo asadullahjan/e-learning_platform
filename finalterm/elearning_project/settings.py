@@ -179,6 +179,7 @@ REST_FRAMEWORK = {
         "rest_framework.filters.OrderingFilter",
         "rest_framework.filters.SearchFilter",
     ],
+    "EXCEPTION_HANDLER": "elearning.exceptions.custom_exception_handler",
 }
 
 # Crispy Forms Configuration

@@ -9,9 +9,19 @@ router = DefaultRouter()
 router.register(r"courses", views.CourseViewSet, basename="course")
 router.register(r"enrollments", views.EnrollmentViewSet, basename="enrollment")
 router.register(
-    r"chatrooms",
+    r"chats",
     views.ChatRoomViewSet,
-    basename="chatroom",
+    basename="chat",
+)
+router.register(
+    r"chats/(?P<chat_room_id>\d+)/participants",
+    views.ChatParticipantViewSet,
+    basename="chat-participant",
+)
+router.register(
+    r"chats/(?P<chat_room_id>\d+)/messages",
+    views.ChatMessageViewSet,
+    basename="chat-message",
 )
 
 urlpatterns = [

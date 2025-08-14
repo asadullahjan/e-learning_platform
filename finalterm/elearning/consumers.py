@@ -3,21 +3,30 @@ import json
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
-
     async def connect(self):
-        """User connects to WebSocket"""
-        # Accept the connection
+        self.chat_room_id = self.scope["url_route"]["kwargs"]["chat_room_id"]
+        self.chat_group_name = f"chat_{self.chat_room_id}"
+
+        # Join chat room group
+        await self.channel_layer.group_add(
+            self.chat_group_name, self.channel_name
+        )
+
         await self.accept()
-        print("WebSocket connected!")  # Debug message
 
     async def disconnect(self, close_code):
-        """User disconnects from WebSocket"""
-        print(f"WebSocket disconnected! Code: {close_code}")  # Debug message
+        # Leave chat room group
+        await self.channel_layer.group_discard(
+            self.chat_group_name, self.channel_name
+        )
 
-    async def receive(self, text_data):
-        """User sends message via WebSocket"""
-        print(f"Received message: {text_data}")  # Debug message
-        # For now, just echo back
+    async def chat_message(self, event):
+        """Generic handler for all message types"""
         await self.send(
-            text_data=json.dumps({"message": f"Echo: {text_data}"})
+            text_data=json.dumps(
+                {
+                    "type": event["event_type"],
+                    "message": event["message"],
+                }
+            )
         )

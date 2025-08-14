@@ -56,9 +56,9 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                 # Teacher viewing enrollments for their course
                 return TeacherEnrollmentSerializer
 
-        # Student viewing their own enrollments or general use
-        if user.role == "student":
-            return StudentEnrollmentSerializer
+        # User viewing their own enrollments (both students and teachers
+        # can enroll)
+        return StudentEnrollmentSerializer
 
         # Default fallback
         return EnrollmentSerializer

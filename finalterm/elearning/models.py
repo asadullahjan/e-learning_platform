@@ -16,7 +16,9 @@ class User(AbstractUser):
     # Override email field to make it unique
     email = models.EmailField(unique=True)
 
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    role = models.CharField(
+        max_length=10, choices=ROLE_CHOICES, default="student"
+    )
     profile_picture = models.ImageField(
         upload_to="profile_pics/", null=True, blank=True
     )
@@ -144,10 +146,13 @@ class ChatParticipant(models.Model):
         ("participant", "Participant"),
     ]
 
-    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
+    chat_room = models.ForeignKey(
+        ChatRoom, on_delete=models.CASCADE, related_name="participants"
+    )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     role = models.CharField(choices=ROLE_CHOICES, default="participant")
     joined_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)
     last_read_message = models.ForeignKey(
         ChatMessage,
