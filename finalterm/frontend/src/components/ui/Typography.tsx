@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { cva, VariantProps } from "class-variance-authority";
 
-const typographyVariants = cva("text", {
+const typographyVariants = cva("text whitespace-pre-line", {
   variants: {
     variant: {
       default: "",
@@ -19,8 +19,8 @@ const typographyVariants = cva("text", {
       default: "",
       primary: "text-primary",
       secondary: "text-secondary",
-      muted: "text-muted",
-      accent: "text-accent",
+      muted: "text-muted-foreground",
+      accent: "text-accent-foreground",
       destructive: "text-destructive",
       success: "text-success",
       warning: "text-warning",

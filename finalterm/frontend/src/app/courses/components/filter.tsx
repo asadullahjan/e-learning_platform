@@ -47,7 +47,7 @@ export default function Filter() {
   };
 
   return (
-    <div className="flex flex-row justify-between gap-2">
+    <div className="flex flex-1 flex-row justify-between gap-2">
       <div className="flex flex-row gap-2">
         <label
           htmlFor="search"

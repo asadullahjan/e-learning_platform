@@ -1,0 +1,157 @@
+"use client";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { chatService, Chat, Message } from "@/services/chatService";
+import { Link } from "lucide-react";
+import JoinChatButton from "./join_chat_button";
+import MessageInput from "./message_input";
+import MessageList from "./message_list";
+import { useEffect, useState } from "react";
+
+const ChatContainer = ({ chatId }: { chatId: string }) => {
+  try {
+    const [chat, setChat] = useState<Chat | null>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [participantStatus, setParticipantStatus] = useState<{
+      is_participant: boolean;
+      role: string | null;
+    } | null>(null);
+
+    const getMessages = async () => {
+      const messages = await chatService.server.getMessages(chatId);
+      setMessages(messages);
+    };
+
+    const getChat = async () => {
+      const chat = await chatService.server.getChat(chatId);
+      setChat(chat);
+    };
+
+    useEffect(() => {
+      getChat();
+      getMessages();
+    }, []);
+
+    // Extract participant status from chat data
+    useEffect(() => {
+      if (chat) {
+        setParticipantStatus(
+          chat.current_user_status || {
+            is_participant: false,
+            role: null,
+          }
+        );
+      }
+    }, [chat]);
+
+    console.log(participantStatus);
+
+    if (participantStatus?.is_participant) {
+      return (
+        <Card className="w-full flex flex-col h-full min-h-[80vh]">
+          <CardHeader>
+            <CardTitle>{chat?.name}</CardTitle>
+            <CardDescription>
+              {chat?.description}
+              {participantStatus?.role && (
+                <span className="ml-2 text-sm text-blue-600">• {participantStatus.role}</span>
+              )}
+              {chat?.is_public && <span className="ml-2 text-sm text-green-600">• public</span>}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="border-t max-h-[80vh] overflow-y-auto border-gray-200 flex-1 p-0">
+            <MessageList
+              chat_type={chat?.chat_type || "direct"}
+              messages={messages}
+              chatId={chatId}
+            />
+          </CardContent>
+          <CardFooter className="py-2">
+            <MessageInput id={chatId} />
+          </CardFooter>
+        </Card>
+      );
+    }
+
+    // User is not a participant - show messages but replace input with join button
+    return (
+      <Card className="w-full flex flex-col">
+        <CardHeader>
+          <CardTitle>{chat?.name}</CardTitle>
+          <CardDescription>
+            {chat?.description}
+            {chat?.is_public && <span className="ml-2 text-sm text-green-600">• Public</span>}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="border-t max-h-[80vh] overflow-y-auto border-gray-200 flex-1 p-0">
+          <MessageList
+            chat_type={chat?.chat_type || "direct"}
+            messages={messages}
+            chatId={chatId}
+          />
+        </CardContent>
+        <CardFooter className="py-2">
+          {chat?.is_public ? (
+            <JoinChatButton chatId={chatId} />
+          ) : (
+            <div className="w-full text-center">
+              <div className="text-sm text-gray-600">
+                This is a private chat room. You need to be invited by an admin to participate.
+              </div>
+            </div>
+          )}
+        </CardFooter>
+      </Card>
+    );
+  } catch (error: any) {
+    if (error.status === 403 || error.status === 404) {
+      return (
+        <Card className="w-full flex flex-col">
+          <CardHeader>
+            <CardTitle>Chat Not Found</CardTitle>
+            <CardDescription>
+              This chat room doesn't exist or you don't have access to it.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="border-t border-gray-200 p-6">
+            <div className="text-center space-y-4">
+              <div className="text-gray-600">
+                The chat room may be private or may have been deleted.
+              </div>
+              <Link href="/chats">
+                <Button>Back to Chats</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // Generic error
+    return (
+      <Card className="w-full flex flex-col">
+        <CardHeader>
+          <CardTitle>Error</CardTitle>
+          <CardDescription>Something went wrong while loading this chat room.</CardDescription>
+        </CardHeader>
+        <CardContent className="border-t border-gray-200 p-6">
+          <div className="text-center space-y-4">
+            <div className="text-gray-600">Please try again later.</div>
+            <Link href="/chats">
+              <Button>Back to Chats</Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+};
+
+export default ChatContainer;

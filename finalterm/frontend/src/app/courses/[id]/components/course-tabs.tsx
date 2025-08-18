@@ -3,6 +3,9 @@ import CourseContent from "./course-content";
 import CourseEnrollments from "./course-enrollments";
 import { Course } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import Typography from "@/components/ui/Typography";
+import ChatContainer from "@/app/chats/[id]/components/chat_container";
 
 interface CourseTabsProps {
   course: Course;
@@ -10,117 +13,224 @@ interface CourseTabsProps {
   isCourseOwner: boolean;
 }
 
+interface TabConfig {
+  value: string;
+  label: string;
+  content: React.ReactNode;
+}
+
 const CourseTabs = ({ course, isTeacher, isCourseOwner }: CourseTabsProps) => {
-  const scrollToTab = (tabValue: string) => {
-    const tab = document.querySelector(`[data-value="${tabValue}"]`) as HTMLElement;
-    if (tab) {
-      tab.click();
-      tab.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  if (isTeacher && isCourseOwner) {
-    // Teacher view - show management tabs
-    return (
-      <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="students">Students</TabsTrigger>
-          <TabsTrigger value="content">Content</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="overview">
-          <div className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white p-4 rounded-lg border">
-                <h3 className="font-medium text-gray-900">Total Students</h3>
-                <p className="text-2xl font-bold text-primary">{course.total_enrollments || 0}</p>
-              </div>
-              <div className="bg-white p-4 rounded-lg border">
-                <h3 className="font-medium text-gray-900">Active Students</h3>
-                <p className="text-2xl font-bold text-green-600">{course.enrollment_count || 0}</p>
-              </div>
-              <div className="bg-white p-4 rounded-lg border">
-                <h3 className="font-medium text-gray-900">Status</h3>
-                <p className="text-2xl font-bold text-blue-600">
+  // Tab configurations to eliminate repetition
+  const teacherTabs: TabConfig[] = [
+    {
+      value: "overview",
+      label: "Overview",
+      content: (
+        <div className="space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <Typography
+                  variant="p"
+                  className="font-medium text-gray-900"
+                >
+                  Total Students
+                </Typography>
+                <Typography
+                  variant="h2"
+                  size="lg"
+                  className="text-primary"
+                >
+                  {course.total_enrollments || 0}
+                </Typography>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <Typography
+                  variant="p"
+                  className="font-medium text-gray-900"
+                >
+                  Active Students
+                </Typography>
+                <Typography
+                  variant="h2"
+                  size="lg"
+                  className="text-green-600"
+                >
+                  {course.enrollment_count || 0}
+                </Typography>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <Typography
+                  variant="p"
+                  className="font-medium text-gray-900"
+                >
+                  Status
+                </Typography>
+                <Typography
+                  variant="h2"
+                  size="lg"
+                  className="text-blue-600"
+                >
                   {course.published_at ? "Published" : "Draft"}
-                </p>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white p-6 rounded-lg border">
-              <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => scrollToTab("students")}
-                >
-                  Manage Students
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => scrollToTab("content")}
-                >
-                  Edit Content
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => scrollToTab("settings")}
-                >
-                  Course Settings
-                </Button>
-              </div>
-            </div>
-
-            {/* Recent Activity Placeholder */}
-            <div className="bg-white p-6 rounded-lg border">
-              <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-              <p className="text-gray-500">Recent student enrollments and activity will appear here.</p>
-            </div>
+                </Typography>
+              </CardContent>
+            </Card>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="students">
-          <CourseEnrollments courseId={course.id} />
-        </TabsContent>
-        
-        <TabsContent value="content">
-          <CourseContent course={course} />
-        </TabsContent>
-        
-        <TabsContent value="settings">
-          <div className="bg-white p-6 rounded-lg border">
-            <h3 className="text-lg font-semibold mb-4">Course Settings</h3>
-            <p className="text-gray-500">Course management settings will go here.</p>
-          </div>
-        </TabsContent>
-      </Tabs>
-    );
-  }
 
-  // Student view - show content and enrollment status
-  return (
-    <Tabs defaultValue="content">
-      <TabsList>
-        <TabsTrigger value="content">Content</TabsTrigger>
-        <TabsTrigger value="progress">Progress</TabsTrigger>
-      </TabsList>
-      
-      <TabsContent value="content">
-        <CourseContent course={course} />
-      </TabsContent>
-      
-      <TabsContent value="progress">
-        <div className="bg-white p-6 rounded-lg border">
-          <h3 className="text-lg font-semibold mb-4">Your Progress</h3>
-          <p className="text-gray-500">Progress tracking will be implemented here.</p>
+          {/* Recent Activity Placeholder */}
+          <Card>
+            <CardHeader>
+              <Typography
+                variant="h3"
+                size="md"
+              >
+                Recent Activity
+              </Typography>
+            </CardHeader>
+            <CardContent>
+              <Typography
+                variant="p"
+                color="muted"
+              >
+                Recent student enrollments and activity will appear here.
+              </Typography>
+            </CardContent>
+          </Card>
         </div>
-      </TabsContent>
+      ),
+    },
+    {
+      value: "students",
+      label: "Students",
+      content: (
+        <CourseEnrollments
+          courseId={course.id}
+          isTeacher={isTeacher}
+        />
+      ),
+    },
+    {
+      value: "content",
+      label: "Content",
+      content: (
+        <CourseContent
+          course={course}
+          isTeacher={isTeacher}
+        />
+      ),
+    },
+    {
+      value: "chat",
+      label: "Chat",
+      content: <ChatContainer chatId={course.course_chat_id || ""} />,
+    },
+    {
+      value: "settings",
+      label: "Settings",
+      content: (
+        <Card>
+          <CardHeader>
+            <Typography
+              variant="h3"
+              size="md"
+            >
+              Course Settings
+            </Typography>
+          </CardHeader>
+          <CardContent>
+            <Typography
+              variant="p"
+              color="muted"
+            >
+              Course management settings will go here.
+            </Typography>
+          </CardContent>
+        </Card>
+      ),
+    },
+  ];
+
+  const studentTabs: TabConfig[] = [
+    {
+      value: "content",
+      label: "Content",
+      content: (
+        <CourseContent
+          course={course}
+          isTeacher={false}
+        />
+      ),
+    },
+    {
+      value: "progress",
+      label: "Progress",
+      content: (
+        <Card>
+          <CardHeader>
+            <Typography
+              variant="h3"
+              size="md"
+            >
+              Your Progress
+            </Typography>
+          </CardHeader>
+          <CardContent>
+            <Typography
+              variant="p"
+              color="muted"
+            >
+              Progress tracking will be implemented here.
+            </Typography>
+          </CardContent>
+        </Card>
+      ),
+    },
+    ...(course.course_chat_id
+      ? [
+          {
+            value: "chat",
+            label: "Chat",
+            content: <ChatContainer chatId={course.course_chat_id || ""} />,
+          },
+        ]
+      : []),
+  ];
+
+  // Reusable function to render tabs - eliminates repetition
+  const renderTabs = (tabs: TabConfig[], defaultValue: string) => (
+    <Tabs defaultValue={defaultValue}>
+      <TabsList className="transition-all duration-200">
+        {tabs.map((tab) => (
+          <TabsTrigger
+            key={tab.value}
+            value={tab.value}
+          >
+            {tab.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+
+      {tabs.map((tab) => (
+        <TabsContent
+          key={tab.value}
+          value={tab.value}
+        >
+          {tab.content}
+        </TabsContent>
+      ))}
     </Tabs>
   );
+
+  if (isTeacher && isCourseOwner) {
+    return renderTabs(teacherTabs, "overview");
+  }
+
+  return renderTabs(studentTabs, "content");
 };
 
 export default CourseTabs;

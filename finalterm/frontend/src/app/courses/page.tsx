@@ -3,6 +3,7 @@ import { courseService } from "@/services/courseService";
 import CourseCard from "./components/course-card";
 import Typography from "@/components/ui/Typography";
 import Filter from "./components/filter";
+import CourseFormDialog from "./components/course-form-dialog";
 
 export default async function CoursesPage({
   searchParams,
@@ -13,7 +14,11 @@ export default async function CoursesPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <Filter />
+      <div className="flex gap-4 w-full">
+        <Filter />
+        <CourseFormDialog mode="create" />
+      </div>
+
       <Typography
         variant="h1"
         size="lg"

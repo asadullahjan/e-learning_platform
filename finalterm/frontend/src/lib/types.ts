@@ -19,6 +19,7 @@ export type Course = {
   total_enrollments: number;
   is_enrolled: boolean;
   can_enroll: boolean;
+  course_chat_id?: string; // ID of the course chat if it exists
 };
 
 export type Enrollment = {

@@ -12,15 +12,24 @@ import { useState } from "react";
 import { courseService } from "@/services/courseService";
 import { enrollmentService } from "@/services/enrollmentService";
 import { showToast } from "@/lib/toast";
+import { Course } from "@/lib/types";
+import CourseFormDialog from "../../components/course-form-dialog";
 
 interface CourseActionsProps {
   isTeacher: boolean;
   isCourseOwner: boolean;
   courseId: string;
   isEnrolled: boolean;
+  course: Course;
 }
 
-const CourseActions = ({ isTeacher, isCourseOwner, courseId, isEnrolled }: CourseActionsProps) => {
+const CourseActions = ({
+  isTeacher,
+  isCourseOwner,
+  courseId,
+  isEnrolled,
+  course,
+}: CourseActionsProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -35,6 +44,32 @@ const CourseActions = ({ isTeacher, isCourseOwner, courseId, isEnrolled }: Cours
     } catch (error) {
       console.error("Error deleting course:", error);
       showToast.error("Error deleting course");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePublishCourse = async () => {
+    try {
+      setIsLoading(true);
+      await courseService.publishCourse(courseId);
+      router.refresh();
+      showToast.success("Course published successfully");
+    } catch (error) {
+      showToast.error("Failed to publish course");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUnpublishCourse = async () => {
+    try {
+      setIsLoading(true);
+      await courseService.unpublishCourse(courseId);
+      router.refresh();
+      showToast.success("Course unpublished successfully");
+    } catch (error) {
+      showToast.error("Failed to unpublish course");
     } finally {
       setIsLoading(false);
     }
@@ -69,17 +104,39 @@ const CourseActions = ({ isTeacher, isCourseOwner, courseId, isEnrolled }: Cours
   };
 
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-3 transition-all duration-300">
       {isTeacher && isCourseOwner ? (
         <>
-          <Button
-            size="md"
-            variant="outline"
-            className="px-6"
-            onClick={() => router.push(`/courses/${courseId}/edit`)}
-          >
-            Edit Course
-          </Button>
+          {/* Publish/Unpublish Button */}
+          {course.published_at ? (
+            <Button
+              size="md"
+              variant="outline"
+              className="px-6 transition-all duration-200 hover:bg-orange-50 hover:border-orange-300"
+              onClick={handleUnpublishCourse}
+              disabled={isLoading}
+            >
+              {isLoading ? "Unpublishing..." : "Unpublish Course"}
+            </Button>
+          ) : (
+            <Button
+              size="md"
+              variant="default"
+              className="px-6 transition-all duration-200 hover:bg-green-600"
+              onClick={handlePublishCourse}
+              disabled={isLoading}
+            >
+              {isLoading ? "Publishing..." : "Publish Course"}
+            </Button>
+          )}
+
+          {/* Edit Course Button */}
+          <CourseFormDialog
+            mode="edit"
+            course={course}
+          />
+
+          {/* Delete Course Button */}
           <Dialog
             open={isDeleteDialogOpen}
             onOpenChange={setIsDeleteDialogOpen}
@@ -88,14 +145,14 @@ const CourseActions = ({ isTeacher, isCourseOwner, courseId, isEnrolled }: Cours
               <Button
                 size="md"
                 variant="destructive"
-                className="px-6"
+                className="px-6 transition-all duration-200 hover:bg-red-700"
               >
                 Delete Course
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogTitle>Delete Course</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-lg">Delete Course</DialogTitle>
+              <DialogDescription className="text-base">
                 Are you sure you want to delete this course? This action cannot be undone.
               </DialogDescription>
               <div className="flex justify-end gap-2 mt-4">
@@ -103,6 +160,7 @@ const CourseActions = ({ isTeacher, isCourseOwner, courseId, isEnrolled }: Cours
                   variant="outline"
                   onClick={() => setIsDeleteDialogOpen(false)}
                   disabled={isLoading}
+                  className="transition-all duration-200"
                 >
                   Cancel
                 </Button>
@@ -110,6 +168,7 @@ const CourseActions = ({ isTeacher, isCourseOwner, courseId, isEnrolled }: Cours
                   variant="destructive"
                   onClick={handleDeleteCourse}
                   disabled={isLoading}
+                  className="transition-all duration-200 hover:bg-red-700"
                 >
                   {isLoading ? "Deleting..." : "Delete Course"}
                 </Button>
@@ -120,7 +179,7 @@ const CourseActions = ({ isTeacher, isCourseOwner, courseId, isEnrolled }: Cours
       ) : isTeacher ? (
         <Button
           size="md"
-          className="px-6"
+          className="px-6 transition-all duration-200 hover:bg-blue-600"
           onClick={() => router.push(`/courses/${courseId}`)}
         >
           View Course
@@ -128,7 +187,7 @@ const CourseActions = ({ isTeacher, isCourseOwner, courseId, isEnrolled }: Cours
       ) : isEnrolled ? (
         <Button
           size="md"
-          className="px-6"
+          className="px-6 transition-all duration-200 hover:bg-red-600"
           onClick={handleUnenrollCourse}
           disabled={isLoading}
         >
@@ -137,7 +196,7 @@ const CourseActions = ({ isTeacher, isCourseOwner, courseId, isEnrolled }: Cours
       ) : (
         <Button
           size="md"
-          className="px-6"
+          className="px-6 transition-all duration-200 hover:bg-green-600"
           onClick={handleEnrollCourse}
           disabled={isLoading}
         >

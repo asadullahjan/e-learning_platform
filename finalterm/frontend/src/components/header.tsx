@@ -32,6 +32,20 @@ export default function Header() {
             </Typography>
           </Link>
         </div>
+        <div className="flex justify-center items-center gap-4">
+          <Link
+            href="/chats"
+            className="text-sm hover:text-blue-500"
+          >
+            Chats
+          </Link>
+          <Link
+            href="/courses"
+            className="text-sm hover:text-blue-500"
+          >
+            Courses
+          </Link>
+        </div>
         <div className="flex justify-end items-center">
           <DropdownMenu>
             <DropdownMenuTrigger>

@@ -68,6 +68,7 @@ class CourseDetailSerializer(CourseSerializer):
     enrollment_count = serializers.SerializerMethodField()
     total_enrollments = serializers.SerializerMethodField()
     is_enrolled = serializers.SerializerMethodField()
+    course_chat_id = serializers.SerializerMethodField()
 
     class Meta(CourseSerializer.Meta):
         fields = CourseSerializer.Meta.fields + [
@@ -75,12 +76,14 @@ class CourseDetailSerializer(CourseSerializer):
             "enrollment_count",
             "total_enrollments",
             "is_enrolled",
+            "course_chat_id",
         ]
         read_only_fields = CourseSerializer.Meta.read_only_fields + [
             "updated_at",
             "enrollment_count",
             "total_enrollments",
             "is_enrolled",
+            "course_chat_id",
         ]
 
     def get_enrollment_count(self, obj):
@@ -97,6 +100,16 @@ class CourseDetailSerializer(CourseSerializer):
                 user=request.user, is_active=True
             ).exists()
         return False
+
+    def get_course_chat_id(self, obj):
+        """Get course chat ID if it exists"""
+        try:
+            from ..models import ChatRoom
+
+            course_chat = ChatRoom.objects.get(chat_type="course", course=obj)
+            return course_chat.id
+        except ChatRoom.DoesNotExist:
+            return None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

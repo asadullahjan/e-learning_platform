@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Typography from "@/components/ui/Typography";
 import { Course } from "@/lib/types";
 import { Calendar, User, BookOpen } from "lucide-react";
@@ -22,9 +22,13 @@ export default function CourseCard({ course }: { course: Course }) {
     >
       <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer flex flex-col h-full">
         <CardHeader className="pb-3">
-          <CardTitle className="text-xl font-semibold text-gray-900 line-clamp-2">
+          <Typography
+            variant="h3"
+            size="lg"
+            className="text-gray-900 line-clamp-2"
+          >
             {course.title}
-          </CardTitle>
+          </Typography>
         </CardHeader>
         <CardContent className="pt-0 flex flex-col flex-grow">
           <div className="space-y-4 flex flex-col flex-grow">

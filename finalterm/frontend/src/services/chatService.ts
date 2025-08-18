@@ -9,6 +9,7 @@ export interface Chat {
   description: string;
   created_at: string;
   is_public: boolean;
+  course?: string; // Course ID for course chats
   current_user_status?: {
     is_participant: boolean;
     role: string | null;
@@ -42,6 +43,11 @@ export const chatService = {
     return response.data;
   },
 
+  getCourseChat: async (courseId: string) => {
+    const response = await api.get(`/chats/course/${courseId}/`);
+    return response.data;
+  },
+
   getMessages: async (id: string) => {
     const response = await api.get(`/chats/${id}/messages/`);
     return response.data;
@@ -52,6 +58,7 @@ export const chatService = {
     description: string;
     chat_type: string;
     is_public: boolean;
+    course?: string; // Course ID for course chats
   }) => {
     const response = await api.post("/chats/", data);
     return response.data;
@@ -81,6 +88,11 @@ export const chatService = {
     getChat: async (id: string) => {
       const serverApi = await createServerApi();
       const response = await serverApi.get<Chat>(`/chats/${id}/`);
+      return response.data;
+    },
+    getCourseChat: async (courseId: string) => {
+      const serverApi = await createServerApi();
+      const response = await serverApi.get<Chat>(`/chats/course/${courseId}/`);
       return response.data;
     },
     getMessages: async (id: string) => {

@@ -12,13 +12,25 @@ type CourseHeaderProps = {
 
 const CourseHeader = ({ course, isTeacher, isCourseOwner }: CourseHeaderProps) => {
   return (
-    <Card className="mb-20 pb-10  relative overflow-visible">
+    <Card className="mb-20 pb-10 relative overflow-visible">
       <CardHeader className="pb-4">
-        <h1 className="text-3xl font-bold text-gray-900">{course.title}</h1>
+        <Typography
+          variant="h1"
+          size="lg"
+          className="text-gray-900"
+        >
+          {course.title}
+        </Typography>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Description */}
-        <p className="text-gray-600 text-lg leading-relaxed">{course.description}</p>
+        <Typography
+          variant="p"
+          size="md"
+          className="text-gray-600 leading-relaxed"
+        >
+          {course.description}
+        </Typography>
 
         {/* Action Button */}
         <CourseActions
@@ -26,6 +38,7 @@ const CourseHeader = ({ course, isTeacher, isCourseOwner }: CourseHeaderProps) =
           isCourseOwner={isCourseOwner}
           courseId={course.id}
           isEnrolled={course.is_enrolled}
+          course={course}
         />
 
         {/* Teacher Info */}
@@ -45,14 +58,36 @@ const CourseHeader = ({ course, isTeacher, isCourseOwner }: CourseHeaderProps) =
           <CardContent className="px-8 py-4">
             <div className="flex gap-12">
               <div className="flex flex-col items-center">
-                <span className="text-2xl font-bold text-blue-600">{course.enrollment_count}</span>
-                <span className="text-sm text-gray-600 font-medium">Active Students</span>
+                <Typography
+                  variant="h2"
+                  size="lg"
+                  className="text-blue-600"
+                >
+                  {course.enrollment_count}
+                </Typography>
+                <Typography
+                  variant="p"
+                  size="sm"
+                  className="text-gray-600 font-medium"
+                >
+                  Active Students
+                </Typography>
               </div>
               <div className="flex flex-col items-center">
-                <span className="text-2xl font-bold text-green-600">
+                <Typography
+                  variant="h2"
+                  size="lg"
+                  className="text-green-600"
+                >
                   {course.total_enrollments}
-                </span>
-                <span className="text-sm text-gray-600 font-medium">Total Enrollments</span>
+                </Typography>
+                <Typography
+                  variant="p"
+                  size="sm"
+                  className="text-gray-600 font-medium"
+                >
+                  Total Enrollments
+                </Typography>
               </div>
             </div>
           </CardContent>

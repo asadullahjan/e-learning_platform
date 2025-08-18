@@ -8,7 +8,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   const course: Course = await courseService.server.getCourse(id);
   const user = await getServerUser();
-  
+
   const isTeacher = user?.role === "teacher";
   const isCourseOwner = user?.id === course.teacher.id;
   console.log(course);
