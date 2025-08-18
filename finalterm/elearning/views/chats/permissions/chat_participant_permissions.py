@@ -16,13 +16,13 @@ class ChatParticipantPermissions(BasePermission):
         except ChatRoom.DoesNotExist:
             return False
 
-        if view.action == "list_chat_participants":
+        if view.action == "list":
             return True
 
         if not request.user.is_authenticated:
             return False
 
-        if view.action == "create_chat_participant":
+        if view.action == "create":
             return True
 
         return request.user == chat_room.created_by

@@ -11,6 +11,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import sys
+
+# Custom settings
+ENVIRONMENT_PREFIX = "test_" if "test" in sys.argv else ""
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -153,7 +157,8 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379, 2)],
+            "hosts": [("127.0.0.1", 6379)],
+            "prefix": ENVIRONMENT_PREFIX,
             "capacity": 1500,
             "expiry": 3600,
         },

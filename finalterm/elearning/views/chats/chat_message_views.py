@@ -38,7 +38,7 @@ class ChatMessageViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
 
         created_message = ChatMessagesService(chat_room_id).create_message(
-            serializer.validated_data["content"], request.user
+            request.user, serializer.validated_data["content"]
         )
 
         response_data = ChatMessageSerializer(created_message).data

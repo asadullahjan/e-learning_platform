@@ -1,5 +1,4 @@
-from elearning.models import ChatParticipant, ChatRoom
-from django.contrib.auth.models import User
+from elearning.models import ChatParticipant, ChatRoom, User
 
 
 class ChatUtils:

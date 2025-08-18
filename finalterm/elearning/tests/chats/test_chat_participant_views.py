@@ -43,7 +43,7 @@ class ChatParticipantViewsTestCase(BaseAPITestCase):
 
         # Add another participant to the existing chat room
         participant_response = self.client.post(
-            f"/api/chats/{self.chat_room_id}/participants/create_chat_participant/",
+            f"/api/chats/{self.chat_room_id}/participants/",
             {"user": self.student2.id, "role": "participant"},
         )
         self.assertStatusCode(participant_response, status.HTTP_201_CREATED)
@@ -156,7 +156,7 @@ class ChatParticipantViewsTestCase(BaseAPITestCase):
 
         # Test missing user_id
         create_response = self.client.post(
-            f"/api/chats/{self.chat_room_id}/participants/create_chat_participant/",
+            f"/api/chats/{self.chat_room_id}/participants/",
             {"role": "participant"},
         )
         self.assertStatusCode(create_response, status.HTTP_400_BAD_REQUEST)
@@ -174,7 +174,7 @@ class ChatParticipantViewsTestCase(BaseAPITestCase):
 
         # Get participants from the base chat room
         participant_response = self.client.get(
-            f"/api/chats/{self.chat_room_id}/participants/list_chat_participants/"
+            f"/api/chats/{self.chat_room_id}/participants/"
         )
         self.assertStatusCode(participant_response, status.HTTP_200_OK)
 

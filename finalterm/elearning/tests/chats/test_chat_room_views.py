@@ -24,6 +24,192 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
             role="student",
         )
 
+    def test_my_chats_returns_only_user_chats(self):
+        """Test that my_chats returns only chats where user is an active
+        participant"""
+        self.client.force_authenticate(user=self.teacher)
+
+        # Create a chat where teacher is participant
+        teacher_chat = ChatRoom.objects.create(
+            name="Teacher's Chat", chat_type="group", created_by=self.teacher
+        )
+        ChatParticipant.objects.create(
+            chat_room=teacher_chat,
+            user=self.teacher,
+            role="admin",
+            is_active=True,
+        )
+
+        # Create a chat where teacher is NOT participant
+        other_chat = ChatRoom.objects.create(
+            name="Other Chat", chat_type="group", created_by=self.student
+        )
+        ChatParticipant.objects.create(
+            chat_room=other_chat,
+            user=self.student,
+            role="admin",
+            is_active=True,
+        )
+
+        # Create a chat where teacher was participant but is now inactive
+        inactive_chat = ChatRoom.objects.create(
+            name="Inactive Chat", chat_type="group", created_by=self.teacher
+        )
+        ChatParticipant.objects.create(
+            chat_room=inactive_chat,
+            user=self.teacher,
+            role="admin",
+            is_active=False,  # Inactive!
+        )
+
+        response = self.client.get("/api/chats/my_chats/")
+
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)  # Only active teacher chat
+
+        # Should only return the active chat
+        returned_chat = response.data[0]
+        self.assertEqual(returned_chat["id"], teacher_chat.id)
+        self.assertEqual(returned_chat["name"], "Teacher's Chat")
+
+        # Should NOT return the other chat or inactive chat
+        chat_ids = [chat["id"] for chat in response.data]
+        self.assertNotIn(other_chat.id, chat_ids)
+        self.assertNotIn(inactive_chat.id, chat_ids)
+
+    def test_my_chats_no_pagination(self):
+        """Test that my_chats returns all results without pagination"""
+        self.client.force_authenticate(user=self.teacher)
+
+        # Create multiple chats for the teacher
+        for i in range(25):  # More than typical pagination limit
+            chat = ChatRoom.objects.create(
+                name=f"Teacher Chat {i}",
+                chat_type="group",
+                created_by=self.teacher,
+            )
+            ChatParticipant.objects.create(
+                chat_room=chat, user=self.teacher, role="admin", is_active=True
+            )
+
+        response = self.client.get("/api/chats/my_chats/")
+
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 25)  # All chats returned
+
+        # Verify no pagination metadata
+        self.assertNotIn("count", response.data)
+        self.assertNotIn("next", response.data)
+        self.assertNotIn("previous", response.data)
+        self.assertNotIn("results", response.data)
+
+    def test_my_chats_unauthenticated(self):
+        """Test that unauthenticated users cannot access my_chats"""
+        response = self.client.get("/api/chats/my_chats/")
+        self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)
+
+    def test_my_chats_empty_when_no_chats(self):
+        """Test that my_chats returns empty list when user has no active
+        chats"""
+        self.client.force_authenticate(user=self.teacher)
+
+        response = self.client.get("/api/chats/my_chats/")
+
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)
+        self.assertEqual(response.data, [])
+
+    def test_my_chats_includes_different_chat_types(self):
+        """Test that my_chats includes all chat types where user is active
+        participant"""
+        self.client.force_authenticate(user=self.teacher)
+
+        # Create different types of chats
+        direct_chat = ChatRoom.objects.create(
+            name="Direct Chat", chat_type="direct", created_by=self.teacher
+        )
+        ChatParticipant.objects.create(
+            chat_room=direct_chat,
+            user=self.teacher,
+            role="participant",
+            is_active=True,
+        )
+
+        group_chat = ChatRoom.objects.create(
+            name="Group Chat", chat_type="group", created_by=self.teacher
+        )
+        ChatParticipant.objects.create(
+            chat_room=group_chat,
+            user=self.teacher,
+            role="admin",
+            is_active=True,
+        )
+
+        course_chat = ChatRoom.objects.create(
+            name="Course Chat", chat_type="course", created_by=self.teacher
+        )
+        ChatParticipant.objects.create(
+            chat_room=course_chat,
+            user=self.teacher,
+            role="admin",
+            is_active=True,
+        )
+
+        response = self.client.get("/api/chats/my_chats/")
+
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+
+        # Verify all chat types are included
+        chat_types = [chat["chat_type"] for chat in response.data]
+        self.assertIn("direct", chat_types)
+        self.assertIn("group", chat_types)
+        self.assertIn("course", chat_types)
+
+    def test_my_chats_respects_user_isolation(self):
+        """Test that users only see their own chats, not other users'
+        chats"""
+        self.client.force_authenticate(user=self.teacher)
+
+        # Create chat for teacher
+        teacher_chat = ChatRoom.objects.create(
+            name="Teacher's Private Chat",
+            chat_type="group",
+            created_by=self.teacher,
+        )
+        ChatParticipant.objects.create(
+            chat_room=teacher_chat,
+            user=self.teacher,
+            role="admin",
+            is_active=True,
+        )
+
+        # Create chat for student
+        student_chat = ChatRoom.objects.create(
+            name="Student's Private Chat",
+            chat_type="group",
+            created_by=self.student,
+        )
+        ChatParticipant.objects.create(
+            chat_room=student_chat,
+            user=self.student,
+            role="admin",
+            is_active=True,
+        )
+
+        # Teacher should only see their own chat
+        response = self.client.get("/api/chats/my_chats/")
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], teacher_chat.id)
+
+        # Switch to student and verify they only see their chat
+        self.client.force_authenticate(user=self.student)
+        response = self.client.get("/api/chats/my_chats/")
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], student_chat.id)
+
     def test_create_direct_chat_room(self):
         """Test creating a direct chat room with proper participants"""
         self.client.force_authenticate(user=self.teacher)
@@ -163,7 +349,7 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
                 "participants": [
                     self.student.id,
                     self.student2.id,
-                ],  # Should be exactly 1
+                ],  # Should be exactly 1 participant
             },
         )
         self.assertStatusCode(response, status.HTTP_400_BAD_REQUEST)
@@ -182,7 +368,8 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
 
     def test_duplicate_direct_chat_logic(self):
         """
-        Test that duplicate direct chats between same users return existing chat
+        Test that duplicate direct chats between same users return existing
+        chat.
         """
         self.client.force_authenticate(user=self.teacher)
 

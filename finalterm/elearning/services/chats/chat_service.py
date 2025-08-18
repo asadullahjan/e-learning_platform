@@ -1,6 +1,5 @@
-from django.db import transaction
-from django.contrib.auth.models import User
-from elearning.models import ChatParticipant, ChatRoom
+from django.db import transaction, models
+from elearning.models import ChatParticipant, ChatRoom, User
 from elearning.services.chats.chat_participants_service import (
     ChatParticipantsService,
 )
@@ -71,3 +70,31 @@ class ChatService:
         return ChatRoom.objects.filter(
             participants__user=user, participants__is_active=True
         )
+
+    @staticmethod
+    def get_user_chats(user):
+        """Get only the chats where the user is an active participant"""
+        if not user.is_authenticated:
+            return ChatRoom.objects.none()
+
+        return ChatRoom.objects.filter(
+            participants__user=user, participants__is_active=True
+        ).distinct()
+
+    @staticmethod
+    def get_all_available_chats(user):
+        """Get all chats available to the user
+        (public, participated, or teachable)"""
+        if not user.is_authenticated:
+            # Anonymous users only see public chats
+            return ChatRoom.objects.filter(is_public=True)
+
+        # Authenticated users see:
+        # 1. Public chats
+        # 2. Private chats they participate in
+        # 3. Course chats they teach
+        return ChatRoom.objects.filter(
+            models.Q(is_public=True)
+            | models.Q(participants__user=user, participants__is_active=True)
+            | models.Q(course__teacher=user)
+        ).distinct()

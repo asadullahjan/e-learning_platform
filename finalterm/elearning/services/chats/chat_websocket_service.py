@@ -12,6 +12,7 @@ class ChatWebSocketService:
         async_to_sync(channel_layer.group_send)(
             chat_group_name,
             {
+                "type": "chat_message",
                 "event_type": event_type,
                 "message": message,
             },

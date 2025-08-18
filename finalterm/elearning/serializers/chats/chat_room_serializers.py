@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ...models import ChatRoom, User
+from ...models import ChatRoom, User, ChatParticipant
 
 
 class ChatRoomListSerializer(serializers.ModelSerializer):
@@ -22,6 +22,9 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         child=serializers.IntegerField(), write_only=True, required=False
     )
 
+    # Add current user's participant status
+    current_user_status = serializers.SerializerMethodField()
+
     class Meta:
         model = ChatRoom
         fields = [
@@ -34,13 +37,29 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "participants",
+            "current_user_status",
         ]
         read_only_fields = [
             "id",
             "created_at",
             "updated_at",
             "created_by",
+            "current_user_status",
         ]
+
+    def get_current_user_status(self, obj):
+        """Get current user's participant status for this chat room"""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return {"is_participant": False, "role": None}
+
+        try:
+            participant = ChatParticipant.objects.get(
+                chat_room=obj, user=request.user, is_active=True
+            )
+            return {"is_participant": True, "role": participant.role}
+        except ChatParticipant.DoesNotExist:
+            return {"is_participant": False, "role": None}
 
     def validate_name(self, value):
         if len(value) < 3:

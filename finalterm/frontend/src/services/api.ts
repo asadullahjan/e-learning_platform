@@ -99,7 +99,10 @@ export const createServerApi = async () => {
       if (cookieString) {
         config.headers.Cookie = cookieString;
       }
-      if (csrfToken && ["post", "put", "patch", "delete"].includes(config.method?.toLowerCase() || "")) {
+      if (
+        csrfToken &&
+        ["post", "put", "patch", "delete"].includes(config.method?.toLowerCase() || "")
+      ) {
         config.headers["X-CSRFToken"] = csrfToken;
       }
       return config;
