@@ -15,6 +15,12 @@ from .enrollment_serializers import (
     StudentEnrollmentSerializer,
     TeacherEnrollmentSerializer,
 )
+from .courses.course_lesson_serializers import (
+    CourseLessonListSerializer,
+    CourseLessonDetailSerializer,
+    CourseLessonCreateSerializer,
+    CourseLessonUpdateSerializer,
+)
 
 __all__ = [
     "UserRegistrationSerializer",
@@ -27,4 +33,8 @@ __all__ = [
     "EnrollmentSerializer",
     "StudentEnrollmentSerializer",
     "TeacherEnrollmentSerializer",
+    "CourseLessonListSerializer",
+    "CourseLessonDetailSerializer",
+    "CourseLessonCreateSerializer",
+    "CourseLessonUpdateSerializer",
 ]

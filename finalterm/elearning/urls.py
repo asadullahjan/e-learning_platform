@@ -1,27 +1,28 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from rest_framework_nested.routers import NestedDefaultRouter
 from . import views
 
 app_name = "elearning"
 
-# Create router for ViewSets
+# Main router
 router = DefaultRouter()
 router.register(r"courses", views.CourseViewSet, basename="course")
 router.register(r"enrollments", views.EnrollmentViewSet, basename="enrollment")
-router.register(
-    r"chats",
-    views.ChatRoomViewSet,
-    basename="chat",
+router.register(r"chats", views.ChatRoomViewSet, basename="chat")
+
+# Nested routers
+courses_router = NestedDefaultRouter(router, r"courses", lookup="course")
+courses_router.register(
+    r"lessons", views.CourseLessonViewSet, basename="course-lessons"
 )
-router.register(
-    r"chats/(?P<chat_room_id>\d+)/participants",
-    views.ChatParticipantViewSet,
-    basename="chat-participant",
+
+chats_router = NestedDefaultRouter(router, r"chats", lookup="chat_room")
+chats_router.register(
+    r"participants", views.ChatParticipantViewSet, basename="chat-participant"
 )
-router.register(
-    r"chats/(?P<chat_room_id>\d+)/messages",
-    views.ChatMessageViewSet,
-    basename="chat-message",
+chats_router.register(
+    r"messages", views.ChatMessageViewSet, basename="chat-message"
 )
 
 urlpatterns = [
@@ -33,4 +34,6 @@ urlpatterns = [
     path("auth/profile/update/", views.update_profile, name="update_profile"),
     # Include router URLs
     path("", include(router.urls)),
+    path("", include(courses_router.urls)),
+    path("", include(chats_router.urls)),
 ]

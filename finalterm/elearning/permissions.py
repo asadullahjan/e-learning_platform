@@ -26,3 +26,8 @@ class IsCourseOwnerOrEnrollmentOwner(BasePermission):
         if obj.user == request.user:
             return True
         return False
+
+
+class IsEnrolledInCourse(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return obj.enrollments.filter(user=request.user).exists()

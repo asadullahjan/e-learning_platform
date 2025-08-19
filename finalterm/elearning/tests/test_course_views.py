@@ -3,7 +3,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework import status
 
-from ..models import ChatRoom, ChatParticipant, Course
+from elearning.models import ChatRoom, ChatParticipant, Course
 from elearning.tests.test_base import BaseAPITestCase
 
 User = get_user_model()

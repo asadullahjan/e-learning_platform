@@ -194,6 +194,8 @@ CRISPY_TEMPLATE_PACK = "tailwind"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+PRIVATE_MEDIA_ROOT = BASE_DIR / f"{ENVIRONMENT_PREFIX}private_media"
+
 # Static files configuration
 STATICFILES_DIRS = [
     BASE_DIR / "static",

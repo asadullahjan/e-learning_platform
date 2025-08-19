@@ -1,5 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from elearning.storage import PrivateCourseStorage
+import os
 
 
 class User(AbstractUser):
@@ -55,6 +57,73 @@ class Course(models.Model):
         ordering = ["-created_at"]
 
 
+class File(models.Model):
+    """Simple file model for course materials"""
+
+    file = models.FileField(
+        storage=PrivateCourseStorage(), upload_to="course_materials/%Y/%m/%d"
+    )
+    original_name = models.CharField(max_length=255)
+    is_previewable = models.BooleanField(default=False)
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    def save(self, *args, **kwargs):
+        if self.file and not self.pk:
+            self.original_name = self.file.name
+            # Simple check for previewable files
+            ext = os.path.splitext(self.original_name)[1].lower()
+            self.is_previewable = ext in [
+                ".jpg",
+                ".jpeg",
+                ".png",
+                ".pdf",
+                ".txt",
+            ]
+        super().save(*args, **kwargs)
+
+    @property
+    def mime_type(self):
+        ext = os.path.splitext(self.original_name)[1].lower()
+        types = {
+            ".pdf": "application/pdf",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".txt": "text/plain",
+        }
+        return types.get(ext, "application/octet-stream")
+
+
+class CourseLesson(models.Model):
+    """
+    Model for course lessons.
+    """
+
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name="lessons"
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    content = models.TextField(blank=True, null=True)
+    file = models.ForeignKey(
+        File,
+        on_delete=models.SET_NULL,
+        related_name="lessons",
+        null=True,
+        blank=True,
+    )
+    published_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        db_table = "course_lessons"
+        ordering = ["created_at"]
+
+
 class Enrollment(models.Model):
     """
     Model for course enrollments.
@@ -63,8 +132,12 @@ class Enrollment(models.Model):
     one course can have multiple users.
     """
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="enrollments"
+    )
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name="enrollments"
+    )
     enrolled_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     unenrolled_at = models.DateTimeField(null=True, blank=True)

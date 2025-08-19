@@ -4,9 +4,9 @@ from rest_framework.filters import OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
 
-from ..models import ChatRoom, ChatParticipant, Course
-from ..permissions import IsTeacher, IsCourseOwner
-from ..serializers import (
+from elearning.models import ChatRoom, ChatParticipant, Course
+from elearning.permissions import IsTeacher, IsCourseOwner
+from elearning.serializers import (
     CourseSerializer,
     CourseListSerializer,
     CourseDetailSerializer,
