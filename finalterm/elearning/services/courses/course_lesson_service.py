@@ -9,7 +9,7 @@ class CourseLessonService:
             course=course,
             title=lesson_data["title"],
             description=lesson_data["description"],
-            content=lesson_data["content"],
+            content=lesson_data.get("content", ""),
         )
 
         if file_data:
@@ -45,7 +45,17 @@ class CourseLessonService:
                 old_file = lesson.file
                 lesson.file = None
                 lesson.save()
-                old_file.delete()
+
+                # Check if other lessons use this file before deleting
+                other_lessons_using_file = (
+                    CourseLesson.objects.filter(file=old_file)
+                    .exclude(id=lesson.id)
+                    .exists()
+                )
+
+                # Only delete if no other lessons use it
+                if not other_lessons_using_file:
+                    old_file.delete()  # This will trigger the signal
 
             # Create new file
             if file_data:

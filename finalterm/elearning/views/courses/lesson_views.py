@@ -12,7 +12,7 @@ from elearning.serializers import (
     CourseLessonCreateSerializer,
     CourseLessonUpdateSerializer,
 )
-from elearning.permissions import IsEnrolledInCourse, IsTeacher
+from elearning.permissions import IsTeacher
 from elearning.services.courses.course_lesson_service import (
     CourseLessonService,
 )
@@ -37,6 +37,28 @@ class LessonDownloadPermission(BasePermission):
             return True
 
         return False
+
+
+class IsEnrolledInCourse(BasePermission):
+    """Permission class for viewing lessons -
+    course owner or enrolled student"""
+
+    def has_permission(self, request, view):
+        course_id = view.kwargs.get("course_pk")
+        if not course_id:
+            return False
+
+        try:
+            course = Course.objects.get(id=course_id)
+            if course.teacher == request.user:
+                return True
+            if request.user.enrollments.filter(
+                course=course, is_active=True
+            ).exists():
+                return True
+            return False
+        except Course.DoesNotExist:
+            return False
 
 
 class CourseLessonViewSet(viewsets.ModelViewSet):

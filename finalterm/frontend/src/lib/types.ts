@@ -22,6 +22,25 @@ export type Course = {
   course_chat_id?: string; // ID of the course chat if it exists
 };
 
+export type File = {
+  id: string;
+  original_name: string;
+  is_previewable: boolean;
+  download_url?: string;
+  file_content?: string;
+};
+
+export type CourseLesson = {
+  id: string;
+  title: string;
+  description: string;
+  content?: string;
+  file?: File;
+  published_at?: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Enrollment = {
   id: string;
   course: Course;

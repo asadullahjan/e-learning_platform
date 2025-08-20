@@ -1,16 +1,17 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import CourseContent from "./course-content";
 import CourseEnrollments from "./course-enrollments";
 import { Course } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Typography from "@/components/ui/Typography";
 import ChatContainer from "@/app/chats/[id]/components/chat_container";
+import { LessonList } from "./lesson-list";
 
 interface CourseTabsProps {
   course: Course;
   isTeacher: boolean;
   isCourseOwner: boolean;
+  defaultTab?: string;
 }
 
 interface TabConfig {
@@ -19,7 +20,7 @@ interface TabConfig {
   content: React.ReactNode;
 }
 
-const CourseTabs = ({ course, isTeacher, isCourseOwner }: CourseTabsProps) => {
+const CourseTabs = ({ course, isTeacher, isCourseOwner, defaultTab }: CourseTabsProps) => {
   // Tab configurations to eliminate repetition
   const teacherTabs: TabConfig[] = [
     {
@@ -118,12 +119,13 @@ const CourseTabs = ({ course, isTeacher, isCourseOwner }: CourseTabsProps) => {
       value: "content",
       label: "Content",
       content: (
-        <CourseContent
-          course={course}
+        <LessonList
+          courseId={course.id}
           isTeacher={isTeacher}
         />
       ),
     },
+
     {
       value: "chat",
       label: "Chat",
@@ -160,12 +162,13 @@ const CourseTabs = ({ course, isTeacher, isCourseOwner }: CourseTabsProps) => {
       value: "content",
       label: "Content",
       content: (
-        <CourseContent
-          course={course}
+        <LessonList
+          courseId={course.id}
           isTeacher={false}
         />
       ),
     },
+
     {
       value: "progress",
       label: "Progress",
@@ -227,10 +230,10 @@ const CourseTabs = ({ course, isTeacher, isCourseOwner }: CourseTabsProps) => {
   );
 
   if (isTeacher && isCourseOwner) {
-    return renderTabs(teacherTabs, "overview");
+    return renderTabs(teacherTabs, defaultTab || "overview");
   }
 
-  return renderTabs(studentTabs, "content");
+  return renderTabs(studentTabs, defaultTab || "content");
 };
 
 export default CourseTabs;

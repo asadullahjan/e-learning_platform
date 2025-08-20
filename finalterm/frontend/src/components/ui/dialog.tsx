@@ -23,7 +23,7 @@ const DialogContent = ({ children, ...props }: DialogPrimitive.DialogContentProp
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
-        className="z-50 p-6 fixed inset-0 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg max-w-lg max-h-[60vh] w-full h-fit m-1 bg-white"
+        className="z-50 p-6 fixed inset-0 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg max-w-lg max-h-[60vh] w-full h-fit m-1 bg-white overflow-y-auto"
         {...props}
       >
         {children}

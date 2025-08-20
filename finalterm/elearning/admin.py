@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import (
     Course,
+    CourseLesson,
     User,
     Enrollment,
     ChatRoom,
@@ -17,3 +18,4 @@ admin.site.register(Enrollment)
 admin.site.register(ChatRoom)
 admin.site.register(ChatMessage)
 admin.site.register(ChatParticipant)
+admin.site.register(CourseLesson)

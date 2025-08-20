@@ -87,16 +87,16 @@ class CourseDetailSerializer(CourseSerializer):
         ]
 
     def get_enrollment_count(self, obj):
-        return obj.enrollment_set.filter(is_active=True).count()
+        return obj.enrollments.filter(is_active=True).count()
 
     def get_total_enrollments(self, obj):
-        return obj.enrollment_set.count()
+        return obj.enrollments.count()
 
     def get_is_enrolled(self, obj):
         request = self.context.get("request")
         print("DEBUG - request in serializer:", request.user)
         if request and request.user.is_authenticated:
-            return obj.enrollment_set.filter(
+            return obj.enrollments.filter(
                 user=request.user, is_active=True
             ).exists()
         return False
