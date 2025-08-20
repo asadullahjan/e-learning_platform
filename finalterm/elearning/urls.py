@@ -10,6 +10,7 @@ router = DefaultRouter()
 router.register(r"courses", views.CourseViewSet, basename="course")
 router.register(r"enrollments", views.EnrollmentViewSet, basename="enrollment")
 router.register(r"chats", views.ChatRoomViewSet, basename="chat")
+router.register(r"statuses", views.StatusViewSet, basename="status")
 
 # Nested routers
 courses_router = NestedDefaultRouter(router, r"courses", lookup="course")

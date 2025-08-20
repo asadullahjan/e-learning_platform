@@ -151,6 +151,24 @@ class Enrollment(models.Model):
         ordering = ["-enrolled_at"]
 
 
+class Status(models.Model):
+    """User status updates that are visible to other users"""
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="statuses"
+    )
+    content = models.TextField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "user_statuses"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username}: {self.content[:30]}..."
+
+
 class ChatRoom(models.Model):
     """
     Model for chat between users.
