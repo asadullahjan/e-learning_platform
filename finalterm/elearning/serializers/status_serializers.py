@@ -1,11 +1,12 @@
 from rest_framework import serializers
 from elearning.models import Status, User
+from .user_serializers import UserSerializer
 
 
 class StatusSerializer(serializers.ModelSerializer):
     """Basic status serializer for all operations"""
 
-    user = serializers.ReadOnlyField(source="user.username")
+    user = UserSerializer(read_only=True)
 
     class Meta:
         model = Status

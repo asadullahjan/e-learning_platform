@@ -70,7 +70,7 @@ const ProfileInfo = () => {
   if (!user) return;
 
   return (
-    <Card>
+    <Card className="pt-6">
       <CardContent>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

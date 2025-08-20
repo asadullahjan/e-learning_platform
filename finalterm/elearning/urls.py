@@ -33,6 +33,12 @@ urlpatterns = [
     path("auth/logout/", views.logout_view, name="logout"),
     path("auth/profile/", views.user_profile, name="profile"),
     path("auth/profile/update/", views.update_profile, name="update_profile"),
+    path("users/search/", views.search_users, name="search_users"),
+    path(
+        "users/<str:username>/",
+        views.get_user_by_username,
+        name="user_by_username",
+    ),
     # Include router URLs
     path("", include(router.urls)),
     path("", include(courses_router.urls)),

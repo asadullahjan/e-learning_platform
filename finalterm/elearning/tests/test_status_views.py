@@ -261,7 +261,8 @@ class StatusFilterTest(BaseAPITestCase):
 
         url = reverse("elearning:status-list")
 
-        # Filter by created_after (should include recent statuses created today)
+        # Filter by created_after
+        # (should include recent statuses created today)
         yesterday = (timezone.now() - timedelta(days=1)).strftime("%Y-%m-%d")
         response = self.log_response(
             self.client.get(f"{url}?created_after={yesterday}")
@@ -286,7 +287,8 @@ class StatusFilterTest(BaseAPITestCase):
             self.client.get(f"{url}?created_after={after_old_status}")
         )
         self.assertStatusCode(response, status.HTTP_200_OK)
-        # Should get statuses created after the old status (the ones from setUp)
+        # Should get statuses created after the old status
+        # (the ones from setUp)
         self.assertGreaterEqual(len(response.data["results"]), 3)
 
     @debug_on_failure

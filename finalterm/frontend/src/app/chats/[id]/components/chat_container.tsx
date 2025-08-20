@@ -13,6 +13,8 @@ import { Link } from "lucide-react";
 import JoinChatButton from "./join_chat_button";
 import MessageInput from "./message_input";
 import MessageList from "./message_list";
+import AddUsersButton from "./add_users_button";
+import LeaveChatButton from "./leave_chat_button";
 import { useEffect, useState } from "react";
 
 const ChatContainer = ({ chatId }: { chatId: string }) => {
@@ -57,14 +59,36 @@ const ChatContainer = ({ chatId }: { chatId: string }) => {
       return (
         <Card className="w-full flex flex-col h-full min-h-[80vh]">
           <CardHeader>
-            <CardTitle>{chat?.name}</CardTitle>
-            <CardDescription>
-              {chat?.description}
-              {participantStatus?.role && (
-                <span className="ml-2 text-sm text-blue-600">• {participantStatus.role}</span>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <CardTitle>{chat?.name}</CardTitle>
+                <CardDescription>
+                  {chat?.description}
+                  {participantStatus?.role && (
+                    <span className="ml-2 text-sm text-blue-600">• {participantStatus.role}</span>
+                  )}
+                  {chat?.is_public && <span className="ml-2 text-sm text-green-600">• public</span>}
+                </CardDescription>
+              </div>
+              {participantStatus?.role === "admin" && (
+                <div className="ml-4">
+                  <AddUsersButton
+                    chatId={chatId}
+                    chatName={chat?.name || "Chat"}
+                  />
+                </div>
               )}
-              {chat?.is_public && <span className="ml-2 text-sm text-green-600">• public</span>}
-            </CardDescription>
+              {/* Show Leave Chat button for all participants in any chat type */}
+              {participantStatus?.is_participant && (
+                <div className="ml-4">
+                  <LeaveChatButton
+                    chatId={chatId}
+                    chatName={chat?.name || "Chat"}
+                    chatType={chat?.chat_type || "direct"}
+                  />
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="border-t max-h-[80vh] overflow-y-auto border-gray-200 flex-1 p-0">
             <MessageList
@@ -84,11 +108,33 @@ const ChatContainer = ({ chatId }: { chatId: string }) => {
     return (
       <Card className="w-full flex flex-col">
         <CardHeader>
-          <CardTitle>{chat?.name}</CardTitle>
-          <CardDescription>
-            {chat?.description}
-            {chat?.is_public && <span className="ml-2 text-sm text-green-600">• Public</span>}
-          </CardDescription>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <CardTitle>{chat?.name}</CardTitle>
+              <CardDescription>
+                {chat?.description}
+                {chat?.is_public && <span className="ml-2 text-sm text-green-600">• Public</span>}
+              </CardDescription>
+            </div>
+            {participantStatus?.role === "admin" && (
+              <div className="ml-4">
+                <AddUsersButton
+                  chatId={chatId}
+                  chatName={chat?.name || "Chat"}
+                />
+              </div>
+            )}
+            {/* Show Leave Chat button for all participants in any chat type */}
+            {participantStatus?.is_participant && (
+              <div className="ml-4">
+                <LeaveChatButton
+                  chatId={chatId}
+                  chatName={chat?.name || "Chat"}
+                  chatType={chat?.chat_type || "direct"}
+                />
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="border-t max-h-[80vh] overflow-y-auto border-gray-200 flex-1 p-0">
           <MessageList

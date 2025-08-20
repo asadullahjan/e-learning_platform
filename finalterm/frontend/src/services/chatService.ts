@@ -23,6 +23,11 @@ export interface Message {
   sender: User;
 }
 
+export interface DirectChatResponse {
+  chat_room: Chat;
+  created: boolean;
+}
+
 export const chatService = {
   getChats: async (search?: string) => {
     const response = await api.get("/chats/", {
@@ -74,6 +79,32 @@ export const chatService = {
     return response.data;
   },
 
+  findOrCreateDirectChat: async (otherUsername: string): Promise<DirectChatResponse> => {
+    const response = await api.post<DirectChatResponse>("/chats/find_or_create_direct/", {
+      username: otherUsername,
+    });
+    return response.data;
+  },
+
+  addUserToChat: async (chatId: string, username: string) => {
+    const response = await api.post(`/chats/${chatId}/participants/`, {
+      username,
+    });
+    return response.data;
+  },
+
+  deactivateChat: async (chatId: string) => {
+    const response = await api.post(`/chats/${chatId}/participants/deactivate/`);
+    return response.data;
+  },
+
+  getDirectChats: async (): Promise<Chat[]> => {
+    const response = await api.get<{ results: Chat[] }>("/chats/", {
+      params: { chat_type: "direct" },
+    });
+    return response.data.results;
+  },
+
   server: {
     getChats: async () => {
       const serverApi = await createServerApi();
@@ -99,6 +130,11 @@ export const chatService = {
       const serverApi = await createServerApi();
       const response = await serverApi.get<ListResponse<Message>>(`/chats/${id}/messages/`);
       return response.data.results as Message[];
+    },
+    deactivateChat: async (id: string) => {
+      const serverApi = await createServerApi();
+      const response = await serverApi.post(`/chats/${id}/participants/deactivate/`);
+      return response.data;
     },
   },
 };

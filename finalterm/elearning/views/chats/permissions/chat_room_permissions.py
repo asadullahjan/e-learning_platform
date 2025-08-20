@@ -13,8 +13,14 @@ class ChatRoomPermission(BasePermission):
         if not request.user.is_authenticated:
             return False
 
-        # Handle create action with proper return
-        if view.action == "create":
+        # Handle create action and custom actions
+        if view.action in ["create", "find_or_create_direct"]:
+            # For find_or_create_direct, just check authentication
+            if view.action == "find_or_create_direct":
+                print("Allowing find_or_create_direct action")
+                return True
+
+            # For regular create, check chat type and course
             chat_type = request.data.get("chat_type")
             course = request.data.get("course")
 
@@ -32,6 +38,13 @@ class ChatRoomPermission(BasePermission):
                     return False
 
             return True  # Allow creation for other chat types
+
+        # Also check for the URL path version
+        if hasattr(view, "action") and view.action is None:
+            # This might be a custom action that's not being recognized
+            if request.path.endswith("find-or-create-direct/"):
+                print("Allowing find-or-create-direct via URL path")
+                return True
 
         # Default to allowing other actions
         # (object permissions will handle them)

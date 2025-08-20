@@ -9,6 +9,7 @@ from elearning.services.chats.chat_participants_service import (
     ChatParticipantsService,
 )
 from rest_framework import status
+from elearning.models import User, ChatParticipant
 
 from elearning.views.chats.permissions.chat_participant_permissions import (
     ChatParticipantPermissions,
@@ -23,7 +24,7 @@ class ChatParticipantViewSet(viewsets.ViewSet):
     def list(self, request, chat_room_id=None):
         """List all chat participants"""
         chat_participants = ChatParticipantsService.get_chat_participants(
-            request.chat_room
+            request.chat_room, is_active=True
         )
         serializer = ChatParticipantListSerializer(
             chat_participants, many=True
@@ -31,8 +32,56 @@ class ChatParticipantViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
     def create(self, request, chat_room_id=None):
-        """Create a new chat participant (join a chat)"""
+        """Create a new chat participant (join a chat or add user)"""
+        username = request.data.get("username")
 
+        # If username is provided, admin is adding another user
+        if username:
+            try:
+                user_to_add = User.objects.get(
+                    username=username, is_active=True
+                )
+
+                # Check if user is already a participant
+                if ChatParticipant.objects.filter(
+                    chat_room=request.chat_room,
+                    user=user_to_add,
+                    is_active=True,
+                ).exists():
+                    return Response(
+                        {
+                            "error": "User is already a participant in this chat"
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Add participant using existing method
+                ChatParticipantsService.add_participants_to_chat(
+                    request.chat_room, [user_to_add]
+                )
+
+                # Get the created participant for response
+                participant = ChatParticipant.objects.get(
+                    chat_room=request.chat_room, user=user_to_add
+                )
+
+                return Response(
+                    {
+                        "message": f"Successfully added {username} to "
+                        f"{request.chat_room.name}",
+                        "participant": ChatParticipantListSerializer(
+                            participant
+                        ).data,
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
+            except User.DoesNotExist:
+                return Response(
+                    {"error": f"User '{username}' not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        # Otherwise, user is joining the chat themselves
         participant = ChatParticipantsService.join_public_chat(
             request.chat_room, request.user
         )
@@ -46,7 +95,7 @@ class ChatParticipantViewSet(viewsets.ViewSet):
         )
 
     @action(detail=False, methods=["post"])
-    def update_role(self, request, chat_room_id=None):
+    def update_role(self, request, chat_room_room_id=None):
         """Update a chat participant role (admin only)"""
         serializer = ChatParticipantRoleUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

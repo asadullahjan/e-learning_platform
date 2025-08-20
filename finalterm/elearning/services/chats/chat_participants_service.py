@@ -123,12 +123,7 @@ class ChatParticipantsService:
 
     @staticmethod
     def deactivate_chat_for_user(chat_room, user):
-        """Deactivate chat for specific user only"""
-        if chat_room.chat_type != "direct":
-            raise ServiceError.bad_request(
-                "Only direct chats can be deactivated"
-            )
-
+        """Deactivate chat for specific user - works for all chat types"""
         try:
             participant = chat_room.participants.get(user=user)
             participant.is_active = False

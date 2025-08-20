@@ -65,6 +65,52 @@ class ChatService:
         return None
 
     @staticmethod
+    def find_or_create_direct_chat(creator: User, other_username: str):
+        """Find existing direct chat or create new one with another user"""
+        try:
+            other_user = User.objects.get(
+                username=other_username, is_active=True
+            )
+        except User.DoesNotExist:
+            raise ValueError(f"User '{other_username}' not found")
+
+        if creator == other_user:
+            raise ValueError("Cannot create chat with yourself")
+
+        # Check if direct chat already exists
+        existing_chat = ChatService._find_existing_direct_chat(
+            creator, other_user
+        )
+
+        if existing_chat:
+            # Reactivate if needed
+            ChatParticipantsService.reactivate_chat_for_user(
+                existing_chat, creator
+            )
+            existing_chat.save()
+            return existing_chat, False
+
+        # Create new direct chat
+        chat_name = f"Direct chat: {creator.username} & {other_user.username}"
+        chat_room = ChatRoom.objects.create(
+            name=chat_name,
+            chat_type="direct",
+            created_by=creator,
+            is_public=False,
+        )
+
+        # Add both users as participants
+        ChatParticipant.objects.create(
+            chat_room=chat_room, user=creator, role="participant"
+        )
+
+        ChatParticipant.objects.create(
+            chat_room=chat_room, user=other_user, role="participant"
+        )
+
+        return chat_room, True
+
+    @staticmethod
     def get_active_chats_for_user(user):
         """Get all active chats for a specific user"""
         return ChatRoom.objects.filter(

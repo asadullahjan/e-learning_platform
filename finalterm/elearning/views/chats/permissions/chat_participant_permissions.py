@@ -1,6 +1,6 @@
 from rest_framework.permissions import BasePermission
-
 from elearning.models import ChatRoom
+from elearning.services.chats.chat_utils import ChatUtils
 
 
 class ChatParticipantPermissions(BasePermission):
@@ -23,6 +23,13 @@ class ChatParticipantPermissions(BasePermission):
             return False
 
         if view.action == "create":
-            return True
+            # Check if user is adding someone else (admin only) or joining themselves
+            username = request.data.get("username")
+            if username:
+                # Adding another user - only admins can do this
+                return ChatUtils.is_user_admin(chat_room, request.user)
+            else:
+                # Joining themselves - check if chat is public
+                return chat_room.is_public
 
         return request.user == chat_room.created_by
