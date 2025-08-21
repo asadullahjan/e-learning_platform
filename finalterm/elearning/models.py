@@ -310,3 +310,35 @@ class ChatParticipant(models.Model):
         db_table = "chat_participants"
         unique_together = ("chat_room", "user")
         ordering = ["-joined_at"]
+
+
+class StudentRestriction(models.Model):
+    """
+    Model for student restrictions.
+    """
+
+    teacher = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="restrictions_as_teacher"
+    )
+    student = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="restrictions_as_student"
+    )
+    course = models.ForeignKey(
+        "Course", on_delete=models.CASCADE, null=True, blank=True
+    )
+    reason = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        if self.course:
+            return (
+                f"{self.teacher.username} restricted "
+                f"{self.student.username} from {self.course.name}"
+            )
+        return (
+            f"{self.teacher.username} restricted "
+            f"{self.student.username} from all courses"
+        )
+
+    class Meta:
+        unique_together = ["teacher", "student", "course"]

@@ -2,6 +2,7 @@
 from .auth_views import register, login_view, logout_view
 from .profile_views import user_profile, update_profile
 from .courses import CourseViewSet, CourseLessonViewSet, EnrollmentViewSet
+from .courses.restrictions_views import StudentRestrictionViewSet
 from .chats.chat_room_views import ChatRoomViewSet
 from .chats.chat_participant_views import ChatParticipantViewSet
 from .chats.chat_message_views import ChatMessageViewSet
@@ -18,6 +19,7 @@ __all__ = [
     "CourseViewSet",
     "CourseLessonViewSet",
     "EnrollmentViewSet",
+    "StudentRestrictionViewSet",
     "ChatRoomViewSet",
     "ChatParticipantViewSet",
     "ChatMessageViewSet",

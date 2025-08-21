@@ -33,3 +33,25 @@ class IsCourseOwnerOrEnrollmentOwner(BasePermission):
         if obj.user == request.user:
             return True
         return False
+
+
+class StudentRestrictionPermission(BasePermission):
+    """
+    Permission class for student restrictions.
+    Only teachers can create/delete restrictions.
+    Teachers can only manage their own restrictions.
+    """
+    
+    def has_permission(self, request, view):
+        # Must be authenticated and a teacher
+        if not request.user.is_authenticated:
+            return False
+        
+        if request.user.role != "teacher":
+            return False
+        
+        return True
+    
+    def has_object_permission(self, request, view, obj):
+        # Teachers can only manage their own restrictions
+        return obj.teacher == request.user
