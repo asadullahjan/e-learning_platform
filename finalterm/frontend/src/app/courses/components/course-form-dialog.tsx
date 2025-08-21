@@ -25,6 +25,7 @@ import { showToast } from "@/lib/toast";
 import Input from "@/components/ui/Input";
 import { Course } from "@/lib/types";
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
@@ -36,12 +37,10 @@ type FormData = z.infer<typeof formSchema>;
 interface CourseFormDialogProps {
   mode: "create" | "edit";
   course?: Course; // Required for edit mode
+  width?: "full";
 }
 
-const CourseFormDialog = ({
-  mode,
-  course,
-}: CourseFormDialogProps) => {
+const CourseFormDialog = ({ mode, course, width }: CourseFormDialogProps) => {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const form = useForm<FormData>({
@@ -103,6 +102,7 @@ const CourseFormDialog = ({
         <Button
           size="md"
           variant="outline"
+          className={cn(width === "full" && "w-full")}
         >
           {mode === "create" ? "Create Course" : "Edit Course"}
         </Button>

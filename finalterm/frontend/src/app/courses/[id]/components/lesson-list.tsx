@@ -105,6 +105,7 @@ export function LessonList({
             key={lesson.id}
             lesson={lesson}
             courseId={courseId}
+            isTeacher={isTeacher}
           />
         ))}
       </div>

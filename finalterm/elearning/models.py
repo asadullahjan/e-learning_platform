@@ -326,7 +326,7 @@ class StudentRestriction(models.Model):
     course = models.ForeignKey(
         "Course", on_delete=models.CASCADE, null=True, blank=True
     )
-    reason = models.TextField(blank=True)
+    reason = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

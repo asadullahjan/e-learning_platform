@@ -11,12 +11,15 @@ import { useToast } from "@/components/hooks/use-toast";
 import { chatService } from "@/services/chatService";
 import { User } from "@/services/userService";
 import { Button } from "@/components/ui/button";
-import { Users, MessageCircle } from "lucide-react";
+import { Users, MessageCircle, Plus } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
+import CourseFormDialog from "../courses/components/course-form-dialog";
 
 export default function HomePage() {
   const statusListRef = useRef<StatusListRef>(null);
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuthStore();
 
   const handleStatusCreated = () => {
     if (statusListRef.current) {
@@ -49,7 +52,66 @@ export default function HomePage() {
         {/* Left Sidebar - Enrolled Courses */}
         <div className="lg:col-span-1">
           <div className="sticky top-6 space-y-6">
+            {/* Create Course Button for Teachers */}
+            {user?.role === "teacher" && (
+              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                <Typography
+                  variant="h3"
+                  className="text-gray-900 mb-3"
+                >
+                  Course Management
+                </Typography>
+                <Typography
+                  variant="p"
+                  color="muted"
+                  className="mb-4"
+                >
+                  Create and manage your courses
+                </Typography>
+                <div className="space-y-2">
+                  <CourseFormDialog
+                    mode="create"
+                    width="full"
+                  />
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => router.push("/courses")}
+                  >
+                    Manage All Courses
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <EnrolledCourses />
+
+            {/* Browse Courses Button for Students */}
+            {user?.role === "student" && (
+              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                <Typography
+                  variant="h3"
+                  className="text-gray-900 mb-3"
+                >
+                  Discover Courses
+                </Typography>
+                <Typography
+                  variant="p"
+                  color="muted"
+                  className="mb-4"
+                >
+                  Find new courses to enroll in
+                </Typography>
+                <div className="space-y-2">
+                  <Button
+                    className="w-full"
+                    onClick={() => router.push("/courses")}
+                  >
+                    Browse All Courses
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Search Users Section */}
             <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">

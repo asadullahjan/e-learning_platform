@@ -5,7 +5,7 @@ import Typography from "../ui/Typography";
 interface UserAvatarProps {
   user: {
     id: number;
-    username?: string;
+    username: string;
     profile_picture?: string | null;
     role: string;
   };
@@ -54,7 +54,7 @@ const UserAvatar = ({
 
   return (
     <Link
-      href={`/users/${user.id}`}
+      href={`/users/${user.username}`}
       className="hover:opacity-80 transition-opacity"
     >
       {showName ? (

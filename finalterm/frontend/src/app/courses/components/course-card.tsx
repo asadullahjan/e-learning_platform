@@ -45,13 +45,15 @@ export default function CourseCard({ course }: { course: Course }) {
             <div className="flex items-center justify-between text-xs text-gray-500">
               <div className="flex items-center gap-1">
                 <User className="w-3 h-3" />
-                <Typography
-                  variant="span"
-                  size="xs"
-                  className="font-medium"
-                >
-                  {course.teacher.username}
-                </Typography>
+                <Link href={`/users/${course.teacher.username}`}>
+                  <Typography
+                    variant="span"
+                    size="xs"
+                    className="font-medium hover:text-primary transition-colors cursor-pointer"
+                  >
+                    {course.teacher.username}
+                  </Typography>
+                </Link>
               </div>
               <div className="flex items-center gap-1">
                 <Calendar className="w-3 h-3" />

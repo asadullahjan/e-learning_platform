@@ -27,7 +27,7 @@ export default function LoginForm() {
     try {
       const response = await authService.login(data);
       login(response.user);
-      router.push("/dashboard");
+      router.push("/home");
     } catch (err: any) {
       const errorMessage =
         err.response?.data?.email?.[0] ||

@@ -14,6 +14,7 @@ import { enrollmentService } from "@/services/enrollmentService";
 import { showToast } from "@/lib/toast";
 import { Course } from "@/lib/types";
 import CourseFormDialog from "../../components/course-form-dialog";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 interface CourseActionsProps {
   isTeacher: boolean;
@@ -31,6 +32,10 @@ const CourseActions = ({
   course,
 }: CourseActionsProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
+  const [isUnpublishConfirmOpen, setIsUnpublishConfirmOpen] = useState(false);
+  const [isUnenrollConfirmOpen, setIsUnenrollConfirmOpen] = useState(false);
+  const [isEnrollConfirmOpen, setIsEnrollConfirmOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -55,6 +60,7 @@ const CourseActions = ({
       await courseService.publishCourse(courseId);
       router.refresh();
       showToast.success("Course published successfully");
+      setIsPublishConfirmOpen(false);
     } catch (error) {
       showToast.error("Failed to publish course");
     } finally {
@@ -68,6 +74,7 @@ const CourseActions = ({
       await courseService.unpublishCourse(courseId);
       router.refresh();
       showToast.success("Course unpublished successfully");
+      setIsUnpublishConfirmOpen(false);
     } catch (error) {
       showToast.error("Failed to unpublish course");
     } finally {
@@ -81,6 +88,7 @@ const CourseActions = ({
       await enrollmentService.createEnrollment(courseId);
       router.refresh();
       showToast.success("Enrolled in course successfully");
+      setIsEnrollConfirmOpen(false);
     } catch (error) {
       console.error("Error enrolling in course:", error);
       showToast.error("Error enrolling in course");
@@ -95,6 +103,7 @@ const CourseActions = ({
       await enrollmentService.deleteEnrollment(courseId);
       router.refresh();
       showToast.success("Unenrolled from course successfully");
+      setIsUnenrollConfirmOpen(false);
     } catch (error) {
       console.error("Error unenrolling from course:", error);
       showToast.error("Error unenrolling from course");
@@ -113,7 +122,7 @@ const CourseActions = ({
               size="md"
               variant="outline"
               className="px-6 transition-all duration-200 hover:bg-orange-50 hover:border-orange-300"
-              onClick={handleUnpublishCourse}
+              onClick={() => setIsUnpublishConfirmOpen(true)}
               disabled={isLoading}
             >
               {isLoading ? "Unpublishing..." : "Unpublish Course"}
@@ -123,7 +132,7 @@ const CourseActions = ({
               size="md"
               variant="default"
               className="px-6 transition-all duration-200 hover:bg-green-600"
-              onClick={handlePublishCourse}
+              onClick={() => setIsPublishConfirmOpen(true)}
               disabled={isLoading}
             >
               {isLoading ? "Publishing..." : "Publish Course"}
@@ -135,6 +144,16 @@ const CourseActions = ({
             mode="edit"
             course={course}
           />
+
+          {/* Restrictions Management Button */}
+          <Button
+            size="md"
+            variant="outline"
+            className="px-6 transition-all duration-200 hover:bg-red-50 hover:border-red-300"
+            onClick={() => router.push("/restrictions")}
+          >
+            Manage Restrictions
+          </Button>
 
           {/* Delete Course Button */}
           <Dialog
@@ -188,7 +207,7 @@ const CourseActions = ({
         <Button
           size="md"
           className="px-6 transition-all duration-200 hover:bg-red-600"
-          onClick={handleUnenrollCourse}
+          onClick={() => setIsUnenrollConfirmOpen(true)}
           disabled={isLoading}
         >
           {isLoading ? "Unenrolling..." : "Unenroll from Course"}
@@ -197,12 +216,57 @@ const CourseActions = ({
         <Button
           size="md"
           className="px-6 transition-all duration-200 hover:bg-green-600"
-          onClick={handleEnrollCourse}
+          onClick={() => setIsEnrollConfirmOpen(true)}
           disabled={isLoading}
         >
           {isLoading ? "Enrolling..." : "Enroll in Course"}
         </Button>
       )}
+
+      {/* Confirm Dialogs */}
+      <ConfirmDialog
+        isOpen={isPublishConfirmOpen}
+        onClose={() => setIsPublishConfirmOpen(false)}
+        onConfirm={handlePublishCourse}
+        title="Publish Course"
+        description="Are you sure you want to publish this course? Students will be able to enroll once published."
+        confirmText="Publish"
+        cancelText="Cancel"
+        variant="info"
+      />
+
+      <ConfirmDialog
+        isOpen={isUnpublishConfirmOpen}
+        onClose={() => setIsUnpublishConfirmOpen(false)}
+        onConfirm={handleUnpublishCourse}
+        title="Unpublish Course"
+        description="Are you sure you want to unpublish this course? Students will no longer be able to enroll."
+        confirmText="Unpublish"
+        cancelText="Cancel"
+        variant="warning"
+      />
+
+      <ConfirmDialog
+        isOpen={isUnenrollConfirmOpen}
+        onClose={() => setIsUnenrollConfirmOpen(false)}
+        onConfirm={handleUnenrollCourse}
+        title="Unenroll from Course"
+        description="Are you sure you want to unenroll from this course? You will lose access to course content and chat."
+        confirmText="Unenroll"
+        cancelText="Cancel"
+        variant="warning"
+      />
+
+      <ConfirmDialog
+        isOpen={isEnrollConfirmOpen}
+        onClose={() => setIsEnrollConfirmOpen(false)}
+        onConfirm={handleEnrollCourse}
+        title="Enroll in Course"
+        description="Are you sure you want to enroll in this course? You will gain access to course content and chat."
+        confirmText="Enroll"
+        cancelText="Cancel"
+        variant="info"
+      />
     </div>
   );
 };

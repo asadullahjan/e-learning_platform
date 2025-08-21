@@ -6,6 +6,7 @@ import { LessonSidebar } from "../../components/lesson-sidebar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { getServerUser } from "@/lib/auth";
 
 interface LessonPageProps {
   params: {
@@ -15,6 +16,7 @@ interface LessonPageProps {
 }
 
 export default async function LessonPage({ params }: LessonPageProps) {
+  const user = await getServerUser();
   const [course, lesson, lessonsResponse] = await Promise.all([
     courseService.server.getCourse(params.id),
     lessonService.server.getLesson(params.id, params.lessonId),
@@ -54,10 +56,10 @@ export default async function LessonPage({ params }: LessonPageProps) {
 
         {/* Lesson Content - Takes 3/4 of the space on desktop, full width on mobile */}
         <div className="lg:col-span-3 order-1 lg:order-2">
-          <LessonDetail 
-            lesson={lesson} 
+          <LessonDetail
+            lesson={lesson}
             courseId={params.id}
-            isTeacher={true}
+            isTeacher={course.teacher.username === user?.username}
           />
         </div>
       </div>

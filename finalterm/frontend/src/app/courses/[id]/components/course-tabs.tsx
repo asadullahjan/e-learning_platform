@@ -7,6 +7,7 @@ import Typography from "@/components/ui/Typography";
 import ChatContainer from "@/app/chats/[id]/components/chat_container";
 import { LessonList } from "./lesson-list";
 import FeedbackSection from "./feedback-section";
+import RestrictionsSection from "./restrictions-section";
 
 interface CourseTabsProps {
   course: Course;
@@ -121,6 +122,16 @@ const CourseTabs = ({ course, isTeacher, isCourseOwner, isEnrolled, defaultTab }
       value: "feedback",
       label: "Feedback",
       content: <FeedbackSection courseId={course.id} isEnrolled={isEnrolled} />,
+    },
+    {
+      value: "restrictions",
+      label: "Restrictions",
+      content: (
+        <RestrictionsSection
+          courseId={course.id}
+          courseTitle={course.title}
+        />
+      ),
     },
     {
       value: "lessons",

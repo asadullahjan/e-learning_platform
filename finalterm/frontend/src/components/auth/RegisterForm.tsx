@@ -34,7 +34,7 @@ export default function RegisterForm() {
     try {
       const response = await authService.register(data);
       login(response.user);
-      router.push("/dashboard");
+      router.push("/home");
     } catch (err: any) {
       const errorMessage =
         err.response?.data?.username?.[0] ||

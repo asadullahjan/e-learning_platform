@@ -4,8 +4,12 @@ import Typography from "@/components/ui/Typography";
 import { CourseLesson } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Eye, EyeOff } from "lucide-react";
 import { LessonFormDialog } from "./lesson-form-dialog";
+import { lessonService } from "@/services/lessonService";
+import { useToast } from "@/components/hooks/use-toast";
+import { useState } from "react";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 interface LessonDetailProps {
   lesson: CourseLesson;
@@ -14,11 +18,57 @@ interface LessonDetailProps {
 }
 
 export function LessonDetail({ lesson, courseId, isTeacher = false }: LessonDetailProps) {
-  const isPublished = !!lesson.published_at;
+  const [isPublished, setIsPublished] = useState(!!lesson.published_at);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
+  const [isUnpublishConfirmOpen, setIsUnpublishConfirmOpen] = useState(false);
+  const { toast } = useToast();
 
   const handleFileDownload = () => {
     if (lesson.file?.download_url) {
       window.open(lesson.file.download_url, "_blank");
+    }
+  };
+
+  const handlePublishLesson = async () => {
+    try {
+      setIsLoading(true);
+      await lessonService.toggleLessonPublish(courseId, lesson.id, true);
+      setIsPublished(true);
+      toast({
+        title: "Success",
+        description: "Lesson published successfully",
+      });
+      setIsPublishConfirmOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to publish lesson",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUnpublishLesson = async () => {
+    try {
+      setIsLoading(true);
+      await lessonService.toggleLessonPublish(courseId, lesson.id, false);
+      setIsPublished(false);
+      toast({
+        title: "Success",
+        description: "Lesson unpublished successfully",
+      });
+      setIsUnpublishConfirmOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to unpublish lesson",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -53,11 +103,39 @@ export function LessonDetail({ lesson, courseId, isTeacher = false }: LessonDeta
               )}
 
               {isTeacher && (
-                <LessonFormDialog
-                  courseId={courseId}
-                  lesson={lesson}
-                  mode="edit"
-                />
+                <>
+                  {/* Publish/Unpublish Button */}
+                  {isPublished ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                      onClick={() => setIsUnpublishConfirmOpen(true)}
+                      disabled={isLoading}
+                    >
+                      <EyeOff className="w-4 h-4 mr-1" />
+                      {isLoading ? "Unpublishing..." : "Unpublish"}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => setIsPublishConfirmOpen(true)}
+                      disabled={isLoading}
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      {isLoading ? "Publishing..." : "Publish"}
+                    </Button>
+                  )}
+
+                  {/* Edit Button */}
+                  <LessonFormDialog
+                    courseId={courseId}
+                    lesson={lesson}
+                    mode="edit"
+                  />
+                </>
               )}
             </div>
           </div>
@@ -190,6 +268,29 @@ export function LessonDetail({ lesson, courseId, isTeacher = false }: LessonDeta
           </div>
         </Card>
       )}
+
+      {/* Confirm Dialogs */}
+      <ConfirmDialog
+        isOpen={isPublishConfirmOpen}
+        onClose={() => setIsPublishConfirmOpen(false)}
+        onConfirm={handlePublishLesson}
+        title="Publish Lesson"
+        description="Are you sure you want to publish this lesson? Students will be able to view it once published."
+        confirmText="Publish"
+        cancelText="Cancel"
+        variant="info"
+      />
+
+      <ConfirmDialog
+        isOpen={isUnpublishConfirmOpen}
+        onClose={() => setIsUnpublishConfirmOpen(false)}
+        onConfirm={handleUnpublishLesson}
+        title="Unpublish Lesson"
+        description="Are you sure you want to unpublish this lesson? Students will no longer be able to view it."
+        confirmText="Unpublish"
+        cancelText="Cancel"
+        variant="warning"
+      />
     </div>
   );
 }

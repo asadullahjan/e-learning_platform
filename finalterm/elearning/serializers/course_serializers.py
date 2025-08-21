@@ -41,10 +41,13 @@ class CourseSerializer(serializers.ModelSerializer):
         return value
 
     def validate_published_at(self, value):
-        if value and value < timezone.now():
-            raise serializers.ValidationError(
-                "Published date cannot be in the past"
-            )
+        if value:
+            # Allow 10 second tolerance for network delays
+            tolerance = timezone.now() - timezone.timedelta(seconds=10)
+            if value < tolerance:
+                raise serializers.ValidationError(
+                    "Published date cannot be in the past"
+                )
         return value
 
 
