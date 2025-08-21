@@ -50,7 +50,9 @@ class ChatParticipantViewSet(viewsets.ViewSet):
                 ).exists():
                     return Response(
                         {
-                            "error": "User is already a participant in this chat"
+                            "error": (
+                                "User is already a participant in this chat"
+                            )
                         },
                         status=status.HTTP_400_BAD_REQUEST,
                     )

@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Typography from "@/components/ui/Typography";
 import ChatContainer from "@/app/chats/[id]/components/chat_container";
 import { LessonList } from "./lesson-list";
+import FeedbackSection from "./feedback-section";
 
 interface CourseTabsProps {
   course: Course;
   isTeacher: boolean;
   isCourseOwner: boolean;
+  isEnrolled: boolean;
   defaultTab?: string;
 }
 
@@ -20,7 +22,7 @@ interface TabConfig {
   content: React.ReactNode;
 }
 
-const CourseTabs = ({ course, isTeacher, isCourseOwner, defaultTab }: CourseTabsProps) => {
+const CourseTabs = ({ course, isTeacher, isCourseOwner, isEnrolled, defaultTab }: CourseTabsProps) => {
   // Tab configurations to eliminate repetition
   const teacherTabs: TabConfig[] = [
     {
@@ -98,7 +100,7 @@ const CourseTabs = ({ course, isTeacher, isCourseOwner, defaultTab }: CourseTabs
                 variant="p"
                 color="muted"
               >
-                Recent student enrollments and activity will appear here.
+                Recent course activity will be displayed here.
               </Typography>
             </CardContent>
           </Card>
@@ -106,30 +108,29 @@ const CourseTabs = ({ course, isTeacher, isCourseOwner, defaultTab }: CourseTabs
       ),
     },
     {
-      value: "students",
-      label: "Students",
+      value: "enrollments",
+      label: "Enrollments",
       content: (
         <CourseEnrollments
           courseId={course.id}
-          isTeacher={isTeacher}
+          isTeacher={true}
         />
       ),
     },
     {
-      value: "content",
-      label: "Content",
+      value: "feedback",
+      label: "Feedback",
+      content: <FeedbackSection courseId={course.id} isEnrolled={isEnrolled} />,
+    },
+    {
+      value: "lessons",
+      label: "Lessons",
       content: (
         <LessonList
           courseId={course.id}
-          isTeacher={isTeacher}
+          isTeacher={true}
         />
       ),
-    },
-
-    {
-      value: "chat",
-      label: "Chat",
-      content: <ChatContainer chatId={course.course_chat_id || ""} />,
     },
     {
       value: "settings",
@@ -192,6 +193,11 @@ const CourseTabs = ({ course, isTeacher, isCourseOwner, defaultTab }: CourseTabs
           </CardContent>
         </Card>
       ),
+    },
+    {
+      value: "feedback",
+      label: "Feedback",
+      content: <FeedbackSection courseId={course.id} isEnrolled={isEnrolled} />,
     },
     ...(course.course_chat_id
       ? [

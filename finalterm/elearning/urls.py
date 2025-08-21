@@ -17,6 +17,9 @@ courses_router = NestedDefaultRouter(router, r"courses", lookup="course")
 courses_router.register(
     r"lessons", views.CourseLessonViewSet, basename="course-lessons"
 )
+courses_router.register(
+    r"feedbacks", views.FeedbackViewSet, basename="course-feedbacks"
+)
 
 chats_router = NestedDefaultRouter(router, r"chats", lookup="chat_room")
 chats_router.register(

@@ -23,7 +23,8 @@ class ChatParticipantPermissions(BasePermission):
             return False
 
         if view.action == "create":
-            # Check if user is adding someone else (admin only) or joining themselves
+            # Check if user is adding someone else
+            # (admin only) or joining themselves
             username = request.data.get("username")
             if username:
                 # Adding another user - only admins can do this

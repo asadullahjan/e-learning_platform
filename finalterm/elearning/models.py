@@ -2,6 +2,12 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from elearning.storage import PrivateCourseStorage
 import os
+from django.core.validators import (
+    MinValueValidator,
+    MaxValueValidator,
+    MinLengthValidator,
+    MaxLengthValidator,
+)
 
 
 class User(AbstractUser):
@@ -122,6 +128,47 @@ class CourseLesson(models.Model):
     class Meta:
         db_table = "course_lessons"
         ordering = ["created_at"]
+
+
+class CourseFeedback(models.Model):
+    """
+    Model for course feedback.
+    """
+
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name="feedbacks"
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name="feedbacks",
+        null=True,
+        blank=True,
+    )
+    rating = models.IntegerField(
+        choices=[(i, i) for i in range(1, 6)],
+        validators=[
+            MinValueValidator(1, "Rating must be at least 1"),
+            MaxValueValidator(5, "Rating cannot exceed 5"),
+        ],
+    )
+    text = models.TextField(
+        validators=[
+            MinLengthValidator(10, "Feedback must be at least 10 characters"),
+            MaxLengthValidator(500, "Feedback cannot exceed 500 characters"),
+        ]
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        username = self.user.username if self.user else "Deleted User"
+        return f"{username} feedback on {self.course.title}"
+
+    class Meta:
+        db_table = "course_feedback"
+        unique_together = ("course", "user")
+        ordering = ["-created_at"]
 
 
 class Enrollment(models.Model):

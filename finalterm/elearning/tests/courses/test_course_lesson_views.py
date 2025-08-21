@@ -4,9 +4,6 @@ from rest_framework.test import APIClient
 from elearning.models import Course, CourseLesson, Enrollment, User, File
 from elearning.tests.test_base import BaseTestCase, debug_on_failure
 from django.utils import timezone
-import os
-import shutil
-from django.conf import settings
 
 
 class CourseLessonViewSetTestCase(BaseTestCase):

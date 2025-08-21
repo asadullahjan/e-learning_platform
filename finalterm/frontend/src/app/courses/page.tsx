@@ -4,6 +4,7 @@ import CourseCard from "./components/course-card";
 import Typography from "@/components/ui/Typography";
 import Filter from "./components/filter";
 import CourseFormDialog from "./components/course-form-dialog";
+import { getServerUser } from "@/lib/auth";
 
 export default async function CoursesPage({
   searchParams,
@@ -11,12 +12,12 @@ export default async function CoursesPage({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const coursesData = (await courseService.server.getCourses(searchParams)) as ListResponse<Course>;
-
+  const user = await getServerUser();
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-4 w-full">
         <Filter />
-        <CourseFormDialog mode="create" />
+        {user?.role === "teacher" && <CourseFormDialog mode="create" />}
       </div>
 
       <Typography

@@ -18,6 +18,8 @@ export default async function CoursePage({
 
   const isTeacher = user?.role === "teacher";
   const isCourseOwner = user?.id === course.teacher.id;
+  const isEnrolled = course.is_enrolled;
+  
   return (
     <div className="container mx-auto py-8">
       <CourseHeader
@@ -30,6 +32,7 @@ export default async function CoursePage({
         course={course}
         isTeacher={isTeacher}
         isCourseOwner={isCourseOwner}
+        isEnrolled={isEnrolled}
         defaultTab={tab}
       />
     </div>
