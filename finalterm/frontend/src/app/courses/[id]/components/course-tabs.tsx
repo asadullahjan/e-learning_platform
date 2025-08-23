@@ -8,6 +8,7 @@ import ChatContainer from "@/app/chats/[id]/components/chat_container";
 import { LessonList } from "./lesson-list";
 import FeedbackSection from "./feedback-section";
 import RestrictionsSection from "./restrictions-section";
+import { enrollmentService } from "@/services/enrollmentService";
 
 interface CourseTabsProps {
   course: Course;
@@ -23,7 +24,25 @@ interface TabConfig {
   content: React.ReactNode;
 }
 
-const CourseTabs = ({ course, isTeacher, isCourseOwner, isEnrolled, defaultTab }: CourseTabsProps) => {
+const CourseTabs = async ({
+  course,
+  isTeacher,
+  isCourseOwner,
+  isEnrolled,
+  defaultTab,
+}: CourseTabsProps) => {
+  // Fetch enrollments data for teacher view
+  let enrollments: any[] = [];
+  if (isTeacher && isCourseOwner) {
+    try {
+      enrollments = await enrollmentService.server.getCourseEnrollments(course.id, {
+        status: "all", // Show all enrollments initially
+      });
+    } catch (error) {
+      console.error("Failed to fetch enrollments:", error);
+    }
+  }
+
   // Tab configurations to eliminate repetition
   const teacherTabs: TabConfig[] = [
     {
@@ -115,13 +134,19 @@ const CourseTabs = ({ course, isTeacher, isCourseOwner, isEnrolled, defaultTab }
         <CourseEnrollments
           courseId={course.id}
           isTeacher={true}
+          enrollments={enrollments}
         />
       ),
     },
     {
       value: "feedback",
       label: "Feedback",
-      content: <FeedbackSection courseId={course.id} isEnrolled={isEnrolled} />,
+      content: (
+        <FeedbackSection
+          courseId={course.id}
+          isEnrolled={isEnrolled}
+        />
+      ),
     },
     {
       value: "restrictions",
@@ -208,7 +233,12 @@ const CourseTabs = ({ course, isTeacher, isCourseOwner, isEnrolled, defaultTab }
     {
       value: "feedback",
       label: "Feedback",
-      content: <FeedbackSection courseId={course.id} isEnrolled={isEnrolled} />,
+      content: (
+        <FeedbackSection
+          courseId={course.id}
+          isEnrolled={isEnrolled}
+        />
+      ),
     },
     ...(course.course_chat_id
       ? [

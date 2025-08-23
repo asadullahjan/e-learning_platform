@@ -1,6 +1,9 @@
 from rest_framework import viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.filters import OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
+from django_filters import rest_framework as filters
 from elearning.models import Course, Enrollment
 from elearning.permissions import IsCourseOwnerOrEnrollmentOwner
 from elearning.serializers import (
@@ -8,6 +11,36 @@ from elearning.serializers import (
     StudentEnrollmentSerializer,
     TeacherEnrollmentSerializer,
 )
+
+
+class EnrollmentFilter(filters.FilterSet):
+    """Custom filter for enrollments"""
+    
+    # Search filter for username and email
+    search = filters.CharFilter(method='filter_search')
+    
+    # Status filter for active/inactive enrollments
+    is_active = filters.BooleanFilter()
+    
+    # Course filter (already exists)
+    course = filters.NumberFilter()
+    
+    # User filter
+    user = filters.NumberFilter()
+    
+    class Meta:
+        model = Enrollment
+        fields = ['search', 'is_active', 'course', 'user']
+    
+    def filter_search(self, queryset, name, value):
+        """Search in user username and email fields"""
+        if value:
+            return queryset.filter(
+                user__username__icontains=value
+            ) | queryset.filter(
+                user__email__icontains=value
+            )
+        return queryset
 
 
 class EnrollmentViewSet(viewsets.ModelViewSet):
@@ -19,6 +52,14 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     """
 
     http_method_names = ["get", "post", "put", "patch", "delete"]
+    
+    # Enable filtering and ordering
+    filter_backends = [OrderingFilter, DjangoFilterBackend]
+    filterset_class = EnrollmentFilter
+    
+    # Allow ordering by these fields
+    ordering_fields = ['enrolled_at', 'unenrolled_at', 'user__username']
+    ordering = ['-enrolled_at']
 
     def get_queryset(self):
         """
@@ -56,12 +97,9 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                 # Teacher viewing enrollments for their course
                 return TeacherEnrollmentSerializer
 
-        # User viewing their own enrollments (both students and teachers
+        # User viewing their own enrollments (both students and teachers 
         # can enroll)
         return StudentEnrollmentSerializer
-
-        # Default fallback
-        return EnrollmentSerializer
 
     def get_permissions(self):
         if self.action in ["list"]:

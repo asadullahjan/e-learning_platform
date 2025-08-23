@@ -42,10 +42,24 @@ export interface EnrollmentListResponse {
 
 export const enrollmentService = {
   // For teachers viewing enrollments in their course (returns user data)
-  getCourseEnrollments: async (courseId: string): Promise<TeacherEnrollment[]> => {
-    const response = await api.get<EnrollmentListResponse>("/enrollments", {
-      params: { course: courseId },
-    });
+  getCourseEnrollments: async (
+    courseId: string, 
+    filters?: {
+      search?: string;
+      status?: "all" | "active" | "inactive";
+    }
+  ): Promise<TeacherEnrollment[]> => {
+    const params: any = { course: courseId };
+    
+    if (filters?.search) {
+      params.search = filters.search;
+    }
+    
+    if (filters?.status && filters.status !== "all") {
+      params.is_active = filters.status === "active";
+    }
+    
+    const response = await api.get<EnrollmentListResponse>("/enrollments", { params });
     return response.data.results as TeacherEnrollment[];
   },
 
@@ -65,7 +79,7 @@ export const enrollmentService = {
   },
 
   getEnrollment: async (enrollmentId: string): Promise<Enrollment> => {
-    const response = await api.get<Enrollment>(`/enrollments/${enrollmentId}`);
+    const response = await api.get<Enrollment>(`/enrollments/${enrollmentId}/`);
     return response.data;
   },
 
@@ -97,11 +111,25 @@ export const enrollmentService = {
 
   // Server-side methods (GET operations only)
   server: {
-    getCourseEnrollments: async (courseId: string): Promise<TeacherEnrollment[]> => {
+    getCourseEnrollments: async (
+      courseId: string,
+      filters?: {
+        search?: string;
+        status?: "all" | "active" | "inactive";
+      }
+    ): Promise<TeacherEnrollment[]> => {
       const serverApi = await createServerApi();
-      const response = await serverApi.get<EnrollmentListResponse>("/enrollments", {
-        params: { course: courseId },
-      });
+      const params: any = { course: courseId };
+      
+      if (filters?.search) {
+        params.search = filters.search;
+      }
+      
+      if (filters?.status && filters.status !== "all") {
+        params.is_active = filters.status === "active";
+      }
+      
+      const response = await serverApi.get<EnrollmentListResponse>("/enrollments", { params });
       return response.data.results as TeacherEnrollment[];
     },
 

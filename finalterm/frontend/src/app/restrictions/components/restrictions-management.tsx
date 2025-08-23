@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import Typography from "@/components/ui/Typography";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, UserX, Calendar, BookOpen, Filter } from "lucide-react";
+import { Trash2, UserX, Calendar, BookOpen, Filter, Plus } from "lucide-react";
 import { restrictionService, StudentRestriction } from "@/services/restrictionService";
+import { courseService } from "@/services/courseService";
+import { userService } from "@/services/userService";
 import { useToast } from "@/components/hooks/use-toast";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
+import CreateRestrictionDialog from "@/app/restrictions/components/create-restriction-dialog";
 
 export default function RestrictionsManagement() {
   const [restrictions, setRestrictions] = useState<StudentRestriction[]>([]);
@@ -15,11 +18,16 @@ export default function RestrictionsManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [restrictionToDelete, setRestrictionToDelete] = useState<StudentRestriction | null>(null);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     loadRestrictions();
+    loadCourses();
+    loadUsers();
   }, []);
 
   useEffect(() => {
@@ -38,6 +46,25 @@ export default function RestrictionsManagement() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadCourses = async () => {
+    try {
+      const data = await courseService.getCourses();
+      setCourses(data.results);
+    } catch (error: any) {
+      console.error("Failed to load courses:", error);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      // Load all users (you might want to add pagination here)
+      const data = await userService.searchUsers("");
+      setUsers(data);
+    } catch (error: any) {
+      console.error("Failed to load users:", error);
     }
   };
 
@@ -76,6 +103,15 @@ export default function RestrictionsManagement() {
     }
   };
 
+  const handleCreateRestriction = () => {
+    setIsCreateDialogOpen(true);
+  };
+
+  const handleRestrictionCreated = () => {
+    loadRestrictions();
+    setIsCreateDialogOpen(false);
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
@@ -109,6 +145,26 @@ export default function RestrictionsManagement() {
 
   return (
     <>
+      {/* Create Restriction Button */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Create New Restriction
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={handleCreateRestriction}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            <UserX className="w-4 h-4 mr-2" />
+            Restrict User
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Filter Section */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -142,6 +198,7 @@ export default function RestrictionsManagement() {
         </CardContent>
       </Card>
 
+      {/* Restrictions List */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium">All Restrictions</CardTitle>
@@ -215,6 +272,16 @@ export default function RestrictionsManagement() {
         </CardContent>
       </Card>
 
+      {/* Create Restriction Dialog */}
+      <CreateRestrictionDialog
+        isOpen={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+        onSuccess={handleRestrictionCreated}
+        courses={courses}
+        users={users}
+      />
+
+      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
