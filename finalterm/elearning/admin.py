@@ -8,6 +8,7 @@ from .models import (
     ChatMessage,
     ChatParticipant,
     StudentRestriction,
+    Notification,
 )
 
 # Register your models here.
@@ -21,3 +22,4 @@ admin.site.register(ChatMessage)
 admin.site.register(ChatParticipant)
 admin.site.register(CourseLesson)
 admin.site.register(StudentRestriction)
+admin.site.register(Notification)

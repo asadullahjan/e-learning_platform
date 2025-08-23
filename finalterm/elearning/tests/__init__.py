@@ -5,6 +5,7 @@ from .test_models import UserModelTest
 from .test_course_views import CourseViewsTest
 from .test_enrollment_views import EnrollmentViewsTest
 from .chats import ChatRoomViewsTestCase
+from .test_notification_views import NotificationViewSetTest
 
 __all__ = [
     "AuthenticationTest",
@@ -13,4 +14,5 @@ __all__ = [
     "CourseViewsTest",
     "EnrollmentViewsTest",
     "ChatRoomViewsTestCase",
+    "NotificationViewSetTest",
 ]

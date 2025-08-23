@@ -16,6 +16,11 @@ router.register(
     views.StudentRestrictionViewSet, 
     basename="restriction"
 )
+router.register(
+    r"notifications", 
+    views.NotificationViewSet, 
+    basename="notification"
+)
 
 # Nested routers
 courses_router = NestedDefaultRouter(router, r"courses", lookup="course")

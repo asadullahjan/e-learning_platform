@@ -9,6 +9,7 @@ from .chats.chat_message_views import ChatMessageViewSet
 from .status_views import StatusViewSet
 from .user_views import get_user_by_username, search_users
 from .courses.feedback_views import FeedbackViewSet
+from .notification_views import NotificationViewSet
 
 __all__ = [
     "register",
@@ -27,4 +28,5 @@ __all__ = [
     "get_user_by_username",
     "search_users",
     "FeedbackViewSet",
+    "NotificationViewSet",
 ]

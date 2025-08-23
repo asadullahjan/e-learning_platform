@@ -30,6 +30,9 @@ from .courses.student_restriction_serializer import (
     StudentRestrictionCreateUpdateSerializer,
     StudentRestrictionListSerializer,
 )
+from .notification_serializers import (
+    NotificationSerializer,
+)
 
 __all__ = [
     "UserRegistrationSerializer",
@@ -51,4 +54,5 @@ __all__ = [
     "CourseFeedbackListSerializerForUser",
     "StudentRestrictionCreateUpdateSerializer",
     "StudentRestrictionListSerializer",
+    "NotificationSerializer",
 ]
