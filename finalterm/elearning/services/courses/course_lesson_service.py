@@ -1,4 +1,5 @@
 from elearning.models import Course, CourseLesson, File, User
+from elearning.services.notification_service import NotificationService
 
 
 class CourseLessonService:
@@ -21,6 +22,20 @@ class CourseLessonService:
             lesson.file = file
 
         lesson.save()
+
+        # Notify enrolled students about new lesson
+        enrolled_user_ids = [
+            enrollment.user.id
+            for enrollment in course.enrollment_set.filter(is_active=True)
+        ]
+
+        NotificationService.create_notifications_and_send(
+            user_ids=enrolled_user_ids,
+            title="New Lesson Available",
+            message=f"Check out the new lesson: {lesson.title}",
+            action_url=f"/courses/{course.id}/lessons/{lesson.id}",
+        )
+
         return lesson
 
     @staticmethod
@@ -67,11 +82,33 @@ class CourseLessonService:
                 lesson.file = new_file
 
         lesson.save()
+        
+        # Notify enrolled students about lesson update
+        enrolled_user_ids = [
+            enrollment.user.id 
+            for enrollment in lesson.course.enrollment_set.filter(is_active=True)
+        ]
+        
+        NotificationService.create_notifications_and_send(
+            user_ids=enrolled_user_ids,
+            title="Lesson Updated",
+            message=(
+                f"The lesson '{lesson.title}' has been updated"
+            ),
+            action_url=(
+                f"/courses/{lesson.course.id}/lessons/{lesson.id}"
+            )
+        )
+        
         return lesson
 
     @staticmethod
     def delete_lesson_with_file(lesson: CourseLesson, user: User):
         """Delete lesson and associated file only if no other lessons use it"""
+        # Store lesson info before deletion for notification
+        lesson_title = lesson.title
+        course_id = lesson.course.id
+        
         # Check if other lessons use this file
         if lesson.file:
             file_to_check = lesson.file
@@ -85,6 +122,19 @@ class CourseLessonService:
             if not other_lessons_using_file:
                 file_to_check.delete()
 
+        # Notify enrolled students about lesson deletion
+        enrolled_user_ids = [
+            enrollment.user.id 
+            for enrollment in lesson.course.enrollment_set.filter(is_active=True)
+        ]
+        
+        NotificationService.create_notifications_and_send(
+            user_ids=enrolled_user_ids,
+            title="Lesson Removed",
+            message=f"The lesson '{lesson_title}' has been removed from the course",
+            action_url=f"/courses/{course_id}"
+        )
+
         # Delete the lesson
         lesson.delete()
 
@@ -93,4 +143,29 @@ class CourseLessonService:
         """Toggle lesson publish status"""
         lesson.published_at = published_at
         lesson.save()
+        
+        # Notify enrolled students about lesson status change
+        enrolled_user_ids = [
+            enrollment.user.id 
+            for enrollment in lesson.course.enrollment_set.filter(is_active=True)
+        ]
+        
+        if published_at:
+            # Lesson was published
+            title = "Lesson Published"
+            message = f"The lesson '{lesson.title}' is now available"
+            action_url = f"/courses/{lesson.course.id}/lessons/{lesson.id}"
+        else:
+            # Lesson was unpublished
+            title = "Lesson Unpublished"
+            message = f"The lesson '{lesson.title}' is no longer available"
+            action_url = f"/courses/{lesson.course.id}"
+        
+        NotificationService.create_notifications_and_send(
+            user_ids=enrolled_user_ids,
+            title=title,
+            message=message,
+            action_url=action_url
+        )
+        
         return lesson

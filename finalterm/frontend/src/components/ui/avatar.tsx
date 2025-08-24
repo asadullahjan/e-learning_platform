@@ -28,8 +28,8 @@ const Avatar = ({ src, alt, size = "md", className, fallback }: AvatarProps) => 
     // If it's a blob URL (preview), use as is
     if (src.startsWith("blob:")) return src;
 
-    // Otherwise, add the NEXT_PUBLIC_URL prefix
-    return `${process.env.NEXT_PUBLIC_URL}${src}`;
+    // Otherwise, add the NEXT_PUBLIC_SERVER_URL prefix
+    return `${process.env.NEXT_PUBLIC_SERVER_URL}${src}`;
   };
 
   const imageSrc = getImageSrc(src);

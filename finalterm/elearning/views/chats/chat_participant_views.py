@@ -21,7 +21,7 @@ class ChatParticipantViewSet(viewsets.ViewSet):
 
     permission_classes = [ChatParticipantPermissions]
 
-    def list(self, request, chat_room_id=None):
+    def list(self, request, chat_room_pk=None):
         """List all chat participants"""
         chat_participants = ChatParticipantsService.get_chat_participants(
             request.chat_room, is_active=True
@@ -31,7 +31,7 @@ class ChatParticipantViewSet(viewsets.ViewSet):
         )
         return Response(serializer.data)
 
-    def create(self, request, chat_room_id=None):
+    def create(self, request, chat_room_pk=None):
         """Create a new chat participant (join a chat or add user)"""
         username = request.data.get("username")
 
@@ -97,7 +97,7 @@ class ChatParticipantViewSet(viewsets.ViewSet):
         )
 
     @action(detail=False, methods=["post"])
-    def update_role(self, request, chat_room_room_id=None):
+    def update_role(self, request, chat_room_pk=None):
         """Update a chat participant role (admin only)"""
         serializer = ChatParticipantRoleUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -111,7 +111,7 @@ class ChatParticipantViewSet(viewsets.ViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"])
-    def deactivate(self, request, chat_room_id=None):
+    def deactivate(self, request, chat_room_pk=None):
         """Deactivate a chat participant"""
         ChatParticipantsService.deactivate_chat_for_user(
             request.chat_room, request.user
@@ -119,7 +119,7 @@ class ChatParticipantViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"])
-    def reactivate(self, request, chat_room_id=None):
+    def reactivate(self, request, chat_room_pk=None):
         """Reactivate a chat participant"""
         ChatParticipantsService.reactivate_chat_for_user(
             request.chat_room, request.user

@@ -98,6 +98,11 @@ export const chatService = {
     return response.data;
   },
 
+  getChatParticipants: async (chatId: string) => {
+    const response = await api.get(`/chats/${chatId}/participants/`);
+    return response.data;
+  },
+
   getDirectChats: async (): Promise<Chat[]> => {
     const response = await api.get<{ results: Chat[] }>("/chats/", {
       params: { chat_type: "direct" },

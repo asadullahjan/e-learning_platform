@@ -1,4 +1,5 @@
 from elearning.models import StudentRestriction, Enrollment, ChatParticipant
+from elearning.services.notification_service import NotificationService
 
 
 class StudentRestrictionService:
@@ -48,6 +49,34 @@ class StudentRestrictionService:
         # Apply the restriction effects
         StudentRestrictionService._apply_restriction_effects(restriction)
 
+        # Notify student about restriction
+        reason_text = reason or "No reason provided"
+
+        if restriction.course:
+            # Course-specific restriction
+            message = (
+                f"You have been restricted from accessing "
+                f"{restriction.course.title} by "
+                f"{restriction.teacher.username}. Reason: {reason_text}"
+            )
+            action_url = f"/courses/{restriction.course.id}"
+            title = "Course Access Restricted"
+        else:
+            # All courses restriction
+            message = (
+                f"You have been restricted from accessing all courses "
+                f"by {restriction.teacher.username}. Reason: {reason_text}"
+            )
+            action_url = "/courses"
+            title = "All Courses Access Restricted"
+
+        NotificationService.create_notifications_and_send(
+            user_ids=[student_id],
+            title=title,
+            message=message,
+            action_url=action_url,
+        )
+
         return restriction
 
     @staticmethod
@@ -60,6 +89,29 @@ class StudentRestrictionService:
         """
         # Remove restriction effects before deleting
         StudentRestrictionService._remove_restriction_effects(restriction)
+
+        # Notify student that restriction has been removed
+        if restriction.course:
+            message = (
+                f"Your access to {restriction.course.title} has been restored "
+                f"by {restriction.teacher.username}."
+            )
+            action_url = f"/courses/{restriction.course.id}"
+            title = "Course Access Restored"
+        else:
+            message = (
+                f"Your access to all courses has been restored "
+                f"by {restriction.teacher.username}."
+            )
+            action_url = "/courses"
+            title = "All Courses Access Restored"
+
+        NotificationService.create_notifications_and_send(
+            user_ids=[restriction.student.id],
+            title=title,
+            message=message,
+            action_url=action_url,
+        )
 
         # Delete the restriction
         restriction.delete()

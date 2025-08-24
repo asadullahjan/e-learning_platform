@@ -31,6 +31,7 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
 
         # Let Django handle serializer creation and context automatically
         serializer = self.get_serializer(user_chats, many=True)
+        print("SENDING USER CHATS")
         return Response(serializer.data)
 
     @action(detail=False, methods=["post"])

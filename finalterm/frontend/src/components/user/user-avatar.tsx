@@ -1,14 +1,10 @@
 import Link from "next/link";
 import Avatar from "@/components/ui/avatar";
 import Typography from "../ui/Typography";
+import { User } from "@/services/authService";
 
 interface UserAvatarProps {
-  user: {
-    id: number;
-    username: string;
-    profile_picture?: string | null;
-    role: string;
-  };
+  user: User;
   size?: "sm" | "md" | "lg" | "xl";
   showName?: boolean;
   clickable?: boolean;

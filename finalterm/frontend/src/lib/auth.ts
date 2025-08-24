@@ -11,7 +11,7 @@ export async function getServerUser() {
   }
 
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/auth/profile/`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/auth/profile/`, {
       headers: {
         Cookie: `sessionid=${sessionId.value}`,
       },

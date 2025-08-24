@@ -15,6 +15,7 @@ import { LogOutIcon, UserIcon } from "lucide-react";
 import ProfileAvatar from "@/app/profile/components/profile-header/profile-avatar";
 import { authService } from "@/services/authService";
 import Avatar from "./ui/avatar";
+import { NotificationBell } from "./notification-bell";
 
 export default function Header() {
   const { user, isLoading, setUser } = useAuthStore();
@@ -46,7 +47,8 @@ export default function Header() {
             Courses
           </Link>
         </div>
-        <div className="flex justify-end items-center">
+        <div className="flex justify-end items-center gap-4">
+          {user && <NotificationBell />}
           <DropdownMenu>
             <DropdownMenuTrigger>
               <Avatar

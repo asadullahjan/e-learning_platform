@@ -20,8 +20,8 @@ from elearning.services.chats.chat_websocket_service import (
 class ChatMessageViewSet(viewsets.GenericViewSet):
     permission_classes = [ChatMessagePermission]
 
-    def list(self, request, chat_room_id=None):
-        messages = ChatMessage.objects.filter(chat_room_id=chat_room_id)
+    def list(self, request, chat_room_pk=None):
+        messages = ChatMessage.objects.filter(chat_room_id=chat_room_pk)
 
         # Apply pagination properly
         page = self.paginate_queryset(messages)
@@ -33,11 +33,11 @@ class ChatMessageViewSet(viewsets.GenericViewSet):
         serializer = ChatMessageSerializer(messages, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def create(self, request, chat_room_id=None):
+    def create(self, request, chat_room_pk=None):
         serializer = ChatMessageCreateUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        created_message = ChatMessagesService(chat_room_id).create_message(
+        created_message = ChatMessagesService(chat_room_pk).create_message(
             request.user, serializer.validated_data["content"]
         )
 
@@ -49,11 +49,11 @@ class ChatMessageViewSet(viewsets.GenericViewSet):
         )
         return Response(response_data, status=status.HTTP_201_CREATED)
 
-    def partial_update(self, request, chat_room_id=None, pk=None):
+    def partial_update(self, request, chat_room_pk=None, pk=None):
         serializer = ChatMessageCreateUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        updated_message = ChatMessagesService(chat_room_id).update_message(
+        updated_message = ChatMessagesService(chat_room_pk).update_message(
             serializer.validated_data["content"], request.user, pk
         )
 
@@ -65,12 +65,12 @@ class ChatMessageViewSet(viewsets.GenericViewSet):
         )
         return Response(response_data, status=status.HTTP_200_OK)
 
-    def destroy(self, request, chat_room_id=None, pk=None):
+    def destroy(self, request, chat_room_pk=None, pk=None):
         # Get complete message data before deleting
         message = ChatMessage.objects.get(id=pk)
         message_data = ChatMessageSerializer(message).data
 
-        ChatMessagesService(chat_room_id).delete_message(pk, request.user)
+        ChatMessagesService(chat_room_pk).delete_message(pk, request.user)
 
         # Broadcast complete message data with deletion flag
         ChatWebSocketService.broadcast_message(message_data, "message_deleted")

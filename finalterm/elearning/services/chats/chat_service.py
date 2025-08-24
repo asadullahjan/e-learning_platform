@@ -122,7 +122,13 @@ class ChatService:
         """Get only the chats where the user is an active participant"""
         if not user.is_authenticated:
             return ChatRoom.objects.none()
-
+        print("GETTING USER CHATS")
+        print("user", user)
+        print(
+            ChatRoom.objects.filter(
+                participants__user=user, participants__is_active=True
+            ).distinct()
+        )
         return ChatRoom.objects.filter(
             participants__user=user, participants__is_active=True
         ).distinct()

@@ -1,5 +1,6 @@
 from elearning.models import ChatParticipant, ChatRoom, User
 from elearning.exceptions import ServiceError
+from elearning.services.notification_service import NotificationService
 
 from elearning.services.chats.chat_utils import ChatUtils
 
@@ -28,6 +29,20 @@ class ChatParticipantsService:
 
         ChatParticipant.objects.bulk_create(bulk_participants)
 
+        # Notify participants about being added to group/course chat
+        if chat_room.chat_type in ["group", "course"]:
+            participant_user_ids = [p.id for p in participants]
+            message = (
+                f"You have been added to '{chat_room.name}' "
+                f"by {chat_room.created_by.username}"
+            )
+            NotificationService.create_notifications_and_send(
+                user_ids=participant_user_ids,
+                title=f"Added to {chat_room.chat_type.title()} Chat",
+                message=message,
+                action_url=f"/chats/{chat_room.id}",
+            )
+
     @staticmethod
     def join_public_chat(chat_room: ChatRoom, user: User):
         """Allow user to join a public chat room"""
@@ -50,7 +65,6 @@ class ChatParticipantsService:
             chat_room=chat_room,
             user=user,
             role="participant",
-            is_active=True,
         )
 
         return participant
@@ -74,54 +88,6 @@ class ChatParticipantsService:
         ).update(role=role)
 
     @staticmethod
-    def promote_participant_to_admin(
-        chat_room: ChatRoom, admin_user: User, participant_user: User
-    ):
-        """Promote a participant to admin role - admin only operation"""
-        # Business logic: Only admins can promote others
-        if not ChatUtils.is_user_admin(chat_room, admin_user):
-            raise ServiceError.permission_denied(
-                "Only admins can promote participants"
-            )
-
-        # Business logic: Cannot promote yourself
-        if admin_user == participant_user:
-            raise ServiceError.bad_request("Cannot promote yourself to admin")
-
-        # Business logic: Update the role
-        participant = ChatParticipant.objects.get(
-            chat_room=chat_room, user=participant_user
-        )
-        participant.role = "admin"
-        participant.save()
-
-        return participant
-
-    @staticmethod
-    def demote_admin_to_participant(
-        chat_room: ChatRoom, admin_user: User, target_user: User
-    ):
-        """Demote an admin to participant role - admin only operation"""
-        # Business logic: Only admins can demote others
-        if not ChatUtils.is_user_admin(chat_room, admin_user):
-            raise ServiceError.permission_denied(
-                "Only admins can demote participants"
-            )
-
-        # Business logic: Cannot demote yourself
-        if admin_user == target_user:
-            raise ServiceError.bad_request("Cannot demote yourself")
-
-        # Business logic: Update the role
-        participant = ChatParticipant.objects.get(
-            chat_room=chat_room, user=target_user
-        )
-        participant.role = "participant"
-        participant.save()
-
-        return participant
-
-    @staticmethod
     def deactivate_chat_for_user(chat_room, user):
         """Deactivate chat for specific user - works for all chat types"""
         try:
@@ -141,6 +107,20 @@ class ChatParticipantsService:
             participant = chat_room.participants.get(user=user)
             participant.is_active = True
             participant.save()
+
+            # Notify user about chat access being restored
+            if chat_room.chat_type in ["group", "course"]:
+                message = (
+                    f"Your access to '{chat_room.name}' has been restored "
+                    f"by {chat_room.created_by.username}"
+                )
+                NotificationService.create_notifications_and_send(
+                    user_ids=[user.id],
+                    title="Chat Access Restored",
+                    message=message,
+                    action_url=f"/chats/{chat_room.id}",
+                )
+
             return True
         except ChatParticipant.DoesNotExist:
             raise ServiceError.not_found(

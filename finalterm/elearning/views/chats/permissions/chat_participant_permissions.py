@@ -5,13 +5,13 @@ from elearning.services.chats.chat_utils import ChatUtils
 
 class ChatParticipantPermissions(BasePermission):
     def has_permission(self, request, view):
-        chat_room_id = view.kwargs.get("chat_room_id")
+        chat_room_pk = view.kwargs.get("chat_room_pk")
 
-        if not chat_room_id:
+        if not chat_room_pk:
             return False
 
         try:
-            chat_room = ChatRoom.objects.get(id=chat_room_id)
+            chat_room = ChatRoom.objects.get(id=chat_room_pk)
             request.chat_room = chat_room
         except ChatRoom.DoesNotExist:
             return False

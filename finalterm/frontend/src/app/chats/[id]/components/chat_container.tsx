@@ -16,6 +16,7 @@ import MessageList from "./message_list";
 import AddUsersButton from "./add_users_button";
 import LeaveChatButton from "./leave_chat_button";
 import { useEffect, useState } from "react";
+import { ParticipantsDialog } from "./participants_dialog";
 
 const ChatContainer = ({ chatId }: { chatId: string }) => {
   try {
@@ -86,6 +87,12 @@ const ChatContainer = ({ chatId }: { chatId: string }) => {
                     chatName={chat?.name || "Chat"}
                     chatType={chat?.chat_type || "direct"}
                   />
+                </div>
+              )}
+              {/* Show Participants button for all participants */}
+              {participantStatus?.is_participant && (
+                <div className="ml-4">
+                  <ParticipantsDialog chatId={chatId} />
                 </div>
               )}
             </div>

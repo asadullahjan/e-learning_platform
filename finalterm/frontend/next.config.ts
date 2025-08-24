@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "http",
-        hostname: process.env.NEXT_PUBLIC_URL?.split("://")[1].split(":")[0] || "localhost",
+        hostname: process.env.NEXT_PUBLIC_SERVER_URL?.split("://")[1].split(":")[0] || "localhost",
       },
     ],
   },

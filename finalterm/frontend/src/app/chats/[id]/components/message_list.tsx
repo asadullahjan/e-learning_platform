@@ -37,7 +37,7 @@ const MessageList = ({
     }
 
     console.log("Attempting to connect to WebSocket...");
-    const ws = new WebSocket(`ws://localhost:8000/ws/chat/${chatId}/`);
+    const ws = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_BASE_URL}/ws/chat/${chatId}/`);
 
     ws.onopen = () => {
       console.log("WebSocket connected for listening");

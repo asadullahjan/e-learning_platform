@@ -9,13 +9,13 @@ class ChatMessagePermission(BasePermission):
             return request.user.is_authenticated
 
         if view.action == "create":
-            chat_room_id = request.data.get("chat_room") or view.kwargs.get(
-                "chat_room_id"
+            chat_room_pk = request.data.get("chat_room") or view.kwargs.get(
+                "chat_room_pk"
             )
             return (
                 request.user.is_authenticated
-                and chat_room_id
-                and self._is_participant(request.user, chat_room_id)
+                and chat_room_pk
+                and self._is_participant(request.user, chat_room_pk)
             )
 
         if view.action in ["partial_update", "destroy"]:
@@ -32,21 +32,21 @@ class ChatMessagePermission(BasePermission):
             return self._is_admin(request.user, obj.chat_room.id)
         return True
 
-    def _is_participant(self, user, chat_room_id):
+    def _is_participant(self, user, chat_room_pk):
         """Check if user is an active participant of the chat room"""
         try:
             ChatParticipant.objects.get(
-                chat_room_id=chat_room_id, user=user, is_active=True
+                chat_room_id=chat_room_pk, user=user, is_active=True
             )
             return True
         except ChatParticipant.DoesNotExist:
             return False
 
-    def _is_admin(self, user, chat_room_id):
+    def _is_admin(self, user, chat_room_pk):
         """Check if user is an admin of the chat room"""
         try:
             ChatParticipant.objects.get(
-                chat_room_id=chat_room_id, user=user, role="admin"
+                chat_room_id=chat_room_pk, user=user, role="admin"
             )
             return True
         except ChatParticipant.DoesNotExist:
