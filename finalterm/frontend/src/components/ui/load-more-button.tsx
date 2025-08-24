@@ -29,7 +29,7 @@ export function LoadMoreButton({
       >
         {isLoading ? (
           <>
-            <Spinner className="w-4 h-4 mr-2" />
+            <Spinner size="sm" />
             <Typography variant="span">Loading...</Typography>
           </>
         ) : (

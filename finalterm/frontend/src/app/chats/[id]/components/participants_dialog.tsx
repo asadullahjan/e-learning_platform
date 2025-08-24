@@ -85,7 +85,6 @@ export function ParticipantsDialog({ chatId, trigger }: ParticipantsDialogProps)
           >
             <Users className="h-4 w-4" />
             <span className="hidden sm:inline">Participants</span>
-            <span className="text-xs text-gray-500">({activeParticipants.length})</span>
           </Button>
         )}
       </DialogTrigger>

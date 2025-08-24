@@ -7,9 +7,15 @@ from elearning.services.chats.chat_utils import ChatUtils
 
 class ChatParticipantsService:
     @staticmethod
-    def get_chat_participants(chat_room: ChatRoom):
-        """Get all participants of a chat room"""
-        return ChatParticipant.objects.filter(chat_room=chat_room)
+    def get_chat_participants(
+        chat_room: ChatRoom, is_active: bool = None
+    ):
+        """Get all participants of a chat room, optionally filtered by active 
+        status"""
+        queryset = ChatParticipant.objects.filter(chat_room=chat_room)
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active)
+        return queryset
 
     @staticmethod
     def add_participants_to_chat(

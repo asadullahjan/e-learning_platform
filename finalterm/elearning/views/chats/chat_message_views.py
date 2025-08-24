@@ -1,15 +1,14 @@
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.decorators import action
 from elearning.serializers.chats.chat_message_serializers import (
     ChatMessageCreateUpdateSerializer,
+    ChatMessageSerializer,
 )
 from elearning.services.chats.chat_messages_service import ChatMessagesService
 from elearning.views.chats.permissions.chat_message_permissions import (
     ChatMessagePermission,
-)
-from elearning.serializers.chats.chat_message_serializers import (
-    ChatMessageSerializer,
 )
 from elearning.models import ChatMessage
 from elearning.services.chats.chat_websocket_service import (
@@ -17,24 +16,39 @@ from elearning.services.chats.chat_websocket_service import (
 )
 
 
-class ChatMessageViewSet(viewsets.GenericViewSet):
+class ChatMessageViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for chat messages with automatic pagination and filtering.
+    Inherits from ModelViewSet to get all CRUD operations and pagination for free.
+    """
+
+    serializer_class = ChatMessageSerializer
     permission_classes = [ChatMessagePermission]
+    http_method_names = ["get", "post", "patch", "delete"]  # No PUT method
 
-    def list(self, request, chat_room_pk=None):
-        messages = ChatMessage.objects.filter(chat_room_id=chat_room_pk)
+    def get_queryset(self):
+        """
+        Filter messages by chat room and order by creation date.
+        This enables automatic pagination and filtering.
+        """
+        chat_room_id = self.kwargs["chat_room_pk"]
+        return ChatMessage.objects.filter(chat_room_id=chat_room_id).order_by(
+            "-created_at"
+        )  # Newest first
 
-        # Apply pagination properly
-        page = self.paginate_queryset(messages)
-        if page is not None:
-            serializer = ChatMessageSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        # Fallback if pagination is disabled
-        serializer = ChatMessageSerializer(messages, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    def get_serializer_class(self):
+        """
+        Use different serializers for different actions.
+        """
+        if self.action in ["create", "partial_update"]:
+            return ChatMessageCreateUpdateSerializer
+        return ChatMessageSerializer
 
     def create(self, request, chat_room_pk=None):
-        serializer = ChatMessageCreateUpdateSerializer(data=request.data)
+        """
+        Create a new message and broadcast via WebSocket.
+        """
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         created_message = ChatMessagesService(chat_room_pk).create_message(
@@ -50,7 +64,10 @@ class ChatMessageViewSet(viewsets.GenericViewSet):
         return Response(response_data, status=status.HTTP_201_CREATED)
 
     def partial_update(self, request, chat_room_pk=None, pk=None):
-        serializer = ChatMessageCreateUpdateSerializer(data=request.data)
+        """
+        Update a message and broadcast via WebSocket.
+        """
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         updated_message = ChatMessagesService(chat_room_pk).update_message(
@@ -66,8 +83,11 @@ class ChatMessageViewSet(viewsets.GenericViewSet):
         return Response(response_data, status=status.HTTP_200_OK)
 
     def destroy(self, request, chat_room_pk=None, pk=None):
+        """
+        Delete a message and broadcast via WebSocket.
+        """
         # Get complete message data before deleting
-        message = ChatMessage.objects.get(id=pk)
+        message = self.get_object()
         message_data = ChatMessageSerializer(message).data
 
         ChatMessagesService(chat_room_pk).delete_message(pk, request.user)

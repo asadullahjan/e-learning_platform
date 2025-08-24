@@ -18,109 +18,73 @@ import LeaveChatButton from "./leave_chat_button";
 import { useEffect, useState } from "react";
 import { ParticipantsDialog } from "./participants_dialog";
 
-const ChatContainer = ({ chatId }: { chatId: string }) => {
-  try {
-    const [chat, setChat] = useState<Chat | null>(null);
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [participantStatus, setParticipantStatus] = useState<{
-      is_participant: boolean;
-      role: string | null;
-    } | null>(null);
+interface ChatContainerProps {
+  chatId: string;
+  initialChat: Chat;
+  initialMessages: Message[];
+  hasNextPage: boolean;
+  nextUrl: string | null;
+}
 
-    const getMessages = async () => {
-      const messages = await chatService.server.getMessages(chatId);
-      setMessages(messages);
-    };
+const ChatContainer = ({
+  chatId,
+  initialChat,
+  initialMessages,
+  hasNextPage,
+  nextUrl,
+}: ChatContainerProps) => {
+  const [chat, setChat] = useState<Chat>(initialChat);
+  const [participantStatus, setParticipantStatus] = useState<{
+    is_participant: boolean;
+    role: string | null;
+  } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(true);
 
-    const getChat = async () => {
-      const chat = await chatService.server.getChat(chatId);
-      setChat(chat);
-    };
-
-    useEffect(() => {
-      getChat();
-      getMessages();
-    }, []);
-
-    // Extract participant status from chat data
-    useEffect(() => {
-      if (chat) {
-        setParticipantStatus(
-          chat.current_user_status || {
-            is_participant: false,
-            role: null,
-          }
-        );
-      }
-    }, [chat]);
-
-    console.log(participantStatus);
-
-    if (participantStatus?.is_participant) {
-      return (
-        <Card className="w-full flex flex-col h-full min-h-[80vh]">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <CardTitle>{chat?.name}</CardTitle>
-                <CardDescription>
-                  {chat?.description}
-                  {participantStatus?.role && (
-                    <span className="ml-2 text-sm text-blue-600">• {participantStatus.role}</span>
-                  )}
-                  {chat?.is_public && <span className="ml-2 text-sm text-green-600">• public</span>}
-                </CardDescription>
-              </div>
-              {participantStatus?.role === "admin" && (
-                <div className="ml-4">
-                  <AddUsersButton
-                    chatId={chatId}
-                    chatName={chat?.name || "Chat"}
-                  />
-                </div>
-              )}
-              {/* Show Leave Chat button for all participants in any chat type */}
-              {participantStatus?.is_participant && (
-                <div className="ml-4">
-                  <LeaveChatButton
-                    chatId={chatId}
-                    chatName={chat?.name || "Chat"}
-                    chatType={chat?.chat_type || "direct"}
-                  />
-                </div>
-              )}
-              {/* Show Participants button for all participants */}
-              {participantStatus?.is_participant && (
-                <div className="ml-4">
-                  <ParticipantsDialog chatId={chatId} />
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="border-t max-h-[80vh] overflow-y-auto border-gray-200 flex-1 p-0">
-            <MessageList
-              chat_type={chat?.chat_type || "direct"}
-              messages={messages}
-              chatId={chatId}
-            />
-          </CardContent>
-          <CardFooter className="py-2">
-            <MessageInput id={chatId} />
-          </CardFooter>
-        </Card>
+  // Extract participant status from chat data
+  useEffect(() => {
+    if (chat) {
+      setParticipantStatus(
+        chat.current_user_status || {
+          is_participant: false,
+          role: null,
+        }
       );
+      setIsProcessing(false);
     }
+  }, [chat]);
 
-    // User is not a participant - show messages but replace input with join button
+  // Show processing state while determining participant status
+  if (isProcessing) {
     return (
-      <Card className="w-full flex flex-col">
+      <Card className="w-full flex flex-col h-full min-h-[80vh]">
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-6 w-48 rounded"></div>
+          </div>
+        </CardHeader>
+        <CardContent className="border-t border-gray-200 flex-1 p-6">
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+            <div className="mt-2 text-gray-600">Processing chat access...</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (participantStatus?.is_participant) {
+    return (
+      <Card className="w-full flex flex-col h-full min-h-[80vh]">
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <CardTitle>{chat?.name}</CardTitle>
+              <CardTitle>{chat.name}</CardTitle>
               <CardDescription>
-                {chat?.description}
-                {chat?.is_public && <span className="ml-2 text-sm text-green-600">• Public</span>}
+                {chat.description}
+                {participantStatus?.role && (
+                  <span className="ml-2 text-sm text-blue-600">• {participantStatus.role}</span>
+                )}
+                {chat?.is_public && <span className="ml-2 text-sm text-green-600">• public</span>}
               </CardDescription>
             </div>
             {participantStatus?.role === "admin" && (
@@ -141,70 +105,84 @@ const ChatContainer = ({ chatId }: { chatId: string }) => {
                 />
               </div>
             )}
+            {/* Show Participants button for all participants */}
+            {participantStatus?.is_participant && (
+              <div className="ml-4">
+                <ParticipantsDialog chatId={chatId} />
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="border-t max-h-[80vh] overflow-y-auto border-gray-200 flex-1 p-0">
           <MessageList
             chat_type={chat?.chat_type || "direct"}
-            messages={messages}
             chatId={chatId}
+            initialMessages={initialMessages}
+            initialHasNextPage={hasNextPage}
+            initialNextUrl={nextUrl}
           />
         </CardContent>
         <CardFooter className="py-2">
-          {chat?.is_public ? (
-            <JoinChatButton chatId={chatId} />
-          ) : (
-            <div className="w-full text-center">
-              <div className="text-sm text-gray-600">
-                This is a private chat room. You need to be invited by an admin to participate.
-              </div>
-            </div>
-          )}
+          <MessageInput id={chatId} />
         </CardFooter>
       </Card>
     );
-  } catch (error: any) {
-    if (error.status === 403 || error.status === 404) {
-      return (
-        <Card className="w-full flex flex-col">
-          <CardHeader>
-            <CardTitle>Chat Not Found</CardTitle>
-            <CardDescription>
-              This chat room doesn't exist or you don't have access to it.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="border-t border-gray-200 p-6">
-            <div className="text-center space-y-4">
-              <div className="text-gray-600">
-                The chat room may be private or may have been deleted.
-              </div>
-              <Link href="/chats">
-                <Button>Back to Chats</Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-
-    // Generic error
-    return (
-      <Card className="w-full flex flex-col">
-        <CardHeader>
-          <CardTitle>Error</CardTitle>
-          <CardDescription>Something went wrong while loading this chat room.</CardDescription>
-        </CardHeader>
-        <CardContent className="border-t border-gray-200 p-6">
-          <div className="text-center space-y-4">
-            <div className="text-gray-600">Please try again later.</div>
-            <Link href="/chats">
-              <Button>Back to Chats</Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    );
   }
+
+  // User is not a participant - show messages but replace input with join button
+  return (
+    <Card className="w-full flex flex-col">
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <CardTitle>{chat?.name}</CardTitle>
+            <CardDescription>
+              {chat?.description}
+              {chat?.is_public && <span className="ml-2 text-sm text-green-600">• Public</span>}
+            </CardDescription>
+          </div>
+          {participantStatus?.role === "admin" && (
+            <div className="ml-4">
+              <AddUsersButton
+                chatId={chatId}
+                chatName={chat?.name || "Chat"}
+              />
+            </div>
+          )}
+          {/* Show Leave Chat button for all participants in any chat type */}
+          {participantStatus?.is_participant && (
+            <div className="ml-4">
+              <LeaveChatButton
+                chatId={chatId}
+                chatName={chat?.name || "Chat"}
+                chatType={chat?.chat_type || "direct"}
+              />
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="border-t max-h-[80vh] overflow-y-auto border-gray-200 flex-1 p-0">
+        <MessageList
+          chat_type={chat?.chat_type || "direct"}
+          chatId={chatId}
+          initialMessages={initialMessages}
+          initialHasNextPage={hasNextPage}
+          initialNextUrl={nextUrl}
+        />
+      </CardContent>
+      <CardFooter className="py-2">
+        {chat?.is_public ? (
+          <JoinChatButton chatId={chatId} />
+        ) : (
+          <div className="w-full text-center">
+            <div className="text-sm text-gray-600">
+              This is a private chat room. You need to be invited by an admin to participate.
+            </div>
+          </div>
+        )}
+      </CardFooter>
+    </Card>
+  );
 };
 
 export default ChatContainer;

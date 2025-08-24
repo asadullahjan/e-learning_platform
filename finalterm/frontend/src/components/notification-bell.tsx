@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Bell, Check, CheckCheck, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown";
 import Typography from "@/components/ui/Typography";
-import { useLoadMore } from "@/components/hooks/useLoadMore";
 import { notificationService, Notification } from "@/services/notificationService";
 import { showToast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
@@ -14,56 +13,60 @@ import { useAuthStore } from "@/store/authStore";
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [localNotifications, setLocalNotifications] = useState<Notification[]>([]);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
   const { user } = useAuthStore();
 
-  const {
-    data: notifications,
-    isLoading,
-    hasNextPage,
-    loadMore,
-    refresh,
-  } = useLoadMore<Notification>({
-    onLoadMore: async (isInitialLoad) => {
-      if (isInitialLoad) {
-        const response = await notificationService.getNotifications(1);
-        setCurrentPage(1);
-        const newNotifications = response.results;
-        setLocalNotifications(newNotifications);
-        return {
-          data: newNotifications,
-          hasNextPage: !!response.next,
-        };
-      } else {
-        const nextPage = currentPage + 1;
-        const response = await notificationService.getNotifications(nextPage);
-        setCurrentPage(nextPage);
-        const newNotifications = response.results;
-        setLocalNotifications((prev) => [...prev, ...newNotifications]);
-        return {
-          data: newNotifications,
-          hasNextPage: !!response.next,
-        };
-      }
-    },
-  });
+  const fetchNotifications = async (page: number = 1) => {
+    try {
+      setIsLoading(true);
+      const response = await notificationService.getNotifications(page);
 
-  // Sync localNotifications with notifications from useLoadMore
+      if (page === 1) {
+        setNotifications(response.results);
+        setCurrentPage(1);
+      } else {
+        setNotifications((prev) => [...prev, ...response.results]);
+        setCurrentPage(page);
+      }
+
+      setHasNextPage(!!response.next);
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+      showToast.error("Failed to fetch notifications");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadMore = async () => {
+    if (hasNextPage && !isLoading) {
+      await fetchNotifications(currentPage + 1);
+    }
+  };
+
+  const refresh = async () => {
+    await fetchNotifications(1);
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    if (user) {
+      fetchNotifications(1);
+    }
+  }, [user]);
+
+  // Update unread count
   useEffect(() => {
     if (notifications.length > 0) {
-      setLocalNotifications(notifications);
-    }
-  }, [notifications]);
-
-  useEffect(() => {
-    if (localNotifications.length > 0) {
-      const unread = localNotifications.filter((n) => !n.is_read).length;
+      const unread = notifications.filter((n) => !n.is_read).length;
       setUnreadCount(unread);
     }
-  }, [localNotifications]);
+  }, [notifications]);
 
   const handleNotificationClick = async (notification: Notification) => {
     if (!notification.is_read) {
@@ -114,7 +117,7 @@ export function NotificationBell() {
         const newNotification = data.notification;
 
         // Check for duplicates before adding
-        const isDuplicate = localNotifications.some((n) => n.id === newNotification.id);
+        const isDuplicate = notifications.some((n) => n.id === newNotification.id);
 
         if (!isDuplicate) {
           // Increment unread count immediately for better UX
@@ -122,8 +125,8 @@ export function NotificationBell() {
 
           // Add the new notification to the beginning of the list immediately
           // This ensures it appears right away without waiting for API refresh
-          const updatedNotifications = [newNotification, ...localNotifications];
-          setLocalNotifications(updatedNotifications);
+          const updatedNotifications = [newNotification, ...notifications];
+          setNotifications(updatedNotifications);
 
           // Update the useLoadMore data directly
           if (typeof refresh === "function") {
@@ -245,7 +248,7 @@ export function NotificationBell() {
         </div>
 
         <div className="overflow-y-auto max-h-64">
-          {localNotifications.length === 0 && !isLoading ? (
+          {notifications.length === 0 && !isLoading ? (
             <div className="p-4 text-center">
               <Typography
                 variant="span"
@@ -255,7 +258,7 @@ export function NotificationBell() {
               </Typography>
             </div>
           ) : (
-            localNotifications.map((notification) => (
+            notifications.map((notification) => (
               <div
                 key={notification.id}
                 className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${

@@ -53,8 +53,10 @@ export const chatService = {
     return response.data;
   },
 
-  getMessages: async (id: string) => {
-    const response = await api.get(`/chats/${id}/messages/`);
+  getMessages: async (id: string, page: number = 1): Promise<ListResponse<Message>> => {
+    const response = await api.get<ListResponse<Message>>(`/chats/${id}/messages/`, {
+      params: { page },
+    });
     return response.data;
   },
 
@@ -131,10 +133,12 @@ export const chatService = {
       const response = await serverApi.get<Chat>(`/chats/course/${courseId}/`);
       return response.data;
     },
-    getMessages: async (id: string) => {
+    getMessages: async (id: string, page: number = 1) => {
       const serverApi = await createServerApi();
-      const response = await serverApi.get<ListResponse<Message>>(`/chats/${id}/messages/`);
-      return response.data.results as Message[];
+      const response = await serverApi.get<ListResponse<Message>>(`/chats/${id}/messages/`, {
+        params: { page },
+      });
+      return response.data;
     },
     deactivateChat: async (id: string) => {
       const serverApi = await createServerApi();
