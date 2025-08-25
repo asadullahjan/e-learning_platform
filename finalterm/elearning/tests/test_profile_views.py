@@ -9,7 +9,7 @@ User = get_user_model()
 
 
 class UserProfileTest(BaseAPITestCase):
-    """Test user profile endpoints"""
+    """Test user profile endpoints via UserViewSet"""
 
     def setUp(self):
         self.client = APIClient()
@@ -23,8 +23,8 @@ class UserProfileTest(BaseAPITestCase):
         )
         self.client.force_authenticate(user=self.user)
 
-        self.profile_url = "/api/auth/profile/"
-        self.update_url = "/api/auth/profile/update/"
+        self.profile_url = "/api/users/profile/"
+        self.update_url = "/api/users/profile_update/"
 
     def test_get_user_profile(self):
         """Test getting user profile"""
@@ -40,7 +40,7 @@ class UserProfileTest(BaseAPITestCase):
         """Test updating user profile"""
         update_data = {"first_name": "Jane", "last_name": "Smith"}
 
-        response = self.client.put(self.update_url, update_data)
+        response = self.client.patch(self.update_url, update_data)
         self.assertStatusCode(response, status.HTTP_200_OK)
 
         # Check user was updated

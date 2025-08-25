@@ -28,13 +28,6 @@ export interface AuthResponse {
   user: User;
 }
 
-export interface ProfileUpdateData {
-  username?: string;
-  first_name?: string;
-  last_name?: string;
-  profile_picture?: File;
-}
-
 class AuthService {
   async login(data: LoginData): Promise<AuthResponse> {
     const response = await api.post<AuthResponse>("/auth/login/", data);
@@ -48,16 +41,6 @@ class AuthService {
 
   async logout(): Promise<{ message: string }> {
     const response = await api.post<{ message: string }>("/auth/logout/");
-    return response.data;
-  }
-
-  async getProfile(): Promise<User> {
-    const response = await api.get<User>("/auth/profile/");
-    return response.data;
-  }
-
-  async updateProfile(data: FormData): Promise<AuthResponse> {
-    const response = await api.put<AuthResponse>("/auth/profile/update/", data);
     return response.data;
   }
 

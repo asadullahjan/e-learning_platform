@@ -7,19 +7,16 @@ app_name = "elearning"
 
 # Main router
 router = DefaultRouter()
+router.register(r"users", views.UserViewSet, basename="user")
 router.register(r"courses", views.CourseViewSet, basename="course")
 router.register(r"enrollments", views.EnrollmentViewSet, basename="enrollment")
 router.register(r"chats", views.ChatRoomViewSet, basename="chat")
 router.register(r"statuses", views.StatusViewSet, basename="status")
 router.register(
-    r"restrictions", 
-    views.StudentRestrictionViewSet, 
-    basename="restriction"
+    r"restrictions", views.StudentRestrictionViewSet, basename="restriction"
 )
 router.register(
-    r"notifications", 
-    views.NotificationViewSet, 
-    basename="notification"
+    r"notifications", views.NotificationViewSet, basename="notification"
 )
 
 # Nested routers
@@ -44,14 +41,6 @@ urlpatterns = [
     path("auth/register/", views.register, name="register"),
     path("auth/login/", views.login_view, name="login"),
     path("auth/logout/", views.logout_view, name="logout"),
-    path("auth/profile/", views.user_profile, name="profile"),
-    path("auth/profile/update/", views.update_profile, name="update_profile"),
-    path("users/search/", views.search_users, name="search_users"),
-    path(
-        "users/<str:username>/",
-        views.get_user_by_username,
-        name="user_by_username",
-    ),
     # Include router URLs
     path("", include(router.urls)),
     path("", include(courses_router.urls)),

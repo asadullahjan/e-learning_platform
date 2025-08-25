@@ -5,7 +5,7 @@ import { User } from "@/services/authService";
 
 interface UserAvatarProps {
   user: User;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl" | "4xl";
   showName?: boolean;
   clickable?: boolean;
   className?: string;

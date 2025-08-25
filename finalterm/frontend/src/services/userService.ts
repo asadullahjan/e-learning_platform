@@ -13,17 +13,61 @@ export interface User {
   is_active: boolean;
 }
 
+export interface ProfileUpdateData {
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  profile_picture?: File;
+}
+
 export const userService = {
+  // User listing and search
+  listUsers: async (): Promise<User[]> => {
+    const response = await api.get<{ results: User[] }>("/users/");
+    return response.data.results;
+  },
+
+  searchUsers: async (query: string): Promise<User[]> => {
+    // Use the ModelViewSet search functionality
+    const response = await api.get<{ results: User[] }>("/users/", {
+      params: { search: query },
+    });
+    return response.data.results;
+  },
+
+  // User retrieval
   getUserByUsername: async (username: string): Promise<User> => {
     const response = await api.get<User>(`/users/${username}/`);
     return response.data;
   },
 
-  searchUsers: async (query: string): Promise<User[]> => {
-    const response = await api.get<{ results: User[] }>("/users/search/", {
-      params: { q: query },
-    });
-    return response.data.results;
+  getUserById: async (id: number): Promise<User> => {
+    const response = await api.get<User>(`/users/${id}/`);
+    return response.data;
+  },
+
+  // User updates
+  updateUser: async (id: number, userData: Partial<User>): Promise<User> => {
+    const response = await api.patch<User>(`/users/${id}/`, userData);
+    return response.data;
+  },
+
+  // Current user operations
+  getCurrentUserProfile: async (): Promise<User> => {
+    const response = await api.get<User>("/users/me/");
+    return response.data;
+  },
+
+  // Update current user profile - requires userId (should come from auth store)
+  updateCurrentUserProfile: async (userId: number, userData: Partial<User>): Promise<User> => {
+    const response = await api.patch<User>(`/users/${userId}/`, userData);
+    return response.data;
+  },
+
+  // Convenience method for profile updates with FormData
+  updateProfile: async (userId: number, data: FormData): Promise<User> => {
+    const response = await api.patch<User>(`/users/${userId}/`, data);
+    return response.data;
   },
 
   server: {

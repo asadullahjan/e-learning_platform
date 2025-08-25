@@ -60,11 +60,11 @@ export default function UserProfilePage({ params }: UserProfilePageProps) {
 
   const handleStartChat = async () => {
     if (!currentUser || !user) return;
-    
+
     try {
       setIsStartingChat(true);
       const response = await chatService.findOrCreateDirectChat(username);
-      
+
       if (response.created) {
         toast({
           title: "Success",
@@ -76,7 +76,7 @@ export default function UserProfilePage({ params }: UserProfilePageProps) {
           description: `Opened existing chat with ${username}`,
         });
       }
-      
+
       router.push(`/chats/${response.chat_room.id}`);
     } catch (error) {
       console.error("Failed to start chat:", error);
@@ -109,11 +109,17 @@ export default function UserProfilePage({ params }: UserProfilePageProps) {
 
   if (!user) {
     return (
-      <div className="max-w-4xl mx-auto text-center py-8">
-        <Typography variant="h2" color="error">
+      <div className="mx-auto text-center py-8">
+        <Typography
+          variant="h2"
+          color="error"
+        >
           User not found
         </Typography>
-        <Typography variant="p" color="muted">
+        <Typography
+          variant="p"
+          color="muted"
+        >
           The user "{username}" could not be found.
         </Typography>
       </div>
@@ -121,14 +127,14 @@ export default function UserProfilePage({ params }: UserProfilePageProps) {
   }
 
   const isOwnProfile = currentUser?.username === username;
-  const joinDate = new Date(user.created_at).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+  const joinDate = new Date(user.created_at).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="mx-auto">
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8 shadow-sm">
         <div className="text-center">
           <div className="flex justify-center mb-4">
@@ -137,28 +143,40 @@ export default function UserProfilePage({ params }: UserProfilePageProps) {
                 id: user.id,
                 username: user.username,
                 profile_picture: user.profile_picture,
-                role: user.role
+                role: user.role,
               }}
-              size="xl"
+              size="4xl"
               clickable={false}
               showName={false}
             />
           </div>
-          
-          <Typography variant="h1" className="text-gray-900 mb-2">
+
+          <Typography
+            variant="h1"
+            className="text-gray-900 mb-2"
+          >
             {user.username}
           </Typography>
-          
-          <Typography variant="p" color="muted" className="mb-3">
+
+          <Typography
+            variant="p"
+            color="muted"
+            className="mb-3"
+          >
             {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
           </Typography>
-          
-          <Typography variant="span" color="muted" size="sm" className="block mb-4">
+
+          <Typography
+            variant="span"
+            color="muted"
+            size="sm"
+            className="block mb-4"
+          >
             Member since {joinDate}
           </Typography>
 
           {!isOwnProfile && (
-            <Button 
+            <Button
               onClick={handleStartChat}
               disabled={isStartingChat}
               className="inline-flex items-center gap-2"
@@ -171,16 +189,25 @@ export default function UserProfilePage({ params }: UserProfilePageProps) {
       </div>
 
       <div className="mb-6">
-        <Typography variant="h2" className="text-gray-900 mb-2">
+        <Typography
+          variant="h2"
+          className="text-gray-900 mb-2"
+        >
           Status Updates
         </Typography>
-        <Typography variant="p" color="muted">
+        <Typography
+          variant="p"
+          color="muted"
+        >
           Recent updates from {user.username}
         </Typography>
       </div>
-      
+
       <CreateStatusButton onStatusCreated={handleStatusCreated} />
-      <UserStatusList ref={statusListRef} username={username} />
+      <UserStatusList
+        ref={statusListRef}
+        username={username}
+      />
     </div>
   );
 }

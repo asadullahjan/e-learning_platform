@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 interface AvatarProps {
   src?: string | null;
   alt?: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl" | "4xl";
   className?: string;
   fallback?: React.ReactNode;
 }
@@ -16,6 +16,8 @@ const Avatar = ({ src, alt, size = "md", className, fallback }: AvatarProps) => 
     md: "w-10 h-10",
     lg: "w-12 h-12",
     xl: "w-16 h-16",
+    "2xl": "w-20 h-20",
+    "4xl": "w-40 h-40",
   };
 
   // Handle profile picture URL
