@@ -50,6 +50,48 @@ class ChatParticipantsService:
             )
 
     @staticmethod
+    def add_user_to_chat_by_username(chat_room: ChatRoom, username: str):
+        """Add a user to chat by username (admin only)"""
+        try:
+            user_to_add = User.objects.get(username=username, is_active=True)
+            
+            # Check if user is already a participant
+            if ChatParticipant.objects.filter(
+                chat_room=chat_room,
+                user=user_to_add,
+                is_active=True,
+            ).exists():
+                raise ServiceError.bad_request(
+                    "User is already a participant in this chat"
+                )
+
+            # Add participant
+            ChatParticipantsService.add_participants_to_chat(
+                chat_room, [user_to_add]
+            )
+
+            # Return the created participant
+            return ChatParticipant.objects.get(
+                chat_room=chat_room, user=user_to_add
+            )
+        except User.DoesNotExist:
+            raise ServiceError.not_found(f"User '{username}' not found")
+
+    @staticmethod
+    def remove_participant_from_chat(chat_room: ChatRoom, user: User):
+        """Remove a participant from chat (admin only)"""
+        if not ChatUtils.is_user_admin(chat_room, user):
+            raise ServiceError.permission_denied(
+                "User is not an admin of this chat room"
+            )
+        
+        participant = ChatParticipant.objects.get(
+            chat_room=chat_room, user=user
+        )
+        participant.delete()
+        return participant
+
+    @staticmethod
     def join_public_chat(chat_room: ChatRoom, user: User):
         """Allow user to join a public chat room"""
         # Check if chat is public

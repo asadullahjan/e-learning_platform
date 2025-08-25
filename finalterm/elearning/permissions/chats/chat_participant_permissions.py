@@ -3,7 +3,7 @@ from elearning.models import ChatRoom
 from elearning.services.chats.chat_utils import ChatUtils
 
 
-class ChatParticipantPermissions(BasePermission):
+class ChatParticipantPermission(BasePermission):
     def has_permission(self, request, view):
         chat_room_pk = view.kwargs.get("chat_room_pk")
 
@@ -33,4 +33,18 @@ class ChatParticipantPermissions(BasePermission):
                 # Joining themselves - check if chat is public
                 return chat_room.is_public
 
+        if view.action == "update_role":
+            # Only admins can update roles
+            return ChatUtils.is_user_admin(chat_room, request.user)
+
+        if view.action in ["deactivate", "reactivate"]:
+            # Users can deactivate/reactivate themselves,
+            # admins can do it for others
+            return True
+
+        if view.action == "destroy":
+            # Only admins can remove participants
+            return ChatUtils.is_user_admin(chat_room, request.user)
+
+        # Default: only chat creator has access
         return request.user == chat_room.created_by

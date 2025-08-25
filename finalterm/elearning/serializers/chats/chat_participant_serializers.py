@@ -27,3 +27,32 @@ class ChatParticipantRoleUpdateSerializer(serializers.ModelSerializer):
         if value not in ["admin", "participant"]:
             raise serializers.ValidationError("Invalid role")
         return value
+
+    def validate(self, attrs):
+        """Validate that user is not changing their own role"""
+        user = attrs.get("user")
+        request_user = self.context["request"].user
+
+        if user == request_user:
+            raise serializers.ValidationError("Cannot change your own role")
+        return attrs
+
+
+class ChatParticipantCreateSerializer(serializers.Serializer):
+    """Serializer for creating chat participants"""
+
+    username = serializers.CharField(
+        required=False,
+        help_text="Username to add (admin only). Leave empty to join yourself.",
+    )
+
+    def validate_username(self, value):
+        """Validate username if provided"""
+        if value:
+            if not User.objects.filter(
+                username=value, is_active=True
+            ).exists():
+                raise serializers.ValidationError(
+                    f"User '{value}' not found or inactive"
+                )
+        return value

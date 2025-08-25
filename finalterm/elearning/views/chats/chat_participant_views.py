@@ -5,20 +5,28 @@ from rest_framework import status
 from elearning.serializers.chats.chat_participant_serializers import (
     ChatParticipantListSerializer,
     ChatParticipantRoleUpdateSerializer,
+    ChatParticipantCreateSerializer,
 )
 from elearning.services.chats.chat_participants_service import (
     ChatParticipantsService,
 )
 from elearning.permissions import ChatParticipantPermission
-from elearning.models import User, ChatParticipant
+from elearning.models import ChatParticipant
 
 
 class ChatParticipantViewSet(viewsets.ModelViewSet):
     """ViewSet for chat participant operations"""
 
     permission_classes = [ChatParticipantPermission]
-    serializer_class = ChatParticipantListSerializer
     http_method_names = ["get", "post", "patch", "delete"]
+
+    def get_serializer_class(self):
+        """Return appropriate serializer class based on action"""
+        if self.action == "create":
+            return ChatParticipantCreateSerializer
+        elif self.action == "update_role":
+            return ChatParticipantRoleUpdateSerializer
+        return ChatParticipantListSerializer
 
     def get_queryset(self):
         """Return participants for the specific chat room"""
@@ -32,80 +40,82 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
         chat_participants = ChatParticipantsService.get_chat_participants(
             request.chat_room, is_active=True
         )
-        serializer = ChatParticipantListSerializer(
-            chat_participants, many=True
-        )
+        serializer = self.get_serializer(chat_participants, many=True)
         return Response(serializer.data)
+
+    def perform_create(self, serializer):
+        """Handle the actual creation logic"""
+        username = serializer.validated_data.get("username")
+
+        if username:
+            # Admin is adding another user
+            participant = ChatParticipantsService.add_user_to_chat_by_username(
+                self.request.chat_room, username
+            )
+            # Store data for response customization
+            self._creation_data = {
+                "type": "add_user",
+                "participant": participant,
+                "username": username,
+            }
+        else:
+            # User is joining the chat themselves
+            participant = ChatParticipantsService.join_public_chat(
+                self.request.chat_room, self.request.user
+            )
+            # Store data for response customization
+            self._creation_data = {
+                "type": "join_chat",
+                "participant": participant,
+            }
 
     def create(self, request, chat_room_pk=None):
         """Create a new chat participant (join a chat or add user)"""
-        username = request.data.get("username")
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        # If username is provided, admin is adding another user
-        if username:
-            try:
-                user_to_add = User.objects.get(
-                    username=username, is_active=True
-                )
+        # Perform the creation
+        self.perform_create(serializer)
 
-                # Check if user is already a participant
-                if ChatParticipant.objects.filter(
-                    chat_room=request.chat_room,
-                    user=user_to_add,
-                    is_active=True,
-                ).exists():
-                    return Response(
-                        {
-                            "detail": (
-                                "User is already a participant in this chat"
-                            )
-                        },
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+        # Get creation data
+        creation_data = getattr(self, "_creation_data", {})
+        creation_type = creation_data.get("type")
 
-                # Add participant using existing method
-                ChatParticipantsService.add_participants_to_chat(
-                    request.chat_room, [user_to_add]
-                )
+        # Customize response based on action type
+        if creation_type == "add_user":
+            response = Response(
+                {
+                    "message": (
+                        f"Successfully added {creation_data['username']} to "
+                        f"{request.chat_room.name}"
+                    ),
+                    "participant": ChatParticipantListSerializer(
+                        creation_data["participant"]
+                    ).data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        else:
+            response = Response(
+                {
+                    "message": (
+                        f"Successfully joined {request.chat_room.name}"
+                    ),
+                    "role": creation_data["participant"].role,
+                },
+                status=status.HTTP_201_CREATED,
+            )
 
-                # Get the created participant for response
-                participant = ChatParticipant.objects.get(
-                    chat_room=request.chat_room, user=user_to_add
-                )
+        # Clean up instance attributes
+        if hasattr(self, "_creation_data"):
+            delattr(self, "_creation_data")
 
-                return Response(
-                    {
-                        "message": f"Successfully added {username} to "
-                        f"{request.chat_room.name}",
-                        "participant": ChatParticipantListSerializer(
-                            participant
-                        ).data,
-                    },
-                    status=status.HTTP_201_CREATED,
-                )
-            except User.DoesNotExist:
-                return Response(
-                    {"detail": f"User '{username}' not found"},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
-        # Otherwise, user is joining the chat themselves
-        participant = ChatParticipantsService.join_public_chat(
-            request.chat_room, request.user
-        )
-
-        return Response(
-            {
-                "message": f"Successfully joined {request.chat_room.name}",
-                "role": participant.role,
-            },
-            status=status.HTTP_201_CREATED,
-        )
+        return response
 
     @action(detail=False, methods=["post"])
     def update_role(self, request, chat_room_pk=None):
         """Update a chat participant role (admin only)"""
-        serializer = ChatParticipantRoleUpdateSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         ChatParticipantsService.update_participant_role(
@@ -131,3 +141,19 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
             request.chat_room, request.user
         )
         return Response(status=status.HTTP_200_OK)
+
+    def destroy(self, request, chat_room_pk=None, pk=None):
+        """Remove a participant from chat (admin only)"""
+        try:
+            participant = ChatParticipant.objects.get(
+                chat_room=request.chat_room, id=pk
+            )
+            ChatParticipantsService.remove_participant_from_chat(
+                request.chat_room, participant.user
+            )
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ChatParticipant.DoesNotExist:
+            return Response(
+                {"detail": "Participant not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )

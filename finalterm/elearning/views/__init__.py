@@ -1,5 +1,5 @@
 # Import all views for easy access
-from .auth_views import register, login_view, logout_view
+from .auth_views import AuthViewSet
 from .courses import CourseViewSet, CourseLessonViewSet, EnrollmentViewSet
 from .courses.restrictions_views import StudentRestrictionViewSet
 from .chats.chat_room_views import ChatRoomViewSet
@@ -11,9 +11,7 @@ from .courses.feedback_views import FeedbackViewSet
 from .notification_views import NotificationViewSet
 
 __all__ = [
-    "register",
-    "login_view",
-    "logout_view",
+    "AuthViewSet",
     "CourseViewSet",
     "CourseLessonViewSet",
     "EnrollmentViewSet",
