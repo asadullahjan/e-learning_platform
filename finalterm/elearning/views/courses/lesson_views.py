@@ -168,7 +168,7 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
 
         if not lesson.file:
             return Response(
-                {"error": "No file available for download"},
+                {"detail": "No file available for download"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 

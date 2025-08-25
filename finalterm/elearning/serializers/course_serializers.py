@@ -97,7 +97,6 @@ class CourseDetailSerializer(CourseSerializer):
 
     def get_is_enrolled(self, obj):
         request = self.context.get("request")
-        print("DEBUG - request in serializer:", request.user)
         if request and request.user.is_authenticated:
             return obj.enrollments.filter(
                 user=request.user, is_active=True

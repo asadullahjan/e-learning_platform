@@ -1,5 +1,6 @@
 from elearning.models import Enrollment, Course, User
 from elearning.services.notification_service import NotificationService
+from elearning.exceptions import ServiceError
 
 
 class EnrollmentService:
@@ -26,7 +27,9 @@ class EnrollmentService:
 
         if existing_enrollment:
             if existing_enrollment.is_active:
-                raise ValueError("Student is already enrolled in this course")
+                raise ServiceError.conflict(
+                    "Student is already enrolled in this course"
+                )
             else:
                 # Reactivate existing enrollment
                 existing_enrollment.is_active = True

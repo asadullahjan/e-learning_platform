@@ -40,4 +40,4 @@ class UserViewSet(ModelViewSet):
             return Response(serializer.data)
         except User.DoesNotExist:
             error_status = status.HTTP_404_NOT_FOUND
-            return Response({"error": "User not found"}, status=error_status)
+            return Response({"detail": "User not found"}, status=error_status)

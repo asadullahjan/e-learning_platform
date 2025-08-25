@@ -1,5 +1,6 @@
 from elearning.models import StudentRestriction, Enrollment, ChatParticipant
 from elearning.services.notification_service import NotificationService
+from elearning.exceptions import ServiceError
 
 
 class StudentRestrictionService:
@@ -22,21 +23,22 @@ class StudentRestrictionService:
             StudentRestriction instance
 
         Raises:
-            ValueError: If validation fails
+            ServiceError: If validation fails
         """
         if teacher.role != "teacher":
-            raise ValueError("Only teachers can create restrictions")
+            raise ServiceError.permission_denied(
+                "Only teachers can create restrictions"
+            )
 
         if teacher.id == student_id:
-            raise ValueError("Cannot restrict yourself")
+            raise ServiceError.bad_request("Cannot restrict yourself")
 
-        # Check if restriction already exists
         existing = StudentRestriction.objects.filter(
             teacher=teacher, student_id=student_id, course_id=course_id
         ).first()
 
         if existing:
-            raise ValueError("Restriction already exists")
+            raise ServiceError.conflict("Restriction already exists")
 
         # Create the restriction
         restriction = StudentRestriction.objects.create(

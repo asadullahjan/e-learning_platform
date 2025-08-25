@@ -45,7 +45,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         ).update(is_read=True)
 
         if updated_count == 0:
-            return Response({"error": "Notification not found"}, status=404)
+            return Response({"detail": "Notification not found"}, status=404)
 
         return Response(
             {"message": "Notification marked as read", "is_read": True}

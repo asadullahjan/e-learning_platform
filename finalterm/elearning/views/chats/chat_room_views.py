@@ -31,7 +31,6 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
 
         # Let Django handle serializer creation and context automatically
         serializer = self.get_serializer(user_chats, many=True)
-        print("SENDING USER CHATS")
         return Response(serializer.data)
 
     @action(detail=False, methods=["post"])
@@ -41,7 +40,7 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
         username = request.data.get("username")
         if not username:
             return Response(
-                {"error": "Username is required"},
+                {"detail": "Username is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -57,7 +56,7 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
         except Exception as e:
             print(f"Error in find_or_create_direct: {str(e)}")
             return Response(
-                {"error": str(e)}, status=status.HTTP_400_BAD_REQUEST
+                {"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
 
     def perform_create(self, serializer):

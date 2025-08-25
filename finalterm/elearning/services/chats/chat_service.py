@@ -3,6 +3,7 @@ from elearning.models import ChatParticipant, ChatRoom, User
 from elearning.services.chats.chat_participants_service import (
     ChatParticipantsService,
 )
+from elearning.exceptions import ServiceError
 
 
 class ChatService:
@@ -72,10 +73,10 @@ class ChatService:
                 username=other_username, is_active=True
             )
         except User.DoesNotExist:
-            raise ValueError(f"User '{other_username}' not found")
+            raise ServiceError.not_found(f"User '{other_username}' not found")
 
         if creator == other_user:
-            raise ValueError("Cannot create chat with yourself")
+            raise ServiceError.bad_request("Cannot create chat with yourself")
 
         # Check if direct chat already exists
         existing_chat = ChatService._find_existing_direct_chat(
@@ -122,13 +123,7 @@ class ChatService:
         """Get only the chats where the user is an active participant"""
         if not user.is_authenticated:
             return ChatRoom.objects.none()
-        print("GETTING USER CHATS")
-        print("user", user)
-        print(
-            ChatRoom.objects.filter(
-                participants__user=user, participants__is_active=True
-            ).distinct()
-        )
+
         return ChatRoom.objects.filter(
             participants__user=user, participants__is_active=True
         ).distinct()

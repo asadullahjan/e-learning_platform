@@ -18,8 +18,9 @@ router.register(
 router.register(
     r"notifications", views.NotificationViewSet, basename="notification"
 )
+router.register(r"auth", views.AuthViewSet, basename="auth")
 
-# Nested routers
+# Courses router
 courses_router = NestedDefaultRouter(router, r"courses", lookup="course")
 courses_router.register(
     r"lessons", views.CourseLessonViewSet, basename="course-lessons"
@@ -28,6 +29,7 @@ courses_router.register(
     r"feedbacks", views.FeedbackViewSet, basename="course-feedbacks"
 )
 
+# Chats router
 chats_router = NestedDefaultRouter(router, r"chats", lookup="chat_room")
 chats_router.register(
     r"participants", views.ChatParticipantViewSet, basename="chat-participant"
@@ -37,11 +39,6 @@ chats_router.register(
 )
 
 urlpatterns = [
-    # Authentication endpoints
-    path("auth/register/", views.register, name="register"),
-    path("auth/login/", views.login_view, name="login"),
-    path("auth/logout/", views.logout_view, name="logout"),
-    # Include router URLs
     path("", include(router.urls)),
     path("", include(courses_router.urls)),
     path("", include(chats_router.urls)),

@@ -50,7 +50,7 @@ class ChatParticipantViewSet(viewsets.ViewSet):
                 ).exists():
                     return Response(
                         {
-                            "error": (
+                            "detail": (
                                 "User is already a participant in this chat"
                             )
                         },
@@ -79,7 +79,7 @@ class ChatParticipantViewSet(viewsets.ViewSet):
                 )
             except User.DoesNotExist:
                 return Response(
-                    {"error": f"User '{username}' not found"},
+                    {"detail": f"User '{username}' not found"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
