@@ -1,25 +1,31 @@
 from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import status
 from elearning.serializers.chats.chat_participant_serializers import (
     ChatParticipantListSerializer,
     ChatParticipantRoleUpdateSerializer,
 )
-from rest_framework.decorators import action
-from rest_framework.response import Response
 from elearning.services.chats.chat_participants_service import (
     ChatParticipantsService,
 )
-from rest_framework import status
+from elearning.permissions import ChatParticipantPermission
 from elearning.models import User, ChatParticipant
 
-from elearning.views.chats.permissions.chat_participant_permissions import (
-    ChatParticipantPermissions,
-)
 
-
-class ChatParticipantViewSet(viewsets.ViewSet):
+class ChatParticipantViewSet(viewsets.ModelViewSet):
     """ViewSet for chat participant operations"""
 
-    permission_classes = [ChatParticipantPermissions]
+    permission_classes = [ChatParticipantPermission]
+    serializer_class = ChatParticipantListSerializer
+    http_method_names = ["get", "post", "patch", "delete"]
+
+    def get_queryset(self):
+        """Return participants for the specific chat room"""
+        chat_room_id = self.kwargs["chat_room_pk"]
+        return ChatParticipant.objects.filter(
+            chat_room_id=chat_room_id
+        ).select_related("user")
 
     def list(self, request, chat_room_pk=None):
         """List all chat participants"""

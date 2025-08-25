@@ -1,26 +1,13 @@
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from elearning.models import Notification
+from elearning.permissions import NotificationPermission
 from elearning.serializers.notification_serializers import (
     NotificationSerializer,
 )
-
-
-class NotificationPermission(IsAuthenticated):
-    """Custom permission for notifications - users can only see their own"""
-
-    def has_permission(self, request, view):
-        # First check if user is authenticated
-        if not super().has_permission(request, view):
-            return False
-        return True
-
-    def has_object_permission(self, request, view, obj):
-        # Users can only access their own notifications
-        return obj.user == request.user
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):

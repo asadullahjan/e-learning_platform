@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .permissions.chat_room_permissions import ChatRoomPermission
+from elearning.permissions import ChatRoomPermission
 from ...serializers.chats.chat_room_serializers import (
     ChatRoomListSerializer,
     ChatRoomSerializer,
@@ -54,7 +54,6 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_200_OK,
             )
         except Exception as e:
-            print(f"Error in find_or_create_direct: {str(e)}")
             return Response(
                 {"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST
             )

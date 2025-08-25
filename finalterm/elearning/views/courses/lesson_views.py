@@ -3,7 +3,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import BasePermission
+
 from django.shortcuts import get_object_or_404
 from django.http import FileResponse
 from elearning.serializers import (
@@ -12,53 +12,14 @@ from elearning.serializers import (
     CourseLessonCreateSerializer,
     CourseLessonUpdateSerializer,
 )
-from elearning.permissions import IsTeacher
+from elearning.permissions import (
+    IsTeacher,
+    LessonDownloadPermission,
+    IsEnrolledInCourse,
+)
 from elearning.services.courses.course_lesson_service import (
     CourseLessonService,
 )
-
-
-class LessonDownloadPermission(BasePermission):
-    """Permission class for lesson file downloads"""
-
-    def has_object_permission(self, request, view, obj):
-        # Teachers can download files from their own courses
-        if obj.course.teacher == request.user:
-            return True
-
-        # Students can download files from published lessons
-        # in courses they're enrolled in
-        if (
-            obj.published_at
-            and request.user.enrollments.filter(
-                course=obj.course, is_active=True
-            ).exists()
-        ):
-            return True
-
-        return False
-
-
-class IsEnrolledInCourse(BasePermission):
-    """Permission class for viewing lessons -
-    course owner or enrolled student"""
-
-    def has_permission(self, request, view):
-        course_id = view.kwargs.get("course_pk")
-        if not course_id:
-            return False
-
-        try:
-            course = Course.objects.get(id=course_id)
-            if course.teacher == request.user:
-                return True
-            if request.user.enrollments.filter(
-                course=course, is_active=True
-            ).exists():
-                return True
-            return False
-        except Course.DoesNotExist:
-            return False
 
 
 class CourseLessonViewSet(viewsets.ModelViewSet):

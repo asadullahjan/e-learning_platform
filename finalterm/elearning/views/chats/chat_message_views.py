@@ -1,15 +1,13 @@
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.decorators import action
+
 from elearning.serializers.chats.chat_message_serializers import (
     ChatMessageCreateUpdateSerializer,
     ChatMessageSerializer,
 )
 from elearning.services.chats.chat_messages_service import ChatMessagesService
-from elearning.views.chats.permissions.chat_message_permissions import (
-    ChatMessagePermission,
-)
+from elearning.permissions import ChatMessagePermission
 from elearning.models import ChatMessage
 from elearning.services.chats.chat_websocket_service import (
     ChatWebSocketService,
@@ -19,7 +17,8 @@ from elearning.services.chats.chat_websocket_service import (
 class ChatMessageViewSet(viewsets.ModelViewSet):
     """
     ViewSet for chat messages with automatic pagination and filtering.
-    Inherits from ModelViewSet to get all CRUD operations and pagination for free.
+    Inherits from ModelViewSet to get all CRUD operations and pagination 
+    for free.
     """
 
     serializer_class = ChatMessageSerializer
