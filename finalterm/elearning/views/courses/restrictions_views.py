@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status, serializers
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -7,7 +7,9 @@ from elearning.serializers.courses.student_restriction_serializer import (
     StudentRestrictionCreateUpdateSerializer,
     StudentRestrictionListSerializer,
 )
-from elearning.permissions import StudentRestrictionPermission
+from elearning.permissions.courses.restriction_permissions import (
+    StudentRestrictionPermission
+)
 from elearning.services.courses.student_restriction_service import (
     StudentRestrictionService,
 )
@@ -36,17 +38,16 @@ class StudentRestrictionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Create restriction using the service."""
-        try:
-            restriction = StudentRestrictionService.create_restriction(
-                teacher=self.request.user,
-                student_id=serializer.validated_data["student_id"],
-                course_id=serializer.validated_data.get("course_id"),
-                reason=serializer.validated_data.get("reason", ""),
-            )
-            # Update serializer instance for response
-            serializer.instance = restriction
-        except ValueError as e:
-            raise serializers.ValidationError(str(e))
+        # ✅ CORRECT: ServiceError handled automatically by custom 
+        # exception handler
+        restriction = StudentRestrictionService.create_restriction(
+            teacher=self.request.user,
+            student_id=serializer.validated_data["student_id"],
+            course_id=serializer.validated_data.get("course_id"),
+            reason=serializer.validated_data.get("reason", ""),
+        )
+        # Update serializer instance for response
+        serializer.instance = restriction
 
     def perform_destroy(self, instance):
         """Delete restriction using the service."""

@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { CardHeader } from "@/components/ui/card";
 import { Course } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function EnrolledCourses() {
@@ -33,7 +33,7 @@ export default function EnrolledCourses() {
         } else {
           // For students, fetch their enrollments
           const data = await enrollmentService.getUserEnrollments();
-          setEnrollments(data);
+          setEnrollments(data.results as StudentEnrollment[]);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load data");
@@ -115,17 +115,19 @@ export default function EnrolledCourses() {
           >
             {user?.role === "teacher" ? "My Created Courses" : "My Enrolled Courses"}
           </Typography>
-          {user?.role === "teacher" && teacherCourses.length > 0 && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => router.push("/courses")}
-              className="text-xs"
-            >
-              <Plus className="w-3 h-3 mr-1" />
-              Manage Courses
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {/* View All Button */}
+            <Link href={user?.role === "teacher" ? "/courses/my-courses" : "/courses/enrolled"}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs text-blue-600 hover:text-blue-700"
+              >
+                View All
+                <ArrowRight className="w-3 h-3 ml-1" />
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Teacher Stats */}
@@ -143,7 +145,7 @@ export default function EnrolledCourses() {
                 size="xs"
                 color="muted"
               >
-                Total Courses
+                Recent Courses
               </Typography>
             </div>
             <div className="text-center">
@@ -164,7 +166,7 @@ export default function EnrolledCourses() {
             <div className="text-center">
               <Typography
                 variant="h5"
-                className="text-green-600"
+                className="text-yellow-600"
               >
                 {teacherCourses.filter((c) => !c.published_at).length}
               </Typography>
@@ -194,7 +196,7 @@ export default function EnrolledCourses() {
                 size="xs"
                 color="muted"
               >
-                Enrolled Courses
+                Recent Enrollments
               </Typography>
             </div>
             <div className="text-center">
@@ -217,7 +219,7 @@ export default function EnrolledCourses() {
       </CardHeader>
 
       {user?.role === "teacher"
-        ? // Render teacher courses
+        ? // Render teacher courses (limited to 10)
           teacherCourses.map((course) => (
             <Link
               key={course.id}

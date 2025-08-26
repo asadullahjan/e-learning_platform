@@ -36,28 +36,34 @@ class EnrollmentViewsTest(BaseAPITestCase):
             teacher=self.teacher,
         )
 
+    @debug_on_failure
     def test_enroll_in_course(self):
         self.client.force_authenticate(user=self.student)
-        response = self.client.post(
-            "/api/enrollments/", {"course": self.course.id}
+        response = self.log_response(
+            self.client.post(f"/api/courses/{self.course.id}/enrollments/", {})
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["course"], self.course.id)
         self.assertEqual(response.data["user"], self.student.id)
 
+    @debug_on_failure
     def test_enroll_in_unpublished_course(self):
         self.client.force_authenticate(user=self.student)
-        response = self.client.post(
-            "/api/enrollments/", {"course": self.course2.id}
+        response = self.log_response(
+            self.client.post(
+                f"/api/courses/{self.course2.id}/enrollments/", {}
+            )
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    @debug_on_failure
     def test_enroll_in_course_unauthenticated(self):
-        response = self.client.post(
-            "/api/enrollments/", {"course": self.course.id}
+        response = self.log_response(
+            self.client.post(f"/api/courses/{self.course.id}/enrollments/", {})
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    @debug_on_failure
     def test_get_enrollments_for_course_owner(self):
         self.client.force_authenticate(user=self.teacher)
         Enrollment.objects.create(
@@ -68,8 +74,8 @@ class EnrollmentViewsTest(BaseAPITestCase):
             user=self.student,
             course=self.course2,
         )
-        response = self.client.get(
-            "/api/enrollments/", {"course": self.course.id}
+        response = self.log_response(
+            self.client.get(f"/api/courses/{self.course.id}/enrollments/")
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
@@ -77,26 +83,28 @@ class EnrollmentViewsTest(BaseAPITestCase):
             response.data["results"][0]["user"]["id"], self.student.id
         )
 
+    @debug_on_failure
     def test_get_enrollments_for_course_for_student(self):
         self.client.force_authenticate(user=self.student)
         Enrollment.objects.create(
             user=self.student,
             course=self.course,
         )
-        response = self.client.get(
-            "/api/enrollments/", {"course": self.course.id}
+        response = self.log_response(
+            self.client.get(f"/api/courses/{self.course.id}/enrollments/")
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Non-owners get empty list (no access to other course enrollments)
-        self.assertEqual(response.data["count"], 0)
+        # Students see only their own enrollments for the course
+        self.assertEqual(response.data["count"], 1)
 
+    @debug_on_failure
     def test_get_enrollments_for_student(self):
         self.client.force_authenticate(user=self.student)
         Enrollment.objects.create(
             user=self.student,
             course=self.course,
         )
-        response = self.client.get("/api/enrollments/")
+        response = self.log_response(self.client.get("/api/enrollments/"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(
@@ -105,37 +113,16 @@ class EnrollmentViewsTest(BaseAPITestCase):
 
     @debug_on_failure
     def test_get_enrollments_for_teacher(self):
-        """Test that teachers can view their own enrollments with course
-        details"""
         self.client.force_authenticate(user=self.teacher)
-        # Create a course taught by another teacher
-        other_teacher = User.objects.create_user(
-            username="otherteacher",
-            email="other@example.com",
-            password="testpass123",
-            role="teacher",
-        )
-        other_course = Course.objects.create(
-            title="Other Course",
-            description="Other Description",
-            teacher=other_teacher,
-            published_at=timezone.now(),
-        )
-        # Enroll the teacher in the other course
         Enrollment.objects.create(
-            user=self.teacher,
-            course=other_course,
+            user=self.student,
+            course=self.course,
         )
-
-        response = self.log_response(self.client.get("/api/enrollments/"))
-
+        response = self.log_response(
+            self.client.get(f"/api/courses/{self.course.id}/enrollments/")
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("count", response.data)
-        self.assertIn("results", response.data)
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(
-            response.data["results"][0]["course"]["id"], other_course.id
+            response.data["results"][0]["user"]["id"], self.student.id
         )
-        # Verify course details are included (not user details)
-        self.assertIn("course", response.data["results"][0])
-        self.assertNotIn("user", response.data["results"][0])

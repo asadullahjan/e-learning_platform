@@ -1,19 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Crown, User } from "lucide-react";
+import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import Typography from "@/components/ui/Typography";
 import { chatService } from "@/services/chatService";
+import UserAvatar from "@/components/user/user-avatar";
+import Link from "next/link";
+
+interface ParticipantUser {
+  id: number;
+  username: string;
+  profile_picture?: string;
+  role: string;
+  created_at: string;
+  email: string;
+}
 
 interface Participant {
   id: number;
-  user: {
-    id: number;
-    username: string;
-    profile_picture?: string;
-  };
+  user: ParticipantUser;
   role: string;
   is_active: boolean;
 }
@@ -46,23 +53,10 @@ export function ParticipantsDialog({ chatId, trigger }: ParticipantsDialogProps)
     }
   }, [isOpen, chatId]);
 
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case "admin":
-        return <Crown className="h-4 w-4 text-yellow-500" />;
-      case "moderator":
-        return <Crown className="h-4 w-4 text-blue-500" />;
-      default:
-        return <User className="h-4 w-4 text-gray-500" />;
-    }
-  };
-
   const getRoleLabel = (role: string) => {
     switch (role) {
       case "admin":
         return "Admin";
-      case "moderator":
-        return "Moderator";
       default:
         return "Participant";
     }
@@ -119,21 +113,38 @@ export function ParticipantsDialog({ chatId, trigger }: ParticipantsDialogProps)
                   {activeParticipants.map((participant) => (
                     <div
                       key={participant.id}
-                      className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                     >
-                      <div className="flex items-center gap-2">
-                        {getRoleIcon(participant.role)}
-                        <Typography
-                          variant="span"
+                      <div className="flex items-center gap-3">
+                        <UserAvatar
+                          user={{
+                            ...participant.user,
+                            role: participant.user.role as "student" | "teacher",
+                          }}
                           size="sm"
-                        >
-                          {participant.user.username}
-                        </Typography>
+                          showName={false}
+                          clickable={false}
+                        />
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/users/${participant.user.username}`}
+                            className="hover:underline text-blue-600 hover:text-blue-800"
+                          >
+                            <Typography
+                              variant="span"
+                              size="sm"
+                              className="font-medium"
+                            >
+                              {participant.user.username}
+                            </Typography>
+                          </Link>
+                        </div>
                       </div>
                       <Typography
                         variant="span"
                         size="xs"
                         color="muted"
+                        className="px-2 py-1 bg-gray-200 rounded-full"
                       >
                         {getRoleLabel(participant.role)}
                       </Typography>
@@ -156,21 +167,38 @@ export function ParticipantsDialog({ chatId, trigger }: ParticipantsDialogProps)
                     {inactiveParticipants.map((participant) => (
                       <div
                         key={participant.id}
-                        className="flex items-center justify-between p-2 bg-gray-100 rounded-lg opacity-60"
+                        className="flex items-center justify-between p-3 bg-gray-100 rounded-lg opacity-60"
                       >
-                        <div className="flex items-center gap-2">
-                          {getRoleIcon(participant.role)}
-                          <Typography
-                            variant="span"
+                        <div className="flex items-center gap-3">
+                          <UserAvatar
+                            user={{
+                              ...participant.user,
+                              role: participant.user.role as "student" | "teacher",
+                            }}
                             size="sm"
-                          >
-                            {participant.user.username}
-                          </Typography>
+                            showName={false}
+                            clickable={false}
+                          />
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/users/${participant.user.username}`}
+                              className="hover:underline text-blue-600 hover:text-blue-800"
+                            >
+                              <Typography
+                                variant="span"
+                                size="sm"
+                                className="font-medium"
+                              >
+                                {participant.user.username}
+                              </Typography>
+                            </Link>
+                          </div>
                         </div>
                         <Typography
                           variant="span"
                           size="xs"
                           color="muted"
+                          className="px-2 py-1 bg-gray-200 rounded-full"
                         >
                           {getRoleLabel(participant.role)}
                         </Typography>

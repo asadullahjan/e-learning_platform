@@ -1,12 +1,46 @@
-from elearning.models import StudentRestriction, Enrollment, ChatParticipant
+from elearning.models import (
+    StudentRestriction, Enrollment, ChatParticipant, User, Course
+)
 from elearning.services.notification_service import NotificationService
 from elearning.exceptions import ServiceError
+from elearning.permissions.courses.restriction_permissions import (
+    StudentRestrictionPolicy
+)
 
 
 class StudentRestrictionService:
     """
     Service for managing student restrictions.
     """
+
+    @staticmethod
+    def check_can_create_restriction(
+        teacher, student_id, course_id=None
+    ) -> bool:
+        """
+        Check if a teacher can create a restriction for a student.
+        
+        This method provides early permission checking that can be used by
+        both permissions classes and the service itself.
+        
+        Args:
+            teacher: User attempting to create restriction
+            student_id: ID of the student to restrict
+            course_id: Optional course ID for course-specific restriction
+            
+        Returns:
+            bool: True if teacher can create restriction, False otherwise
+        """
+        try:
+            student = User.objects.get(id=student_id)
+            course = None
+            if course_id:
+                course = Course.objects.get(id=course_id)
+            return StudentRestrictionPolicy.check_can_create_restriction(
+                teacher, student, course
+            )
+        except (User.DoesNotExist, Course.DoesNotExist):
+            return False
 
     @staticmethod
     def create_restriction(teacher, student_id, course_id=None, reason=""):
@@ -25,20 +59,20 @@ class StudentRestrictionService:
         Raises:
             ServiceError: If validation fails
         """
-        if teacher.role != "teacher":
-            raise ServiceError.permission_denied(
-                "Only teachers can create restrictions"
+        try:
+            student = User.objects.get(id=student_id)
+            course = None
+            if course_id:
+                course = Course.objects.get(id=course_id)
+            
+            # Use the permission policy for validation
+            StudentRestrictionPolicy.check_can_create_restriction(
+                teacher, student, course, raise_exception=True
             )
-
-        if teacher.id == student_id:
-            raise ServiceError.bad_request("Cannot restrict yourself")
-
-        existing = StudentRestriction.objects.filter(
-            teacher=teacher, student_id=student_id, course_id=course_id
-        ).first()
-
-        if existing:
-            raise ServiceError.conflict("Restriction already exists")
+        except User.DoesNotExist:
+            raise ServiceError.not_found("Student not found")
+        except Course.DoesNotExist:
+            raise ServiceError.not_found("Course not found")
 
         # Create the restriction
         restriction = StudentRestriction.objects.create(
@@ -82,13 +116,19 @@ class StudentRestrictionService:
         return restriction
 
     @staticmethod
-    def delete_restriction(restriction):
+    def delete_restriction(restriction, user):
         """
         Delete a student restriction and restore access.
 
         Args:
             restriction: StudentRestriction instance to delete
+            user: User attempting to delete the restriction
         """
+        # Check if user can delete this restriction
+        StudentRestrictionPolicy.check_can_delete_restriction(
+            user, restriction, raise_exception=True
+        )
+        
         # Remove restriction effects before deleting
         StudentRestrictionService._remove_restriction_effects(restriction)
 
@@ -208,3 +248,34 @@ class StudentRestrictionService:
             return StudentRestriction.objects.filter(
                 teacher=teacher, student=student, course__isnull=True
             ).exists()
+
+    @staticmethod
+    def get_restriction_with_permission_check(restriction_id: int, user: User):
+        """Get restriction with permission check"""
+        try:
+            restriction = StudentRestriction.objects.get(id=restriction_id)
+            # Check if user can view this restriction
+            StudentRestrictionPolicy.check_can_view_restriction(
+                user, restriction, raise_exception=True
+            )
+            return restriction
+        except StudentRestriction.DoesNotExist:
+            raise ServiceError.not_found("Restriction not found")
+
+    @staticmethod
+    def modify_restriction(
+        restriction: StudentRestriction, user: User, **kwargs
+    ):
+        """Modify restriction with permission check"""
+        # Check if user can modify this restriction
+        StudentRestrictionPolicy.check_can_modify_restriction(
+            user, restriction, raise_exception=True
+        )
+        
+        # Update restriction fields
+        for field, value in kwargs.items():
+            if hasattr(restriction, field):
+                setattr(restriction, field, value)
+        
+        restriction.save()
+        return restriction

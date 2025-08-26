@@ -1,10 +1,21 @@
 from rest_framework import serializers
-from elearning.models import Status, User
+from elearning.models import Status
 from .user_serializers import UserSerializer
 
 
+class StatusListSerializer(serializers.ModelSerializer):
+    """Status serializer for list views - returns full user object"""
+
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Status
+        fields = ["id", "user", "content", "created_at", "updated_at"]
+        read_only_fields = ["id", "user", "created_at", "updated_at"]
+
+
 class StatusSerializer(serializers.ModelSerializer):
-    """Basic status serializer for all operations"""
+    """Detailed status serializer for retrieve operations"""
 
     user = UserSerializer(read_only=True)
 
@@ -49,9 +60,9 @@ class UserStatusesQuerySerializer(serializers.Serializer):
     )
 
     def validate_user_id(self, value):
-        """Validate that user_id exists"""
-        try:
-            User.objects.get(id=value)
-        except User.DoesNotExist:
-            raise serializers.ValidationError("User not found")
+        """Validate that user_id is a positive integer"""
+        if value <= 0:
+            raise serializers.ValidationError(
+                "User ID must be a positive integer"
+            )
         return value

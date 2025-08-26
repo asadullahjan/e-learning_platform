@@ -5,16 +5,33 @@ This package contains permission classes that control access to course-related
 functionality such as course creation, enrollment, feedback, and restrictions.
 """
 
-from .course_permissions import IsCourseOwner, IsCourseOwnerOrEnrollmentOwner
-from .lesson_permissions import LessonDownloadPermission, IsEnrolledInCourse
-from .feedback_permissions import FeedbackPermission
+from .lesson_permissions import (
+    LessonDownloadPermission,
+    IsEnrolledInCourse,
+    LessonPolicy,
+)
+from .feedback_permissions import (
+    CourseFeedbackPermission,
+    CourseFeedbackPolicy,
+)
 from .restriction_permissions import StudentRestrictionPermission
+from .course_permissions import (
+    CoursePermission,
+    CourseAccessPermission,
+    CoursePolicy,
+)
+from .enrollment_permissions import EnrollmentPermission, EnrollmentPolicy
 
 __all__ = [
-    'IsCourseOwner',
-    'IsCourseOwnerOrEnrollmentOwner', 
-    'LessonDownloadPermission',
-    'IsEnrolledInCourse',
-    'FeedbackPermission',
-    'StudentRestrictionPermission',
+    "LessonDownloadPermission",
+    "IsEnrolledInCourse",
+    "CourseFeedbackPermission",
+    "StudentRestrictionPermission",
+    "CourseFeedbackPolicy",
+    "CoursePermission",
+    "CourseAccessPermission",
+    "CoursePolicy",
+    "EnrollmentPermission",
+    "EnrollmentPolicy",
+    "LessonPolicy",
 ]

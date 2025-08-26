@@ -1,6 +1,5 @@
 from ..models import Enrollment
 from rest_framework import serializers
-from .course_serializers import CourseSerializer
 from .user_serializers import UserSerializer
 
 
@@ -17,33 +16,38 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             "is_active",
             "unenrolled_at",
         ]
-        read_only_fields = ["id", "user", "enrolled_at"]
+        read_only_fields = ["id", "user", "enrolled_at", "course"]
 
-    def validate(self, attrs):
-        user = self.context["request"].user
-        course = attrs.get("course")
 
-        # Check if already enrolled
-        if Enrollment.objects.filter(
-            user=user, course=course, is_active=True
-        ).exists():
-            raise serializers.ValidationError(
-                "You are already enrolled in this course"
-            )
+class StudentEnrollmentCourseSerializer(serializers.ModelSerializer):
+    """Course serializer for student enrollments with full teacher details"""
+    
+    teacher = UserSerializer(read_only=True)
 
-        # Check if course is published
-        if not course.published_at:
-            raise serializers.ValidationError(
-                "Cannot enroll in unpublished course"
-            )
-
-        return attrs
+    class Meta:
+        model = Enrollment.course.field.related_model
+        fields = [
+            "id",
+            "title",
+            "description",
+            "teacher",
+            "published_at",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "title",
+            "description",
+            "teacher",
+            "published_at",
+            "created_at",
+        ]
 
 
 class StudentEnrollmentSerializer(serializers.ModelSerializer):
-    """Enrollment serializer for students - shows course details"""
+    """Enrollment serializer for students - shows course details with full teacher info"""
 
-    course = CourseSerializer(read_only=True)
+    course = StudentEnrollmentCourseSerializer(read_only=True)
 
     class Meta:
         model = Enrollment

@@ -90,6 +90,7 @@ class UserSerializer(serializers.ModelSerializer):
 class UserDetailSerializer(UserSerializer):
     """Detailed user serializer with related data"""
 
+    # These fields will be populated by the service layer
     courses_taught_count = serializers.SerializerMethodField()
     courses_enrolled_count = serializers.SerializerMethodField()
 
@@ -100,7 +101,13 @@ class UserDetailSerializer(UserSerializer):
         ]
 
     def get_courses_taught_count(self, obj):
-        return obj.courses_taught.count()
+        """Get courses taught count from service-populated field"""
+        if hasattr(obj, '_courses_taught_count'):
+            return obj._courses_taught_count
+        return 0
 
     def get_courses_enrolled_count(self, obj):
-        return obj.enrollment_set.filter(is_active=True).count()
+        """Get courses enrolled count from service-populated field"""
+        if hasattr(obj, '_courses_enrolled_count'):
+            return obj._courses_enrolled_count
+        return 0

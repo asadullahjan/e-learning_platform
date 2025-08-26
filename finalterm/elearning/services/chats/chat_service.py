@@ -4,47 +4,82 @@ from elearning.services.chats.chat_participants_service import (
     ChatParticipantsService,
 )
 from elearning.exceptions import ServiceError
+from elearning.permissions.chats.chat_room_permissions import ChatPolicy
 
 
 class ChatService:
+    """
+    Service for managing chat operations and business logic.
+    """
+
     @staticmethod
     @transaction.atomic
     def create_chat_room(validated_data, creator: User) -> ChatRoom:
         """
-        Create a chat room and add participants based on chat type
+        Create a chat room with participants.
+
+        This method creates a chat room and adds participants based on the
+        validated data. The operation is wrapped in a database transaction
+        to ensure data consistency.
+
+        Args:
+            validated_data: Validated chat room data from serializer
+            creator: User creating the chat room
+
+        Returns:
+            ChatRoom instance with participants added
         """
-        participants = validated_data.pop("participants", [])
+        # Extract data
         chat_type = validated_data.get("chat_type")
+        course = validated_data.get("course")
+        participant_ids = validated_data.get("participant_ids", [])
 
-        # if chat_type is direct, we need to check if the chat already exists
-        if chat_type == "direct":
-            existing_chat = ChatService._find_existing_direct_chat(
-                creator, participants[0]
-            )
-            # if the chat already exists, return it and update the is_active
-            if existing_chat:
-                ChatParticipantsService.reactivate_chat_for_user(
-                    existing_chat, creator
+        # Check if user can create this type of chat room
+        ChatPolicy.check_can_create_chat_room(
+            creator, chat_type, course, raise_exception=True
+        )
+
+        # For direct chats, check if one already exists
+        if chat_type == "direct" and len(participant_ids) == 1:
+            other_user_id = participant_ids[0]
+            try:
+                other_user = User.objects.get(id=other_user_id, is_active=True)
+                existing_chat = ChatService._find_existing_direct_chat(
+                    creator, other_user
                 )
-                existing_chat.save()
-                return existing_chat
+                if existing_chat:
+                    # Reactivate if needed and return existing chat
+                    ChatParticipantsService.reactivate_chat_for_user(
+                        existing_chat, creator
+                    )
+                    existing_chat.save()
+                    return existing_chat
+            except User.DoesNotExist:
+                raise ServiceError.not_found(
+                    f"User with ID {other_user_id} not found"
+                )
 
-        # create the chat room
+        # Create the chat room
         chat_room = ChatRoom.objects.create(
-            created_by=creator, **validated_data
+            name=validated_data["name"],
+            chat_type=chat_type,
+            course=course,
+            is_public=validated_data.get("is_public", False),
+            created_by=creator,
         )
 
-        # add creator as admin
+        # Add creator as admin participant (except for direct chats)
+        creator_role = "participant" if chat_type == "direct" else "admin"
         ChatParticipant.objects.create(
-            chat_room=chat_room,
-            user=creator,
-            role="participant" if chat_type == "direct" else "admin",
+            chat_room=chat_room, user=creator, role=creator_role
         )
 
-        # add participants to the chat room
-        ChatParticipantsService.add_participants_to_chat(
-            chat_room, participants
-        )
+        # Add other participants if specified
+        if participant_ids:
+            participants = User.objects.filter(id__in=participant_ids)
+            ChatParticipantsService.add_participants_to_chat(
+                chat_room, list(participants)
+            )
 
         return chat_room
 
@@ -145,3 +180,92 @@ class ChatService:
             | models.Q(participants__user=user, participants__is_active=True)
             | models.Q(course__teacher=user)
         ).distinct()
+
+    @staticmethod
+    def get_chat_with_permission_check(chat_id: int, user: User):
+        """Get chat with permission check"""
+        try:
+            chat_room = ChatRoom.objects.get(id=chat_id)
+            # Check if user can access this chat room
+            ChatPolicy.check_can_access_chat_room(
+                user, chat_room, raise_exception=True
+            )
+            return chat_room
+        except ChatRoom.DoesNotExist:
+            raise ServiceError.not_found("Chat room not found")
+
+    @staticmethod
+    def update_chat_room(chat_room: ChatRoom, user: User, **kwargs):
+        """Update chat room with permission check"""
+        # Check if user can modify this chat room
+        ChatPolicy.check_can_modify_chat_room(
+            user, chat_room, raise_exception=True
+        )
+
+        # Update chat room fields
+        for field, value in kwargs.items():
+            if hasattr(chat_room, field):
+                setattr(chat_room, field, value)
+
+        chat_room.save()
+        return chat_room
+
+    @staticmethod
+    def delete_chat_room(chat_room: ChatRoom, user: User):
+        """Delete chat room with permission check"""
+        # Check if user can modify this chat room
+        ChatPolicy.check_can_modify_chat_room(
+            user, chat_room, raise_exception=True
+        )
+
+        # Delete the chat room (this will cascade to related objects)
+        chat_room.delete()
+
+    @staticmethod
+    def populate_chat_computed_fields(chat_room: ChatRoom, user: User = None):
+        """Populate computed fields for chat room serialization"""
+        if user and user.is_authenticated:
+            try:
+                participant = ChatParticipant.objects.get(
+                    chat_room=chat_room, user=user, is_active=True
+                )
+                chat_room._current_user_status = {
+                    "is_participant": True,
+                    "role": participant.role,
+                }
+            except ChatParticipant.DoesNotExist:
+                # Debug: Check if participant exists but is inactive
+                inactive_participant = ChatParticipant.objects.filter(
+                    chat_room=chat_room, user=user
+                ).first()
+
+                if inactive_participant:
+                    # Participant exists but is inactive
+                    chat_room._current_user_status = {
+                        "is_participant": False,
+                        "role": inactive_participant.role,
+                    }
+                else:
+                    # No participant record found
+                    chat_room._current_user_status = {
+                        "is_participant": False,
+                        "role": None,
+                    }
+        else:
+            chat_room._current_user_status = {
+                "is_participant": False,
+                "role": None,
+            }
+
+        return chat_room
+
+    @staticmethod
+    def get_chats_with_computed_fields(user: User = None):
+        """Get chat rooms with computed fields populated"""
+        chat_rooms = ChatRoom.objects.all()
+
+        # Populate computed fields for each chat room
+        for chat_room in chat_rooms:
+            ChatService.populate_chat_computed_fields(chat_room, user)
+
+        return chat_rooms

@@ -10,21 +10,20 @@ class CourseFeedbackCreateUpdateSerializer(serializers.ModelSerializer):
         fields = ["rating", "text"]
 
     def validate(self, data):
-        request = self.context.get("request")
-        course_id = self.context.get("course_id")
-
-        if request and course_id and not self.instance:
-            # Check if user already left feedback for this course
-            # (only when creating)
-            existing = CourseFeedback.objects.filter(
-                user=request.user, course_id=course_id
-            ).first()
-
-            if existing:
-                raise serializers.ValidationError(
-                    "You have already left feedback for this course"
-                )
-
+        # ✅ CORRECT: Only validation logic, no database queries
+        rating = data.get("rating")
+        text = data.get("text")
+        
+        if rating and (rating < 1 or rating > 5):
+            raise serializers.ValidationError(
+                "Rating must be between 1 and 5"
+            )
+        
+        if text and len(text.strip()) < 10:
+            raise serializers.ValidationError(
+                "Feedback text must be at least 10 characters long"
+            )
+        
         return data
 
 

@@ -1,6 +1,10 @@
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from elearning.models import Notification
+from elearning.models import Notification, User
+from elearning.exceptions import ServiceError
+from elearning.permissions.users.notification_permissions import (
+    NotificationPolicy
+)
 
 
 class NotificationService:
@@ -60,3 +64,45 @@ class NotificationService:
                 },
             },
         )
+
+    @staticmethod
+    def get_notification_with_permission_check(
+        notification_id: int, user: User
+    ):
+        """Get notification with permission check"""
+        try:
+            notification = Notification.objects.get(id=notification_id)
+            # Check if user can view this notification
+            NotificationPolicy.check_can_view_notification(
+                user, notification, raise_exception=True
+            )
+            return notification
+        except Notification.DoesNotExist:
+            raise ServiceError.not_found("Notification not found")
+
+    @staticmethod
+    def mark_notification_read(notification: Notification, user: User):
+        """Mark notification as read with permission check"""
+        # Check if user can mark this notification as read
+        NotificationPolicy.check_can_mark_notification_read(
+            user, notification, raise_exception=True
+        )
+        
+        notification.is_read = True
+        notification.save()
+        return notification
+
+    @staticmethod
+    def delete_notification(notification: Notification, user: User):
+        """Delete notification with permission check"""
+        # Check if user can delete this notification
+        NotificationPolicy.check_can_delete_notification(
+            user, notification, raise_exception=True
+        )
+        
+        notification.delete()
+
+    @staticmethod
+    def get_user_notifications(user: User):
+        """Get all notifications for a user"""
+        return Notification.objects.filter(user=user).order_by("-created_at")

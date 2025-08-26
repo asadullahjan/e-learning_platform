@@ -1,171 +1,157 @@
-from elearning.models import Course, CourseLesson, File, User
-from elearning.services.notification_service import NotificationService
+from django.db import transaction
+from elearning.models import CourseLesson, Course, File, User
+from elearning.exceptions import ServiceError
+from elearning.permissions.courses.lesson_permissions import LessonPolicy
+from elearning.permissions.courses.file_permissions import FilePolicy
 
 
 class CourseLessonService:
+    """Service for managing course lessons"""
+
     @staticmethod
-    def create_lesson_with_file(course: Course, lesson_data: dict, user: User):
-        file_data = lesson_data.pop("file", None)
+    @transaction.atomic
+    def create_lesson_with_file(
+        course: Course, teacher: User, lesson_data: dict, file_data: dict
+    ):
+        """Create a lesson with an attached file"""
+        # Check if teacher can create lessons for this course
+        LessonPolicy.check_can_create_lesson(
+            teacher, course, raise_exception=True
+        )
+
+        # Check if teacher can upload files
+        FilePolicy.check_can_upload_file(
+            teacher, course, raise_exception=True
+        )
+
+        # Create the lesson
         lesson = CourseLesson.objects.create(
             course=course,
             title=lesson_data["title"],
-            description=lesson_data["description"],
             content=lesson_data.get("content", ""),
+            order=lesson_data.get("order", 0),
+            created_by=teacher,
         )
 
-        if file_data:
-            file = File.objects.create(
-                file=file_data,
-                original_name=file_data.name,
-                uploaded_by=user,
-            )
-            lesson.file = file
-
-        lesson.save()
-
-        # Notify enrolled students about new lesson
-        enrolled_user_ids = [
-            enrollment.user.id
-            for enrollment in course.enrollment_set.filter(is_active=True)
-        ]
-
-        NotificationService.create_notifications_and_send(
-            user_ids=enrolled_user_ids,
-            title="New Lesson Available",
-            message=f"Check out the new lesson: {lesson.title}",
-            action_url=f"/courses/{course.id}/lessons/{lesson.id}",
+        # Create the file
+        file_obj = File.objects.create(
+            file=file_data["file"],
+            filename=file_data.get("filename", file_data["file"].name),
+            file_type=file_data.get("file_type", "lesson_material"),
+            uploaded_by=teacher,
+            course=course,
+            lesson=lesson,
         )
 
-        return lesson
+        return lesson, file_obj
 
     @staticmethod
+    @transaction.atomic
     def update_lesson_with_file(
-        lesson: CourseLesson, lesson_data: dict, user: User
+        lesson: CourseLesson, teacher: User, lesson_data: dict, file_data: dict = None
     ):
-        """Update lesson and optionally update/replace file"""
-        # Update basic fields
-        if "title" in lesson_data:
-            lesson.title = lesson_data["title"]
-        if "description" in lesson_data:
-            lesson.description = lesson_data["description"]
-        if "content" in lesson_data:
-            lesson.content = lesson_data["content"]
-
-        # Handle file update if provided
-        if "file" in lesson_data:
-            file_data = lesson_data["file"]
-
-            # Delete old file if it exists
-            if lesson.file:
-                old_file = lesson.file
-                lesson.file = None
-                lesson.save()
-
-                # Check if other lessons use this file before deleting
-                other_lessons_using_file = (
-                    CourseLesson.objects.filter(file=old_file)
-                    .exclude(id=lesson.id)
-                    .exists()
-                )
-
-                # Only delete if no other lessons use it
-                if not other_lessons_using_file:
-                    old_file.delete()  # This will trigger the signal
-
-            # Create new file
-            if file_data:
-                new_file = File.objects.create(
-                    file=file_data,
-                    original_name=file_data.name,
-                    uploaded_by=user,
-                )
-                lesson.file = new_file
-
-        lesson.save()
-        
-        # Notify enrolled students about lesson update
-        enrolled_user_ids = [
-            enrollment.user.id 
-            for enrollment in lesson.course.enrollment_set.filter(is_active=True)
-        ]
-        
-        NotificationService.create_notifications_and_send(
-            user_ids=enrolled_user_ids,
-            title="Lesson Updated",
-            message=(
-                f"The lesson '{lesson.title}' has been updated"
-            ),
-            action_url=(
-                f"/courses/{lesson.course.id}/lessons/{lesson.id}"
-            )
+        """Update a lesson and optionally its file"""
+        # Check if teacher can modify this lesson
+        LessonPolicy.check_can_modify_lesson(
+            teacher, lesson, raise_exception=True
         )
-        
+
+        # Update lesson fields
+        for field, value in lesson_data.items():
+            if hasattr(lesson, field):
+                setattr(lesson, field, value)
+        lesson.save()
+
+        # Update file if provided
+        if file_data:
+            # Check if teacher can upload files
+            FilePolicy.check_can_upload_file(
+                teacher, lesson.course, raise_exception=True
+            )
+
+            # Update existing file or create new one
+            if hasattr(lesson, 'file') and lesson.file:
+                # Update existing file
+                file_obj = lesson.file
+                file_obj.file = file_data["file"]
+                file_obj.filename = file_data.get("filename", file_data["file"].name)
+                file_obj.file_type = file_data.get("file_type", "lesson_material")
+                file_obj.save()
+            else:
+                # Create new file
+                file_obj = File.objects.create(
+                    file=file_data["file"],
+                    filename=file_data.get("filename", file_data["file"].name),
+                    file_type=file_data.get("file_type", "lesson_material"),
+                    uploaded_by=teacher,
+                    course=lesson.course,
+                    lesson=lesson,
+                )
+
         return lesson
 
     @staticmethod
-    def delete_lesson_with_file(lesson: CourseLesson, user: User):
-        """Delete lesson and associated file only if no other lessons use it"""
-        # Store lesson info before deletion for notification
-        lesson_title = lesson.title
-        course_id = lesson.course.id
-        
-        # Check if other lessons use this file
-        if lesson.file:
-            file_to_check = lesson.file
-            other_lessons_using_file = (
-                CourseLesson.objects.filter(file=file_to_check)
-                .exclude(id=lesson.id)
-                .exists()
-            )
-
-            # Only delete file if no other lessons use it
-            if not other_lessons_using_file:
-                file_to_check.delete()
-
-        # Notify enrolled students about lesson deletion
-        enrolled_user_ids = [
-            enrollment.user.id 
-            for enrollment in lesson.course.enrollment_set.filter(is_active=True)
-        ]
-        
-        NotificationService.create_notifications_and_send(
-            user_ids=enrolled_user_ids,
-            title="Lesson Removed",
-            message=f"The lesson '{lesson_title}' has been removed from the course",
-            action_url=f"/courses/{course_id}"
+    @transaction.atomic
+    def delete_lesson_with_file(lesson: CourseLesson, teacher: User):
+        """Delete a lesson and its associated file"""
+        # Check if teacher can delete this lesson
+        LessonPolicy.check_can_delete_lesson(
+            teacher, lesson, raise_exception=True
         )
+
+        # Delete associated file if it exists
+        if hasattr(lesson, 'file') and lesson.file:
+            lesson.file.delete()
 
         # Delete the lesson
         lesson.delete()
 
     @staticmethod
-    def toggle_lesson_publish_status(lesson: CourseLesson, published_at):
-        """Toggle lesson publish status"""
-        lesson.published_at = published_at
-        lesson.save()
-        
-        # Notify enrolled students about lesson status change
-        enrolled_user_ids = [
-            enrollment.user.id 
-            for enrollment in lesson.course.enrollment_set.filter(is_active=True)
-        ]
-        
-        if published_at:
-            # Lesson was published
-            title = "Lesson Published"
-            message = f"The lesson '{lesson.title}' is now available"
-            action_url = f"/courses/{lesson.course.id}/lessons/{lesson.id}"
-        else:
-            # Lesson was unpublished
-            title = "Lesson Unpublished"
-            message = f"The lesson '{lesson.title}' is no longer available"
-            action_url = f"/courses/{lesson.course.id}"
-        
-        NotificationService.create_notifications_and_send(
-            user_ids=enrolled_user_ids,
-            title=title,
-            message=message,
-            action_url=action_url
+    def toggle_lesson_publish_status(lesson: CourseLesson, teacher: User):
+        """Toggle the published status of a lesson"""
+        # Check if teacher can modify this lesson
+        LessonPolicy.check_can_modify_lesson(
+            teacher, lesson, raise_exception=True
         )
-        
+
+        lesson.published_at = (
+            None if lesson.published_at else lesson.created_at
+        )
+        lesson.save()
         return lesson
+
+    @staticmethod
+    def get_lesson_with_permission_check(lesson_id: int, user: User):
+        """Get lesson with permission check"""
+        try:
+            lesson = CourseLesson.objects.get(id=lesson_id)
+            # Check if user can view this lesson
+            LessonPolicy.check_can_view_lesson(
+                user, lesson, raise_exception=True
+            )
+            return lesson
+        except CourseLesson.DoesNotExist:
+            raise ServiceError.not_found("Lesson not found")
+
+    @staticmethod
+    def get_lesson_file_with_permission_check(lesson_id: int, user: User):
+        """Get lesson file with permission check"""
+        try:
+            lesson = CourseLesson.objects.get(id=lesson_id)
+            # Check if user can view this lesson
+            LessonPolicy.check_can_view_lesson(
+                user, lesson, raise_exception=True
+            )
+            
+            # Check if lesson has a file
+            if not hasattr(lesson, 'file') or not lesson.file:
+                raise ServiceError.not_found("Lesson has no attached file")
+            
+            # Check if user can download the file
+            FilePolicy.check_can_download_file(
+                user, lesson.file, raise_exception=True
+            )
+            
+            return lesson.file
+        except CourseLesson.DoesNotExist:
+            raise ServiceError.not_found("Lesson not found")

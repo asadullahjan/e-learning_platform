@@ -1,11 +1,11 @@
-from django.test import TestCase
 from channels.testing import WebsocketCommunicator
 from asgiref.sync import async_to_sync
 from elearning.models import ChatRoom, User, ChatParticipant
 from elearning_project.asgi import test_application
+from elearning.tests.test_base import BaseTestCase, debug_on_failure
 
 
-class WebSocketIntegrationTest(TestCase):
+class WebSocketIntegrationTest(BaseTestCase):
     def setUp(self):
         super().setUp()
         # Create test data
@@ -25,6 +25,7 @@ class WebSocketIntegrationTest(TestCase):
             chat_room=self.chat_room,
         )
 
+    @debug_on_failure
     @async_to_sync
     async def test_websocket_connection(self):
         """Test basic WebSocket connection"""
@@ -39,6 +40,7 @@ class WebSocketIntegrationTest(TestCase):
         # Clean up
         await communicator.disconnect()
 
+    @debug_on_failure
     @async_to_sync
     async def test_multiple_connections(self):
         """Test multiple clients can connect to the same chat room"""

@@ -95,11 +95,6 @@ export const chatService = {
     return response.data;
   },
 
-  deactivateChat: async (chatId: string) => {
-    const response = await api.post(`/chats/${chatId}/participants/deactivate/`);
-    return response.data;
-  },
-
   getChatParticipants: async (chatId: string) => {
     const response = await api.get(`/chats/${chatId}/participants/`);
     return response.data;

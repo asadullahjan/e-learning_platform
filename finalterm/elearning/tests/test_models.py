@@ -1,12 +1,13 @@
-from django.test import TestCase
 from django.contrib.auth import get_user_model
+from elearning.tests.test_base import BaseTestCase, debug_on_failure
 
 User = get_user_model()
 
 
-class UserModelTest(TestCase):
+class UserModelTest(BaseTestCase):
     """Test User model"""
 
+    @debug_on_failure
     def test_create_user(self):
         """Test creating a user"""
         user = User.objects.create_user(
@@ -20,6 +21,7 @@ class UserModelTest(TestCase):
         self.assertEqual(user.role, "student")
         self.assertTrue(user.is_active)
 
+    @debug_on_failure
     def test_user_str_representation(self):
         """Test user string representation"""
         user = User.objects.create_user(
@@ -31,6 +33,7 @@ class UserModelTest(TestCase):
         expected_str = "testuser (Teacher)"
         self.assertEqual(str(user), expected_str)
 
+    @debug_on_failure
     def test_user_role_choices(self):
         """Test user role choices"""
         student = User.objects.create_user(

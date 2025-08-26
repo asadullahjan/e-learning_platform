@@ -4,13 +4,14 @@ from rest_framework.filters import OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
 
-from elearning.models import ChatRoom, ChatParticipant, Course
-from elearning.permissions import IsTeacher, IsCourseOwner
+from elearning.models import Course
+from elearning.permissions.courses.course_permissions import CoursePermission
 from elearning.serializers import (
     CourseSerializer,
     CourseListSerializer,
     CourseDetailSerializer,
 )
+from elearning.services.courses.course_service import CourseService
 
 
 class CourseFilter(filters.FilterSet):
@@ -67,43 +68,29 @@ class CourseViewSet(viewsets.ModelViewSet):
             # Anyone can view courses (no authentication required)
             return [AllowAny()]
         elif self.action == "create":
-            return [IsAuthenticated(), IsTeacher()]
+            return [IsAuthenticated(), CoursePermission()]
         elif self.action in ["update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), IsCourseOwner()]
+            return [IsAuthenticated(), CoursePermission()]
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        if self.action in ["list", "retrieve"]:
-            # Start with published courses
-            queryset = Course.objects.filter(published_at__isnull=False)
-
-            # If user is a teacher, also include their own courses
-            if (
-                self.request.user.is_authenticated
-                and self.request.user.role == "teacher"
-            ):
-                user_courses = Course.objects.filter(teacher=self.request.user)
-                queryset = (queryset | user_courses).distinct()
-
-            return queryset
-
-        # For other actions (create, update, delete), show all courses
-        return Course.objects.all()
+        # Use computed fields method for detail serializer, basic method for list
+        if self.action == "retrieve":
+            return CourseService.get_courses_with_computed_fields(
+                self.request.user
+            )
+        else:
+            return CourseService.get_courses_for_user(self.request.user)
 
     def perform_create(self, serializer):
-        # First save the course
-        course = serializer.save(teacher=self.request.user)
-
-        # Create the chatroom for the course
-        chatroom = ChatRoom.objects.create(
-            name=f"{course.title} Chat",
-            course=course,
-            chat_type="course",
-            is_public=True,
-            created_by=self.request.user,
+        # ✅ CORRECT: Delegate to service
+        course = CourseService.create_course_with_chat(
+            teacher=self.request.user,
+            course_data=serializer.validated_data
         )
-
-        # Add the course creator as admin participant
-        ChatParticipant.objects.create(
-            chat_room=chatroom, user=self.request.user, role="admin"
+        
+        # Populate computed fields before setting instance
+        course = CourseService.populate_course_computed_fields(
+            course, self.request.user
         )
+        serializer.instance = course

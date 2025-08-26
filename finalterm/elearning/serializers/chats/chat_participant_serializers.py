@@ -43,16 +43,23 @@ class ChatParticipantCreateSerializer(serializers.Serializer):
 
     username = serializers.CharField(
         required=False,
-        help_text="Username to add (admin only). Leave empty to join yourself.",
+        help_text=(
+            "Username to add (admin only). Leave empty to join yourself."
+        ),
     )
 
     def validate_username(self, value):
-        """Validate username if provided"""
+        """Validate username format only"""
         if value:
-            if not User.objects.filter(
-                username=value, is_active=True
-            ).exists():
+            # ✅ CORRECT: Only format validation, no database queries
+            if len(value.strip()) < 3:
                 raise serializers.ValidationError(
-                    f"User '{value}' not found or inactive"
+                    "Username must be at least 3 characters long"
+                )
+
+            if not value.replace("_", "").replace("-", "").isalnum():
+                raise serializers.ValidationError(
+                    "Username can only contain letters, numbers, "
+                    "underscores, and hyphens"
                 )
         return value

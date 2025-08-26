@@ -68,6 +68,7 @@ class CourseListSerializer(CourseSerializer):
 class CourseDetailSerializer(CourseSerializer):
     """Detailed course serializer with enrollment data and nested teacher"""
 
+    # These fields will be populated by the service layer
     enrollment_count = serializers.SerializerMethodField()
     total_enrollments = serializers.SerializerMethodField()
     is_enrolled = serializers.SerializerMethodField()
@@ -90,28 +91,28 @@ class CourseDetailSerializer(CourseSerializer):
         ]
 
     def get_enrollment_count(self, obj):
-        return obj.enrollments.filter(is_active=True).count()
+        """Get enrollment count from service-populated field"""
+        if hasattr(obj, '_enrollment_count'):
+            return obj._enrollment_count
+        return 0
 
     def get_total_enrollments(self, obj):
-        return obj.enrollments.count()
+        """Get total enrollments from service-populated field"""
+        if hasattr(obj, '_total_enrollments'):
+            return obj._total_enrollments
+        return 0
 
     def get_is_enrolled(self, obj):
-        request = self.context.get("request")
-        if request and request.user.is_authenticated:
-            return obj.enrollments.filter(
-                user=request.user, is_active=True
-            ).exists()
+        """Get enrollment status from service-populated field"""
+        if hasattr(obj, '_is_enrolled'):
+            return obj._is_enrolled
         return False
 
     def get_course_chat_id(self, obj):
-        """Get course chat ID if it exists"""
-        try:
-            from ..models import ChatRoom
-
-            course_chat = ChatRoom.objects.get(chat_type="course", course=obj)
-            return course_chat.id
-        except ChatRoom.DoesNotExist:
-            return None
+        """Get course chat ID from service-populated field"""
+        if hasattr(obj, '_course_chat_id'):
+            return obj._course_chat_id
+        return None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

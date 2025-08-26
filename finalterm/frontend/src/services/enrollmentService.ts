@@ -43,34 +43,42 @@ export interface EnrollmentListResponse {
 export const enrollmentService = {
   // For teachers viewing enrollments in their course (returns user data)
   getCourseEnrollments: async (
-    courseId: string, 
+    courseId: string,
     filters?: {
       search?: string;
       status?: "all" | "active" | "inactive";
     }
   ): Promise<TeacherEnrollment[]> => {
-    const params: any = { course: courseId };
-    
+    const params: any = {};
+
     if (filters?.search) {
       params.search = filters.search;
     }
-    
+
     if (filters?.status && filters.status !== "all") {
       params.is_active = filters.status === "active";
     }
-    
-    const response = await api.get<EnrollmentListResponse>("/enrollments", { params });
+
+    const response = await api.get<EnrollmentListResponse>(`/courses/${courseId}/enrollments/`, {
+      params,
+    });
     return response.data.results as TeacherEnrollment[];
   },
 
   // For students viewing their own enrollments (returns course data)
-  getUserEnrollments: async (): Promise<StudentEnrollment[]> => {
-    const response = await api.get<EnrollmentListResponse>("/enrollments");
-    return response.data.results as StudentEnrollment[];
+  getUserEnrollments: async (params?: {
+    page?: string;
+    [key: string]: any;
+  }): Promise<EnrollmentListResponse> => {
+    const response = await api.get<EnrollmentListResponse>("/enrollments/", { params });
+    console.log(response.data);
+    return response.data;
   },
 
   // Generic method that automatically determines the right endpoint
-  getEnrollments: async (courseId?: string): Promise<TeacherEnrollment[] | StudentEnrollment[]> => {
+  getEnrollments: async (
+    courseId?: string
+  ): Promise<TeacherEnrollment[] | StudentEnrollment[] | EnrollmentListResponse> => {
     if (courseId) {
       return enrollmentService.getCourseEnrollments(courseId);
     } else {
@@ -84,7 +92,7 @@ export const enrollmentService = {
   },
 
   createEnrollment: async (courseId: string): Promise<Enrollment> => {
-    const response = await api.post<Enrollment>("/enrollments/", { course: courseId });
+    const response = await api.post<Enrollment>(`/courses/${courseId}/enrollments/`, {});
     return response.data;
   },
 
@@ -119,23 +127,26 @@ export const enrollmentService = {
       }
     ): Promise<TeacherEnrollment[]> => {
       const serverApi = await createServerApi();
-      const params: any = { course: courseId };
-      
+      const params: any = {};
+
       if (filters?.search) {
         params.search = filters.search;
       }
-      
+
       if (filters?.status && filters.status !== "all") {
         params.is_active = filters.status === "active";
       }
-      
-      const response = await serverApi.get<EnrollmentListResponse>("/enrollments", { params });
+
+      const response = await serverApi.get<EnrollmentListResponse>(
+        `/courses/${courseId}/enrollments/`,
+        { params }
+      );
       return response.data.results as TeacherEnrollment[];
     },
 
     getUserEnrollments: async (): Promise<StudentEnrollment[]> => {
       const serverApi = await createServerApi();
-      const response = await serverApi.get<EnrollmentListResponse>("/enrollments");
+      const response = await serverApi.get<EnrollmentListResponse>("/enrollments/");
       return response.data.results as StudentEnrollment[];
     },
   },

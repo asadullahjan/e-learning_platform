@@ -10,7 +10,7 @@ from .chat_message_permissions import ChatMessagePermission
 from .chat_participant_permissions import ChatParticipantPermission
 
 __all__ = [
-    'ChatRoomPermission',
-    'ChatMessagePermission',
-    'ChatParticipantPermission',
+    "ChatRoomPermission",
+    "ChatMessagePermission",
+    "ChatParticipantPermission",
 ]

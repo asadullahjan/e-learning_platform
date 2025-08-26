@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ...models import ChatRoom, User, ChatParticipant
+from elearning.models import ChatRoom
 
 
 class ChatRoomListSerializer(serializers.ModelSerializer):
@@ -22,7 +22,7 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         child=serializers.IntegerField(), write_only=True, required=False
     )
 
-    # Add current user's participant status
+    # This field will be populated by the service layer
     current_user_status = serializers.SerializerMethodField()
 
     class Meta:
@@ -49,17 +49,10 @@ class ChatRoomSerializer(serializers.ModelSerializer):
 
     def get_current_user_status(self, obj):
         """Get current user's participant status for this chat room"""
-        request = self.context.get("request")
-        if not request or not request.user.is_authenticated:
-            return {"is_participant": False, "role": None}
-
-        try:
-            participant = ChatParticipant.objects.get(
-                chat_room=obj, user=request.user, is_active=True
-            )
-            return {"is_participant": True, "role": participant.role}
-        except ChatParticipant.DoesNotExist:
-            return {"is_participant": False, "role": None}
+        # This will be populated by the service layer before serialization
+        if hasattr(obj, '_current_user_status'):
+            return obj._current_user_status
+        return {"is_participant": False, "role": None}
 
     def validate_name(self, value):
         if len(value) < 3:
@@ -76,37 +69,36 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         return value
 
     def validate_participants(self, value):
-        """Validate participant IDs exist and remove duplicates"""
+        """Validate participant IDs format only"""
         if not value:
             return []
 
-        # Remove duplicates while preserving order
-        unique_ids = list(dict.fromkeys(value))
-
-        # Check if all users exist
-        existing_users_count = User.objects.filter(id__in=unique_ids).count()
-        if existing_users_count != len(unique_ids):
+        # ✅ CORRECT: Only format validation, no database queries
+        if not isinstance(value, list):
             raise serializers.ValidationError(
-                "Some participant users do not exist"
+                "Participants must be a list of user IDs"
             )
-
-        return unique_ids
+        
+        # Check if all IDs are positive integers
+        for user_id in value:
+            if not isinstance(user_id, int) or user_id <= 0:
+                raise serializers.ValidationError(
+                    "All participant IDs must be positive integers"
+                )
+        
+        # Remove duplicates while preserving order
+        return list(dict.fromkeys(value))
 
     def to_internal_value(self, data):
         """Transform participant IDs to User instances"""
         validated_data = super().to_internal_value(data)
 
-        # Transform participant IDs to User instances
+        # ✅ CORRECT: Transform data, but don't validate existence here
         participant_ids = validated_data.get("participants", [])
         if participant_ids:
-            participants = list(User.objects.filter(id__in=participant_ids))
-            creator = self.context["request"].user
-
-            # Remove creator from participants if they included themselves
-            if creator in participants:
-                participants.remove(creator)
-
-            validated_data["participants"] = participants
+            # Store IDs for later validation in service
+            validated_data["participant_ids"] = participant_ids
+            validated_data["participants"] = []
         else:
             validated_data["participants"] = []
 
@@ -116,7 +108,7 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         """Cross-field validation only"""
         chat_type = attrs.get("chat_type")
         course = attrs.get("course")
-        participants = attrs.get("participants", [])
+        participant_ids = attrs.get("participant_ids", [])
 
         # Business logic validation
         if chat_type == "course" and not course:
@@ -130,7 +122,7 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             )
 
         if chat_type == "direct":
-            if len(participants) != 1:
+            if len(participant_ids) != 1:
                 raise serializers.ValidationError(
                     "Direct chats must have exactly 1 participant specified "
                     "(creator will be added automatically)"

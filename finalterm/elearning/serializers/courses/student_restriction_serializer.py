@@ -52,22 +52,9 @@ class StudentRestrictionCreateUpdateSerializer(serializers.ModelSerializer):
         """Validate the restriction data."""
         request = self.context.get("request")
         student_id = data.get("student_id")
-        course_id = data.get("course_id")
 
         if request and student_id:
-            # Check if restriction already exists
-            existing = StudentRestriction.objects.filter(
-                teacher=request.user,
-                student_id=student_id,
-                course_id=course_id,
-            ).first()
-
-            if existing:
-                raise serializers.ValidationError(
-                    "Restriction already exists for this student and course"
-                )
-
-            # Prevent teachers from restricting themselves
+            # ✅ CORRECT: Only validation logic, no database queries
             if student_id == request.user.id:
                 raise serializers.ValidationError("Cannot restrict yourself")
 

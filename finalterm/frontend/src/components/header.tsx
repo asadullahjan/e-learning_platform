@@ -120,6 +120,15 @@ export default function Header() {
                     <>
                       <DropdownMenuItem asChild>
                         <Link
+                          href="/courses/my-courses"
+                          className="flex items-center"
+                        >
+                          <BookOpenIcon className="w-4 h-4 mr-2" />
+                          My Created Courses
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link
                           href="/restrictions"
                           className="flex items-center"
                         >
@@ -129,6 +138,17 @@ export default function Header() {
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                     </>
+                  )}
+                  {user?.role === "student" && (
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/courses/enrolled"
+                        className="flex items-center"
+                      >
+                        <BookOpenIcon className="w-4 h-4 mr-2" />
+                        My Enrolled Courses
+                      </Link>
+                    </DropdownMenuItem>
                   )}
                   <DropdownMenuItem asChild>
                     <Link
@@ -204,6 +224,28 @@ export default function Header() {
                     >
                       <ShieldIcon className="w-4 h-4 mr-2" />
                       Manage Restrictions
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {user?.role === "teacher" && (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/courses/my-courses"
+                      className="flex items-center"
+                    >
+                      <BookOpenIcon className="w-4 h-4 mr-2" />
+                      My Created Courses
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {user?.role === "student" && (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/courses/enrolled"
+                      className="flex items-center"
+                    >
+                      <BookOpenIcon className="w-4 h-4 mr-2" />
+                      My Enrolled Courses
                     </Link>
                   </DropdownMenuItem>
                 )}

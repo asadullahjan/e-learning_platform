@@ -427,7 +427,9 @@ class CourseLessonViewSetTestCase(BaseTestCase):
         response = self.log_response(self.client.get(url))
 
         self.assertEqual(response.status_code, 404)
-        self.assertIn("No file available for download", response.data["error"])
+        self.assertIn(
+            "No file available for download", response.data["detail"]
+        )
 
     @debug_on_failure
     def test_download_lesson_file_student_not_enrolled(self):

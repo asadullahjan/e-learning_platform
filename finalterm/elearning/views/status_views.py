@@ -7,6 +7,7 @@ from ..models import Status
 from ..permissions import StatusPermission
 from ..serializers.status_serializers import (
     StatusSerializer,
+    StatusListSerializer,
     StatusCreateUpdateSerializer,
 )
 
@@ -68,4 +69,7 @@ class StatusViewSet(viewsets.ModelViewSet):
         """Return appropriate serializer based on action"""
         if self.action in ["create", "update", "partial_update"]:
             return StatusCreateUpdateSerializer
-        return StatusSerializer
+        elif self.action == "retrieve":
+            return StatusSerializer
+        else:
+            return StatusListSerializer

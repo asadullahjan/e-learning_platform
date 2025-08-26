@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient
-from elearning.tests.test_base import BaseAPITestCase
+from elearning.tests.test_base import BaseAPITestCase, debug_on_failure
 
 User = get_user_model()
 
@@ -21,9 +21,12 @@ class AuthenticationTest(BaseAPITestCase):
             "role": "student",
         }
 
+    @debug_on_failure
     def test_user_registration(self):
         """Test user registration endpoint"""
-        response = self.client.post(self.register_url, self.valid_payload)
+        response = self.log_response(
+            self.client.post(self.register_url, self.valid_payload)
+        )
         self.assertStatusCode(response, status.HTTP_201_CREATED)
         self.assertIn("user", response.data)
 
@@ -31,6 +34,7 @@ class AuthenticationTest(BaseAPITestCase):
         user = User.objects.get(email="test@example.com")
         self.assertEqual(user.role, "student")
 
+    @debug_on_failure
     def test_user_login(self):
         """Test user login endpoint"""
         # Create user first
@@ -43,10 +47,13 @@ class AuthenticationTest(BaseAPITestCase):
 
         login_data = {"email": "test@example.com", "password": "testpass123"}
 
-        response = self.client.post(self.login_url, login_data)
+        response = self.log_response(
+            self.client.post(self.login_url, login_data)
+        )
         self.assertStatusCode(response, status.HTTP_200_OK)
         self.assertIn("user", response.data)
 
+    @debug_on_failure
     def test_invalid_registration_data(self):
         """Test registration with invalid data"""
         invalid_payload = {
@@ -56,9 +63,12 @@ class AuthenticationTest(BaseAPITestCase):
             "role": "invalid-role",
         }
 
-        response = self.client.post(self.register_url, invalid_payload)
+        response = self.log_response(
+            self.client.post(self.register_url, invalid_payload)
+        )
         self.assertStatusCode(response, status.HTTP_400_BAD_REQUEST)
 
+    @debug_on_failure
     def test_duplicate_username_registration(self):
         """Test registration with duplicate username"""
         # Create first user
@@ -77,6 +87,8 @@ class AuthenticationTest(BaseAPITestCase):
             "role": "student",
         }
 
-        response = self.client.post(self.register_url, duplicate_payload)
+        response = self.log_response(
+            self.client.post(self.register_url, duplicate_payload)
+        )
         self.assertStatusCode(response, status.HTTP_400_BAD_REQUEST)
         self.assertIn("username", response.data)

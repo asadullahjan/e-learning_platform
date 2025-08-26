@@ -1,6 +1,11 @@
 # Import all views for easy access
 from .auth_views import AuthViewSet
-from .courses import CourseViewSet, CourseLessonViewSet, EnrollmentViewSet
+from .courses import (
+    CourseViewSet,
+    CourseLessonViewSet,
+    EnrollmentViewSet,
+    CourseEnrollmentViewSet,
+)
 from .courses.restrictions_views import StudentRestrictionViewSet
 from .chats.chat_room_views import ChatRoomViewSet
 from .chats.chat_participant_views import ChatParticipantViewSet
@@ -15,6 +20,7 @@ __all__ = [
     "CourseViewSet",
     "CourseLessonViewSet",
     "EnrollmentViewSet",
+    "CourseEnrollmentViewSet",
     "StudentRestrictionViewSet",
     "ChatRoomViewSet",
     "ChatParticipantViewSet",

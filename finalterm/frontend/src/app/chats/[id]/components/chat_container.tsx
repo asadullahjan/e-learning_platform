@@ -108,7 +108,9 @@ const ChatContainer = ({
             {/* Show Participants button for all participants */}
             {participantStatus?.is_participant && (
               <div className="ml-4">
-                <ParticipantsDialog chatId={chatId} />
+                <ParticipantsDialog 
+                  chatId={chatId} 
+                />
               </div>
             )}
           </div>

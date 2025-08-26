@@ -1,6 +1,6 @@
 from rest_framework import status
 from elearning.models import User, ChatRoom, ChatParticipant
-from elearning.tests.test_base import BaseAPITestCase
+from elearning.tests.test_base import BaseAPITestCase, debug_on_failure
 
 
 class ChatRoomViewsTestCase(BaseAPITestCase):
@@ -24,6 +24,7 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
             role="student",
         )
 
+    @debug_on_failure
     def test_my_chats_returns_only_user_chats(self):
         """Test that my_chats returns only chats where user is an active
         participant"""
@@ -62,7 +63,7 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
             is_active=False,  # Inactive!
         )
 
-        response = self.client.get("/api/chats/my_chats/")
+        response = self.log_response(self.client.get("/api/chats/my_chats/"))
 
         self.assertStatusCode(response, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)  # Only active teacher chat
@@ -77,6 +78,7 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
         self.assertNotIn(other_chat.id, chat_ids)
         self.assertNotIn(inactive_chat.id, chat_ids)
 
+    @debug_on_failure
     def test_my_chats_no_pagination(self):
         """Test that my_chats returns all results without pagination"""
         self.client.force_authenticate(user=self.teacher)
@@ -92,7 +94,7 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
                 chat_room=chat, user=self.teacher, role="admin", is_active=True
             )
 
-        response = self.client.get("/api/chats/my_chats/")
+        response = self.log_response(self.client.get("/api/chats/my_chats/"))
 
         self.assertStatusCode(response, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 25)  # All chats returned
@@ -103,22 +105,25 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
         self.assertNotIn("previous", response.data)
         self.assertNotIn("results", response.data)
 
+    @debug_on_failure
     def test_my_chats_unauthenticated(self):
         """Test that unauthenticated users cannot access my_chats"""
-        response = self.client.get("/api/chats/my_chats/")
+        response = self.log_response(self.client.get("/api/chats/my_chats/"))
         self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)
 
+    @debug_on_failure
     def test_my_chats_empty_when_no_chats(self):
         """Test that my_chats returns empty list when user has no active
         chats"""
         self.client.force_authenticate(user=self.teacher)
 
-        response = self.client.get("/api/chats/my_chats/")
+        response = self.log_response(self.client.get("/api/chats/my_chats/"))
 
         self.assertStatusCode(response, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 0)
         self.assertEqual(response.data, [])
 
+    @debug_on_failure
     def test_my_chats_includes_different_chat_types(self):
         """Test that my_chats includes all chat types where user is active
         participant"""
@@ -155,7 +160,7 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
             is_active=True,
         )
 
-        response = self.client.get("/api/chats/my_chats/")
+        response = self.log_response(self.client.get("/api/chats/my_chats/"))
 
         self.assertStatusCode(response, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 3)
@@ -166,6 +171,7 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
         self.assertIn("group", chat_types)
         self.assertIn("course", chat_types)
 
+    @debug_on_failure
     def test_my_chats_respects_user_isolation(self):
         """Test that users only see their own chats, not other users'
         chats"""
@@ -198,28 +204,31 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
         )
 
         # Teacher should only see their own chat
-        response = self.client.get("/api/chats/my_chats/")
+        response = self.log_response(self.client.get("/api/chats/my_chats/"))
         self.assertStatusCode(response, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], teacher_chat.id)
 
         # Switch to student and verify they only see their chat
         self.client.force_authenticate(user=self.student)
-        response = self.client.get("/api/chats/my_chats/")
+        response = self.log_response(self.client.get("/api/chats/my_chats/"))
         self.assertStatusCode(response, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], student_chat.id)
 
+    @debug_on_failure
     def test_create_direct_chat_room(self):
         """Test creating a direct chat room with proper participants"""
         self.client.force_authenticate(user=self.teacher)
-        response = self.client.post(
-            "/api/chats/",
-            {
-                "name": "Test Direct Chat",
-                "chat_type": "direct",
-                "participants": [self.student.id],
-            },
+        response = self.log_response(
+            self.client.post(
+                "/api/chats/",
+                {
+                    "name": "Test Direct Chat",
+                    "chat_type": "direct",
+                    "participants": [self.student.id],
+                },
+            )
         )
 
         self.assertStatusCode(response, status.HTTP_201_CREATED)
@@ -248,16 +257,19 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
         self.assertEqual(student_participant.role, "participant")
         self.assertTrue(student_participant.is_active)
 
+    @debug_on_failure
     def test_create_group_chat_room(self):
         """Test creating a group chat room with multiple participants"""
         self.client.force_authenticate(user=self.teacher)
-        response = self.client.post(
-            "/api/chats/",
-            {
-                "name": "Test Group Chat",
-                "chat_type": "group",
-                "participants": [self.student.id, self.student2.id],
-            },
+        response = self.log_response(
+            self.client.post(
+                "/api/chats/",
+                {
+                    "name": "Test Group Chat",
+                    "chat_type": "group",
+                    "participants": [self.student.id, self.student2.id],
+                },
+            )
         )
 
         self.assertStatusCode(response, status.HTTP_201_CREATED)
@@ -281,30 +293,35 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
         for participant in student_participants:
             self.assertEqual(participant.role, "participant")
 
+    @debug_on_failure
     def test_create_direct_chat_duplicate(self):
         """Test that creating duplicate direct chats returns existing chat"""
         self.client.force_authenticate(user=self.teacher)
 
         # Create first chat
-        response1 = self.client.post(
-            "/api/chats/",
-            {
-                "name": "Test Direct Chat",
-                "chat_type": "direct",
-                "participants": [self.student.id],
-            },
+        response1 = self.log_response(
+            self.client.post(
+                "/api/chats/",
+                {
+                    "name": "Test Direct Chat",
+                    "chat_type": "direct",
+                    "participants": [self.student.id],
+                },
+            )
         )
         self.assertStatusCode(response1, status.HTTP_201_CREATED)
         first_chat_id = response1.data["id"]
 
         # Try to create duplicate chat
-        response2 = self.client.post(
-            "/api/chats/",
-            {
-                "name": "Another Direct Chat",
-                "chat_type": "direct",
-                "participants": [self.student.id],
-            },
+        response2 = self.log_response(
+            self.client.post(
+                "/api/chats/",
+                {
+                    "name": "Another Direct Chat",
+                    "chat_type": "direct",
+                    "participants": [self.student.id],
+                },
+            )
         )
         self.assertStatusCode(response2, status.HTTP_201_CREATED)
 
@@ -314,58 +331,69 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
             response2.data["name"], "Test Direct Chat"
         )  # Original name preserved
 
+    @debug_on_failure
     def test_create_chat_room_validation(self):
         """Test chat room creation validation rules"""
         self.client.force_authenticate(user=self.teacher)
 
         # Test name too short
-        response = self.client.post(
-            "/api/chats/",
-            {
-                "name": "AB",  # Less than 3 characters
-                "chat_type": "direct",
-                "participants": [self.student.id],
-            },
+        response = self.log_response(
+            self.client.post(
+                "/api/chats/",
+                {
+                    "name": "AB",  # Less than 3 characters
+                    "chat_type": "direct",
+                    "participants": [self.student.id],
+                },
+            )
         )
         self.assertStatusCode(response, status.HTTP_400_BAD_REQUEST)
 
         # Test invalid chat type
-        response = self.client.post(
-            "/api/chats/",
-            {
-                "name": "Test Chat",
-                "chat_type": "invalid_type",
-                "participants": [self.student.id],
-            },
+        response = self.log_response(
+            self.client.post(
+                "/api/chats/",
+                {
+                    "name": "Test Chat",
+                    "chat_type": "invalid_type",
+                    "participants": [self.student.id],
+                },
+            )
         )
         self.assertStatusCode(response, status.HTTP_400_BAD_REQUEST)
 
         # Test direct chat with wrong number of participants
-        response = self.client.post(
-            "/api/chats/",
-            {
-                "name": "Test Chat",
-                "chat_type": "direct",
-                "participants": [
-                    self.student.id,
-                    self.student2.id,
-                ],  # Should be exactly 1 participant
-            },
+        response = self.log_response(
+            self.client.post(
+                "/api/chats/",
+                {
+                    "name": "Test Chat",
+                    "chat_type": "direct",
+                    "participants": [
+                        self.student.id,
+                        self.student2.id,
+                    ],  # Should be exactly 1 participant
+                },
+            )
         )
         self.assertStatusCode(response, status.HTTP_400_BAD_REQUEST)
 
+    @debug_on_failure
     def test_create_chat_room_unauthenticated(self):
         """Test that unauthenticated users cannot create chat rooms"""
-        response = self.client.post(
-            "/api/chats/",
-            {
-                "name": "Test Chat",
-                "chat_type": "direct",
-                "participants": [self.student.id],
-            },
+        response = self.log_response(
+            self.client.post(
+                "/api/chats/",
+                {
+                    "name": "Test Chat",
+                    "chat_type": "direct",
+                    "participants": [self.student.id],
+                },
+            )
         )
         self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)
 
+    @debug_on_failure
     def test_duplicate_direct_chat_logic(self):
         """
         Test that duplicate direct chats between same users return existing
@@ -374,26 +402,30 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
         self.client.force_authenticate(user=self.teacher)
 
         # Create first direct chat
-        response1 = self.client.post(
-            "/api/chats/",
-            {
-                "name": "First Chat",
-                "chat_type": "direct",
-                "participants": [self.student.id],
-            },
+        response1 = self.log_response(
+            self.client.post(
+                "/api/chats/",
+                {
+                    "name": "First Chat",
+                    "chat_type": "direct",
+                    "participants": [self.student.id],
+                },
+            )
         )
         self.assertStatusCode(response1, status.HTTP_201_CREATED)
         first_chat_id = response1.data["id"]
 
         # Create second direct chat with same participants
         # (should return existing)
-        response2 = self.client.post(
-            "/api/chats/",
-            {
-                "name": "Second Chat",
-                "chat_type": "direct",
-                "participants": [self.student.id],
-            },
+        response2 = self.log_response(
+            self.client.post(
+                "/api/chats/",
+                {
+                    "name": "Second Chat",
+                    "chat_type": "direct",
+                    "participants": [self.student.id],
+                },
+            )
         )
         self.assertStatusCode(response2, status.HTTP_201_CREATED)
 
@@ -409,19 +441,22 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
         participants = ChatParticipant.objects.filter(chat_room=chat_room)
         self.assertEqual(participants.count(), 2)  # teacher + student
 
+    @debug_on_failure
     def test_create_chat_room_with_nonexistent_user(self):
         """Test creating chat room with non-existent user ID"""
         self.client.force_authenticate(user=self.teacher)
 
-        response = self.client.post(
-            "/api/chats/",
-            {
-                "name": "Test Chat",
-                "chat_type": "direct",
-                "participants": [99999],  # Non-existent user ID
-            },
+        response = self.log_response(
+            self.client.post(
+                "/api/chats/",
+                {
+                    "name": "Test Chat",
+                    "chat_type": "direct",
+                    "participants": [99999],  # Non-existent user ID
+                },
+            )
         )
-        self.assertStatusCode(response, status.HTTP_400_BAD_REQUEST)
-        self.assertIn(
-            "Some participant users do not exist", str(response.data)
+        self.assertStatusCode(response, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(
+            "User with ID 99999 not found", response.data["detail"]
         )

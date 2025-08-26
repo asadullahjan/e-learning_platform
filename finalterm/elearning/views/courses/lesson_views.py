@@ -6,6 +6,7 @@ from rest_framework import status
 
 from django.shortcuts import get_object_or_404
 from django.http import FileResponse
+
 from elearning.serializers import (
     CourseLessonListSerializer,
     CourseLessonDetailSerializer,
@@ -14,8 +15,8 @@ from elearning.serializers import (
 )
 from elearning.permissions import (
     IsTeacher,
-    LessonDownloadPermission,
     IsEnrolledInCourse,
+    LessonDownloadPermission,
 )
 from elearning.services.courses.course_lesson_service import (
     CourseLessonService,

@@ -1,6 +1,7 @@
 from elearning.models import Status, User
 from elearning.exceptions import ServiceError
 from elearning.services.notification_service import NotificationService
+from elearning.permissions.users.status_permissions import StatusPolicy
 
 
 class StatusService:
@@ -27,6 +28,9 @@ class StatusService:
     @staticmethod
     def create_status(user: User, content: str) -> Status:
         """Create a new status and notify followers"""
+        # Check if user can create status
+        StatusPolicy.check_can_create_status(user, raise_exception=True)
+        
         status = Status.objects.create(user=user, content=content)
 
         # Notify followers about new status
@@ -47,3 +51,38 @@ class StatusService:
             pass
 
         return status
+
+    @staticmethod
+    def get_status_with_permission_check(status_id: int, user: User):
+        """Get status with permission check"""
+        try:
+            status = Status.objects.get(id=status_id)
+            # Check if user can view this status
+            StatusPolicy.check_can_view_status(
+                user, status, raise_exception=True
+            )
+            return status
+        except Status.DoesNotExist:
+            raise ServiceError.not_found("Status not found")
+
+    @staticmethod
+    def update_status(status: Status, user: User, content: str):
+        """Update status with permission check"""
+        # Check if user can modify this status
+        StatusPolicy.check_can_modify_status(
+            user, status, raise_exception=True
+        )
+        
+        status.content = content
+        status.save()
+        return status
+
+    @staticmethod
+    def delete_status(status: Status, user: User):
+        """Delete status with permission check"""
+        # Check if user can delete this status
+        StatusPolicy.check_can_delete_status(
+            user, status, raise_exception=True
+        )
+        
+        status.delete()

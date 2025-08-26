@@ -1,132 +1,133 @@
 """
-Student restriction permissions.
+Course enrollment permissions.
 
-This module contains permission classes that control access to student
-restriction operations such as creating, viewing, and deleting restrictions.
+This module contains permission classes that control access to course
+enrollment operations such as creating, viewing, and managing enrollments.
 """
 
 from rest_framework import permissions
-from elearning.models import StudentRestriction, User, Course
+from elearning.models import Course, User, Enrollment
 from elearning.exceptions import ServiceError
 
 
-class StudentRestrictionPermission(permissions.BasePermission):
+class EnrollmentPermission(permissions.BasePermission):
     """
-    Permission class for student restriction operations.
+    Permission class for course enrollment operations.
 
     Allows:
-    - Teachers to create restrictions for students
-    - Teachers to view and manage their own restrictions
-    - Students to view restrictions applied to them
+    - Authenticated users to view their own enrollments
+    - Teachers to view enrollments for their courses
+    - Students to enroll in published courses
+    - Course owners to manage enrollments
     """
 
     def has_permission(self, request, view):
-        """Check if user has permission to access restrictions"""
+        """Check if user has permission to access enrollments"""
         if not request.user.is_authenticated:
-            self.message = "You must be logged in to access restrictions"
+            self.message = "You must be logged in to access enrollments"
             return False
 
-        # For create action, check if user is authenticated teacher
+        # For create action, check if user is authenticated
         if view.action == "create":
-            if request.user.role != "teacher":
-                self.message = "Only teachers can create restrictions"
+            if not request.user.is_authenticated:
+                self.message = "You must be logged in to enroll in a course"
                 return False
 
         return True
 
     def has_object_permission(self, request, view, obj):
-        """Check if user can modify specific restriction object"""
+        """Check if user can modify specific enrollment object"""
         if request.method in permissions.SAFE_METHODS:
-            # Teachers can view their own restrictions
-            if obj.teacher == request.user:
+            # Users can view their own enrollments
+            if obj.user == request.user:
                 return True
-            # Students can view restrictions applied to them
-            if obj.student == request.user:
+            # Teachers can view enrollments for their courses
+            if (
+                request.user.role == "teacher"
+                and obj.course.teacher == request.user
+            ):
                 return True
-            self.message = "You can only view restrictions you created or that apply to you"
+            self.message = "You can only view your own enrollments"
             return False
 
-        # Only the teacher who created the restriction can modify it
-        if obj.teacher != request.user:
-            self.message = "You can only modify restrictions you created"
+        # Only course owners can modify enrollments
+        if request.user.role == "teacher":
+            if obj.course.teacher != request.user:
+                self.message = (
+                    "You can only manage enrollments for your own courses"
+                )
+                return False
+            return True
+
+        # Students can only modify their own enrollments
+        if obj.user != request.user:
+            self.message = "You can only modify your own enrollments"
             return False
 
         return True
 
 
-class StudentRestrictionPolicy:
+class EnrollmentPolicy:
     """
-    Policy class for student restriction operations.
+    Policy class for course enrollment operations.
 
-    This class encapsulates all business rules for restriction operations
+    This class encapsulates all business rules for enrollment operations
     and can be used by both permissions and services.
     """
 
     @staticmethod
-    def check_can_create_restriction(
-        user: User,
-        student: User,
-        course: Course,
-        permission_obj=None,
-        raise_exception=False,
+    def check_can_enroll(
+        user: User, course: Course, permission_obj=None, raise_exception=False
     ) -> bool:
         """
-        Check if a user can create a restriction.
+        Check if a user can enroll in a course.
 
         This method can be used by both permissions and services:
         - For permissions: returns boolean and sets custom message
         - For services: raises ServiceError with detailed message
 
         Args:
-            user: User attempting to create restriction
-            student: Student to restrict
-            course: Course to restrict student from
+            user: User attempting to enroll
+            course: Course to enroll in
             permission_obj: Permission object to set custom messages (optional)
-            raise_exception: If True, raises ServiceError instead of returning False
+            raise_exception: If True, raises ServiceError instead of returning
+            False
 
         Returns:
-            bool: True if user can create restriction, False otherwise
+            bool: True if user can enroll, False otherwise
 
         Raises:
             ServiceError: If raise_exception=True and validation fails
         """
         if not user.is_authenticated:
-            error_msg = "You must be logged in to create restrictions"
+            error_msg = "You must be logged in to enroll in a course"
             if raise_exception:
                 raise ServiceError.permission_denied(error_msg)
             if permission_obj:
                 permission_obj.message = error_msg
             return False
 
-        if user.role != "teacher":
-            error_msg = "Only teachers can create restrictions"
+        if user.role != "student":
+            error_msg = "Only students can enroll in courses"
             if raise_exception:
                 raise ServiceError.permission_denied(error_msg)
             if permission_obj:
                 permission_obj.message = error_msg
             return False
 
-        if course.teacher != user:
-            error_msg = "You can only create restrictions for your own courses"
-            if raise_exception:
-                raise ServiceError.permission_denied(error_msg)
-            if permission_obj:
-                permission_obj.message = error_msg
-            return False
-
-        if student.role != "student":
-            error_msg = "Restrictions can only be applied to students"
+        if not course.published_at:
+            error_msg = "Cannot enroll in unpublished course"
             if raise_exception:
                 raise ServiceError.bad_request(error_msg)
             if permission_obj:
                 permission_obj.message = error_msg
             return False
 
-        # Check if restriction already exists
-        if StudentRestriction.objects.filter(
-            student=student, course=course, is_active=True
+        # Check if already enrolled
+        if Enrollment.objects.filter(
+            user=user, course=course, is_active=True
         ).exists():
-            error_msg = "Student is already restricted from this course"
+            error_msg = "You are already enrolled in this course"
             if raise_exception:
                 raise ServiceError.conflict(error_msg)
             if permission_obj:
@@ -136,24 +137,25 @@ class StudentRestrictionPolicy:
         return True
 
     @staticmethod
-    def check_can_view_restriction(
+    def check_can_view_enrollment(
         user: User,
-        restriction: StudentRestriction,
+        enrollment: Enrollment,
         permission_obj=None,
         raise_exception=False,
     ) -> bool:
         """
-        Check if a user can view a restriction.
+        Check if a user can view an enrollment.
 
         This method can be used by both permissions and services:
         - For permissions: returns boolean and sets custom message
         - For services: raises ServiceError with detailed message
 
         Args:
-            user: User attempting to view restriction
-            restriction: Restriction object to view
+            user: User attempting to view enrollment
+            enrollment: Enrollment object to view
             permission_obj: Permission object to set custom messages (optional)
-            raise_exception: If True, raises ServiceError instead of returning False
+            raise_exception: If True, raises ServiceError instead of returning
+            False
 
         Returns:
             bool: True if user can view, False otherwise
@@ -162,24 +164,22 @@ class StudentRestrictionPolicy:
             ServiceError: If raise_exception=True and validation fails
         """
         if not user.is_authenticated:
-            error_msg = "You must be logged in to view restrictions"
+            error_msg = "You must be logged in to view enrollments"
             if raise_exception:
                 raise ServiceError.permission_denied(error_msg)
             if permission_obj:
                 permission_obj.message = error_msg
             return False
 
-        # Teachers can view restrictions they created
-        if restriction.teacher == user:
+        # Users can view their own enrollments
+        if enrollment.user == user:
             return True
 
-        # Students can view restrictions applied to them
-        if restriction.student == user:
+        # Teachers can view enrollments for their courses
+        if user.role == "teacher" and enrollment.course.teacher == user:
             return True
 
-        error_msg = (
-            "You can only view restrictions you created or that apply to you"
-        )
+        error_msg = "You can only view your own enrollments"
         if raise_exception:
             raise ServiceError.permission_denied(error_msg)
         if permission_obj:
@@ -187,24 +187,25 @@ class StudentRestrictionPolicy:
         return False
 
     @staticmethod
-    def check_can_modify_restriction(
+    def check_can_modify_enrollment(
         user: User,
-        restriction: StudentRestriction,
+        enrollment: Enrollment,
         permission_obj=None,
         raise_exception=False,
     ) -> bool:
         """
-        Check if a user can modify a restriction.
+        Check if a user can modify an enrollment.
 
         This method can be used by both permissions and services:
         - For permissions: returns boolean and sets custom message
         - For services: raises ServiceError with detailed message
 
         Args:
-            user: User attempting to modify restriction
-            restriction: Restriction object to modify
+            user: User attempting to modify enrollment
+            enrollment: Enrollment object to modify
             permission_obj: Permission object to set custom messages (optional)
-            raise_exception: If True, raises ServiceError instead of returning False
+            raise_exception: If True, raises ServiceError instead of returning
+            False
 
         Returns:
             bool: True if user can modify, False otherwise
@@ -213,23 +214,20 @@ class StudentRestrictionPolicy:
             ServiceError: If raise_exception=True and validation fails
         """
         if not user.is_authenticated:
-            error_msg = "You must be logged in to modify restrictions"
+            error_msg = "You must be logged in to modify enrollments"
             if raise_exception:
                 raise ServiceError.permission_denied(error_msg)
             if permission_obj:
                 permission_obj.message = error_msg
             return False
 
-        if user.role != "teacher":
-            error_msg = "Only teachers can modify restrictions"
-            if raise_exception:
-                raise ServiceError.permission_denied(error_msg)
-            if permission_obj:
-                permission_obj.message = error_msg
-            return False
+        # Course owners can manage enrollments
+        if user.role == "teacher" and enrollment.course.teacher == user:
+            return True
 
-        if restriction.teacher != user:
-            error_msg = "You can only modify restrictions you created"
+        # Students can only modify their own enrollments
+        if enrollment.user != user:
+            error_msg = "You can only modify your own enrollments"
             if raise_exception:
                 raise ServiceError.permission_denied(error_msg)
             if permission_obj:
@@ -239,51 +237,57 @@ class StudentRestrictionPolicy:
         return True
 
     @staticmethod
-    def check_can_delete_restriction(
+    def check_can_unenroll(
         user: User,
-        restriction: StudentRestriction,
+        enrollment: Enrollment,
         permission_obj=None,
         raise_exception=False,
     ) -> bool:
         """
-        Check if a user can delete a restriction.
+        Check if a user can unenroll from a course.
 
         This method can be used by both permissions and services:
         - For permissions: returns boolean and sets custom message
         - For services: raises ServiceError with detailed message
 
         Args:
-            user: User attempting to delete restriction
-            restriction: Restriction object to delete
+            user: User attempting to unenroll
+            enrollment: Enrollment object to unenroll from
             permission_obj: Permission object to set custom messages (optional)
-            raise_exception: If True, raises ServiceError instead of returning False
+            raise_exception: If True, raises ServiceError instead of returning
+            False
 
         Returns:
-            bool: True if user can delete, False otherwise
+            bool: True if user can unenroll, False otherwise
 
         Raises:
             ServiceError: If raise_exception=True and validation fails
         """
         if not user.is_authenticated:
-            error_msg = "You must be logged in to delete restrictions"
+            error_msg = "You must be logged in to unenroll from a course"
             if raise_exception:
                 raise ServiceError.permission_denied(error_msg)
             if permission_obj:
                 permission_obj.message = error_msg
             return False
 
-        if user.role != "teacher":
-            error_msg = "Only teachers can delete restrictions"
+        # Course owners can remove students
+        if user.role == "teacher" and enrollment.course.teacher == user:
+            return True
+
+        # Students can only unenroll themselves
+        if enrollment.user != user:
+            error_msg = "You can only unenroll yourself from a course"
             if raise_exception:
                 raise ServiceError.permission_denied(error_msg)
             if permission_obj:
                 permission_obj.message = error_msg
             return False
 
-        if restriction.teacher != user:
-            error_msg = "You can only delete restrictions you created"
+        if not enrollment.is_active:
+            error_msg = "You are not currently enrolled in this course"
             if raise_exception:
-                raise ServiceError.permission_denied(error_msg)
+                raise ServiceError.bad_request(error_msg)
             if permission_obj:
                 permission_obj.message = error_msg
             return False

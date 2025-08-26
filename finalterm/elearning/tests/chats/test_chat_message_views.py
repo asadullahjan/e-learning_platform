@@ -110,7 +110,7 @@ class ChatMessageViewsTestCase(BaseAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(
-            response.data["error"], "You are not the sender of this message"
+            response.data["detail"], "You can only edit your own messages"
         )
 
     @debug_on_failure

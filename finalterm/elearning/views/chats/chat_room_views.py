@@ -15,8 +15,30 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
     permission_classes = [ChatRoomPermission]
 
     def get_queryset(self):
-        # Use the service for business logic
-        return ChatService.get_all_available_chats(self.request.user)
+        # Use the service for business logic with computed fields
+        return ChatService.get_chats_with_computed_fields(self.request.user)
+
+    def retrieve(self, request, *args, **kwargs):
+        """Override retrieve to populate computed fields for single chat"""
+        # Get the chat from the queryset that has computed fields
+        chat_id = kwargs.get('pk')
+        try:
+            instance = ChatService.get_chat_with_permission_check(
+                int(chat_id), request.user
+            )
+            # Populate computed fields before serialization
+            instance = ChatService.populate_chat_computed_fields(
+                instance, request.user
+            )
+        except Exception:
+            # Fall back to default behavior if service fails
+            instance = self.get_object()
+            instance = ChatService.populate_chat_computed_fields(
+                instance, request.user
+            )
+        
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -26,11 +48,19 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def my_chats(self, request):
         """Get only the chats where the user is a participant"""
-        # Use the service for business logic
+        # Get user chats and populate computed fields
         user_chats = ChatService.get_user_chats(request.user)
+        
+        # Populate computed fields for each chat
+        chats_with_fields = []
+        for chat in user_chats:
+            chat_with_fields = ChatService.populate_chat_computed_fields(
+                chat, request.user
+            )
+            chats_with_fields.append(chat_with_fields)
 
         # Let Django handle serializer creation and context automatically
-        serializer = self.get_serializer(user_chats, many=True)
+        serializer = self.get_serializer(chats_with_fields, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["post"])
@@ -48,6 +78,10 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
             chat_room, created = ChatService.find_or_create_direct_chat(
                 request.user, username
             )
+            # Populate computed fields before serialization
+            chat_room = ChatService.populate_chat_computed_fields(
+                chat_room, request.user
+            )
             serializer = self.get_serializer(chat_room)
             return Response(
                 {"chat_room": serializer.data, "created": created},
@@ -64,5 +98,9 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
         chat_room = ChatService.create_chat_room(
             serializer.validated_data, self.request.user
         )
-
+        
+        # Populate computed fields before setting instance
+        chat_room = ChatService.populate_chat_computed_fields(
+            chat_room, self.request.user
+        )
         serializer.instance = chat_room
