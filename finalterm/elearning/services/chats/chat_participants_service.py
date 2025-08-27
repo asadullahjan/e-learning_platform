@@ -82,8 +82,14 @@ class ChatParticipantsService:
             )
 
     @staticmethod
-    def join_public_chat(chat_room: ChatRoom, user: User):
+    def join_public_chat(chat_room_id: int, user: User):
         """Join a public chat room"""
+        # Get chat room and check if it exists
+        try:
+            chat_room = ChatRoom.objects.get(id=chat_room_id)
+        except ChatRoom.DoesNotExist:
+            raise ServiceError.not_found("Chat room not found")
+        
         # Check if user can join this chat
         ChatParticipantPolicy.check_can_join_chat(
             user, chat_room, raise_exception=True
@@ -102,8 +108,14 @@ class ChatParticipantsService:
         return participant
 
     @staticmethod
-    def leave_chat(chat_room: ChatRoom, user: User):
+    def leave_chat(chat_room_id: int, user: User):
         """Leave a chat room (deactivate participation)"""
+        # Get chat room and check if it exists
+        try:
+            chat_room = ChatRoom.objects.get(id=chat_room_id)
+        except ChatRoom.DoesNotExist:
+            raise ServiceError.not_found("Chat room not found")
+        
         try:
             participant = ChatParticipant.objects.get(
                 chat_room=chat_room, user=user
@@ -210,11 +222,18 @@ class ChatParticipantsService:
 
     @staticmethod
     def get_chat_participants(
-        chat_room: ChatRoom,
+        chat_room_id: int,
         requesting_user: User,
         is_active: bool = True,
     ):
         """Get all participants for a chat room"""
+        # Get chat room and check if it exists
+        try:
+            chat_room = ChatRoom.objects.get(id=chat_room_id)
+        except ChatRoom.DoesNotExist:
+            raise ServiceError.not_found("Chat room not found")
+        
+        # Check if user can get participants of this chat room
         ChatParticipantPolicy.check_can_get_participants(
             requesting_user, chat_room, raise_exception=True
         )

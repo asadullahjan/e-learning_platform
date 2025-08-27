@@ -1,60 +1,34 @@
 from rest_framework.permissions import BasePermission
 from elearning.models import ChatParticipant
 from elearning.exceptions import ServiceError
-from .chat_room_permissions import ChatPolicy
 
 
 class ChatMessagePermission(BasePermission):
-    """DRF permission class for chat message operations"""
+    """DRF permission class for chat message operations - basic checks only"""
 
     def has_permission(self, request, view):
-        # Must be authenticated for all except list
+        """Basic permission checks without database queries"""
+
+        # For list action, allow all users
+        # (public chats can be viewed by anyone, private chats require auth)
         if view.action == "list":
+            return True
+
+        # For other actions, require authentication
+        if view.action in ["create", "partial_update", "destroy"]:
             return request.user.is_authenticated
 
-        if view.action == "create":
-            chat_room_pk = request.data.get("chat_room") or view.kwargs.get(
-                "chat_room_pk"
-            )
-            return (
-                request.user.is_authenticated
-                and chat_room_pk
-                and self._is_participant(request.user, chat_room_pk)
-            )
-
-        if view.action in ["partial_update", "destroy"]:
-            return request.user.is_authenticated
-
-        return False
+        return True
 
     def has_object_permission(self, request, view, obj):
+        """Object-level permission checks"""
         if view.action in ["partial_update", "destroy"]:
             # Sender can always edit/delete their own messages
             if obj.sender == request.user:
                 return True
-            # Otherwise must be admin in chat room
-            return self._is_admin(request.user, obj.chat_room.id)
+            # For other users, detailed checks will be done in service layer
+            return True
         return True
-
-    def _is_participant(self, user, chat_room_pk):
-        """Check if user is an active participant of the chat room"""
-        try:
-            ChatParticipant.objects.get(
-                chat_room_id=chat_room_pk, user=user, is_active=True
-            )
-            return True
-        except ChatParticipant.DoesNotExist:
-            return False
-
-    def _is_admin(self, user, chat_room_pk):
-        """Check if user is an admin of the chat room"""
-        try:
-            ChatParticipant.objects.get(
-                chat_room_id=chat_room_pk, user=user, role="admin"
-            )
-            return True
-        except ChatParticipant.DoesNotExist:
-            return False
 
 
 class ChatMessagePolicy:
@@ -107,17 +81,3 @@ class ChatMessagePolicy:
             if raise_exception:
                 raise ServiceError.permission_denied(error_msg)
             return False
-
-    @staticmethod
-    def check_can_view_message(user, message, raise_exception=False):
-        """Check if user can view a message"""
-        if not user.is_authenticated:
-            error_msg = "You must be logged in to view messages"
-            if raise_exception:
-                raise ServiceError.permission_denied(error_msg)
-            return False
-
-        # Check if user can access the chat room
-        return ChatPolicy.check_can_access_chat_room(
-            user, message.chat_room, raise_exception
-        )

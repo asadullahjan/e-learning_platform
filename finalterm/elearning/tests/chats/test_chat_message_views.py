@@ -1,9 +1,13 @@
+from unittest.mock import patch
 from elearning.models import ChatParticipant, ChatRoom, User
 from elearning.tests.test_base import BaseAPITestCase, debug_on_failure
 from rest_framework.test import APIClient
 from rest_framework import status
 
 
+@patch(
+    "elearning.services.chats.chat_websocket_service.ChatWebSocketService.broadcast_message"
+)
 class ChatMessageViewsTestCase(BaseAPITestCase):
     def setUp(self):
         self.client = APIClient()
@@ -38,7 +42,7 @@ class ChatMessageViewsTestCase(BaseAPITestCase):
         self.client.force_authenticate(user=None)
 
     @debug_on_failure
-    def test_create_message(self):
+    def test_create_message(self, mock_broadcast):
         self.client.force_authenticate(user=self.user)
         response = self.log_response(
             self.client.post(
@@ -50,7 +54,7 @@ class ChatMessageViewsTestCase(BaseAPITestCase):
         self.assertEqual(response.data["content"], "Test message")
 
     @debug_on_failure
-    def test_list_messages(self):
+    def test_list_messages(self, mock_broadcast):
         self.client.force_authenticate(user=self.user)
         response = self.log_response(
             self.client.post(
@@ -71,7 +75,7 @@ class ChatMessageViewsTestCase(BaseAPITestCase):
         )
 
     @debug_on_failure
-    def test_update_message(self):
+    def test_update_message(self, mock_broadcast):
         self.client.force_authenticate(user=self.user)
         response = self.log_response(
             self.client.post(
@@ -91,7 +95,7 @@ class ChatMessageViewsTestCase(BaseAPITestCase):
         self.assertEqual(response.data["content"], "Updated message")
 
     @debug_on_failure
-    def test_update_another_users_message(self):
+    def test_update_another_users_message(self, mock_broadcast):
         self.client.force_authenticate(user=self.user)
         response = self.log_response(
             self.client.post(
@@ -114,7 +118,7 @@ class ChatMessageViewsTestCase(BaseAPITestCase):
         )
 
     @debug_on_failure
-    def test_delete_message(self):
+    def test_delete_message(self, mock_broadcast):
         self.client.force_authenticate(user=self.user)
         response = self.log_response(
             self.client.post(
@@ -130,3 +134,56 @@ class ChatMessageViewsTestCase(BaseAPITestCase):
             )
         )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    @debug_on_failure
+    def test_private_chat_messages_non_participant_access(
+        self, mock_broadcast
+    ):
+        """Test that non-participants cannot access private chat messages"""
+        # Create a private chat room
+        self.client.force_authenticate(user=self.user)
+        private_chat = ChatRoom.objects.create(
+            name="Private Chat",
+            created_by=self.user,
+            chat_type="group",
+            is_public=False,
+        )
+
+        # Create a message in the private chat
+        self.client.post(
+            f"/api/chats/{private_chat.id}/messages/",
+            {"content": "Private message"},
+        )
+
+        # Try to access messages as a non-participant (teacher)
+        self.client.force_authenticate(user=self.teacher)
+        response = self.log_response(
+            self.client.get(f"/api/chats/{private_chat.id}/messages/")
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("participant", response.data["detail"].lower())
+
+    @debug_on_failure
+    def test_public_chat_messages_unauthenticated_access(self, mock_broadcast):
+        """Test that unauthenticated users can access public chat messages"""
+        # Ensure our test chat is public
+        self.chat_room.is_public = True
+        self.chat_room.save()
+
+        # Create a message in the public chat
+        self.client.force_authenticate(user=self.user)
+        self.client.post(
+            f"/api/chats/{self.chat_room.id}/messages/",
+            {"content": "Public message"},
+        )
+
+        # Try to access messages as unauthenticated user
+        self.client.force_authenticate(user=None)
+        response = self.log_response(
+            self.client.get(f"/api/chats/{self.chat_room.id}/messages/")
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(
+            response.data["results"][0]["content"], "Public message"
+        )

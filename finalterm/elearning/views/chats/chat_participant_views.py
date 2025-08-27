@@ -61,12 +61,11 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
 
         chat_room_id = self.kwargs["chat_room_pk"]
 
-        # Let DRF handle the DoesNotExist exception
-        chat_room = ChatRoom.objects.get(id=chat_room_id)
-
-        # Check permissions and get participants
+        # Check permissions and get participants via service
+        # Service will raise ServiceError if permission denied, 
+        # which DRF handles
         participants = ChatParticipantsService.get_chat_participants(
-            chat_room, self.request.user, is_active=True
+            chat_room_id, self.request.user, is_active=True
         )
         return participants
 
@@ -101,7 +100,7 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
         else:
             # User is joining the chat themselves
             participant = ChatParticipantsService.join_public_chat(
-                chat_room, self.request.user
+                chat_room.id, self.request.user
             )
             # Store data for response customization
             self._creation_data = {

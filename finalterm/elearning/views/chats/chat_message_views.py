@@ -49,17 +49,22 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Filter messages by chat room and order by creation date.
-        This enables automatic pagination and filtering.
+        Return messages for the specific chat room with permission checking.
+        DRF handles pagination automatically.
         """
         # Handle swagger schema generation
         if getattr(self, 'swagger_fake_view', False):
             return ChatMessage.objects.none()
             
         chat_room_id = self.kwargs["chat_room_pk"]
-        return ChatMessage.objects.filter(chat_room_id=chat_room_id).order_by(
-            "-created_at"
-        )  # Newest first
+        
+        # Check permissions and get messages via service
+        # Service will raise ServiceError if permission denied, 
+        # which DRF handles
+        messages = ChatMessagesService(chat_room_id).get_chat_messages(
+            self.request.user
+        )
+        return messages
 
     def get_serializer_class(self):
         """
