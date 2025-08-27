@@ -3,7 +3,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import (
-    extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
+    extend_schema,
+    OpenApiParameter,
+    OpenApiExample,
+    inline_serializer,
 )
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
@@ -16,7 +19,7 @@ from elearning.services.chats.chat_participants_service import (
     ChatParticipantsService,
 )
 from elearning.permissions import ChatParticipantPermission
-from elearning.models import ChatParticipant
+from elearning.models import ChatParticipant, ChatRoom
 
 
 @extend_schema(
@@ -26,13 +29,13 @@ from elearning.models import ChatParticipant
             name="chat_room_pk",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.PATH,
-            description="Chat room ID"
+            description="Chat room ID",
         ),
         OpenApiParameter(
             name="id",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.PATH,
-            description="Participant ID"
+            description="Participant ID",
         ),
     ],
 )
@@ -53,35 +56,41 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Return participants for the specific chat room"""
         # Handle swagger schema generation
-        if getattr(self, 'swagger_fake_view', False):
+        if getattr(self, "swagger_fake_view", False):
             return ChatParticipant.objects.none()
-            
-        chat_room_id = self.kwargs["chat_room_pk"]
-        return ChatParticipant.objects.filter(
-            chat_room_id=chat_room_id
-        ).select_related("user")
 
-    @extend_schema(
-        responses={
-            200: ChatParticipantListSerializer(many=True),
-        },
-    )
-    def list(self, request, chat_room_pk=None):
-        """List all chat participants"""
-        chat_participants = ChatParticipantsService.get_chat_participants(
-            request.chat_room, is_active=True
+        chat_room_id = self.kwargs["chat_room_pk"]
+
+        # Let DRF handle the DoesNotExist exception
+        chat_room = ChatRoom.objects.get(id=chat_room_id)
+
+        # Check permissions and get participants
+        participants = ChatParticipantsService.get_chat_participants(
+            chat_room, self.request.user, is_active=True
         )
-        serializer = self.get_serializer(chat_participants, many=True)
-        return Response(serializer.data)
+        return participants
+
+    def get_chat_room(self):
+        """Get the chat room for the current request"""
+        chat_room_id = self.kwargs.get("chat_room_pk")
+        if not chat_room_id:
+            return None
+
+        # Let DRF handle the DoesNotExist exception
+        return ChatRoom.objects.get(id=chat_room_id)
 
     def perform_create(self, serializer):
         """Handle the actual creation logic"""
+        chat_room = self.get_chat_room()
+        if not chat_room:
+            raise serializers.ValidationError("Chat room not found")
+
         username = serializer.validated_data.get("username")
 
         if username:
             # Admin is adding another user
             participant = ChatParticipantsService.add_user_to_chat_by_username(
-                self.request.chat_room, username
+                chat_room, username, self.request.user
             )
             # Store data for response customization
             self._creation_data = {
@@ -92,7 +101,7 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
         else:
             # User is joining the chat themselves
             participant = ChatParticipantsService.join_public_chat(
-                self.request.chat_room, self.request.user
+                chat_room, self.request.user
             )
             # Store data for response customization
             self._creation_data = {
@@ -111,17 +120,14 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
                     ),
                     "participant": ChatParticipantListSerializer,
                     "role": serializers.CharField(
-                        help_text="User role in chat",
-                        required=False
+                        help_text="User role in chat", required=False
                     ),
                 },
             ),
             400: inline_serializer(
                 name="ChatParticipantCreateBadRequestResponse",
                 fields={
-                    "error": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "error": serializers.CharField(help_text="Error message"),
                 },
             ),
         },
@@ -142,6 +148,13 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
     )
     def create(self, request, chat_room_pk=None):
         """Create a new chat participant (join a chat or add user)"""
+        chat_room = self.get_chat_room()
+        if not chat_room:
+            return Response(
+                {"detail": "Chat room not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -158,7 +171,7 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
                 {
                     "message": (
                         f"Successfully added {creation_data['username']} to "
-                        f"{request.chat_room.name}"
+                        f"{chat_room.name}"
                     ),
                     "participant": ChatParticipantListSerializer(
                         creation_data["participant"]
@@ -169,9 +182,7 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
         else:
             response = Response(
                 {
-                    "message": (
-                        f"Successfully joined {request.chat_room.name}"
-                    ),
+                    "message": (f"Successfully joined {chat_room.name}"),
                     "role": creation_data["participant"].role,
                 },
                 status=status.HTTP_201_CREATED,
@@ -190,19 +201,14 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
             400: inline_serializer(
                 name="ChatParticipantRoleUpdateBadRequestResponse",
                 fields={
-                    "error": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "error": serializers.CharField(help_text="Error message"),
                 },
             ),
         },
         examples=[
             OpenApiExample(
                 "Update Role",
-                value={
-                    "user": 1,
-                    "role": "admin"
-                },
+                value={"user": 1, "role": "admin"},
                 request_only=True,
                 status_codes=["200"],
             ),
@@ -211,11 +217,18 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"])
     def update_role(self, request, chat_room_pk=None):
         """Update a chat participant role (admin only)"""
+        chat_room = self.get_chat_room()
+        if not chat_room:
+            return Response(
+                {"detail": "Chat room not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         ChatParticipantsService.update_participant_role(
-            request.chat_room,
+            chat_room,
             request.user,  # Current user (admin)
             serializer.validated_data["user"],  # Target user (User object)
             serializer.validated_data["role"],
@@ -230,8 +243,15 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"])
     def deactivate(self, request, chat_room_pk=None):
         """Deactivate a chat participant"""
+        chat_room = self.get_chat_room()
+        if not chat_room:
+            return Response(
+                {"detail": "Chat room not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         ChatParticipantsService.deactivate_chat_for_user(
-            request.chat_room, request.user
+            chat_room, request.user, request.user
         )
         return Response(status=status.HTTP_200_OK)
 
@@ -243,8 +263,15 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"])
     def reactivate(self, request, chat_room_pk=None):
         """Reactivate a chat participant"""
+        chat_room = self.get_chat_room()
+        if not chat_room:
+            return Response(
+                {"detail": "Chat room not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         ChatParticipantsService.reactivate_chat_for_user(
-            request.chat_room, request.user
+            chat_room, request.user, request.user
         )
         return Response(status=status.HTTP_200_OK)
 
@@ -254,25 +281,22 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
             404: inline_serializer(
                 name="ChatParticipantNotFoundResponse",
                 fields={
-                    "detail": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "detail": serializers.CharField(help_text="Error message"),
                 },
             ),
         },
     )
     def destroy(self, request, chat_room_pk=None, pk=None):
         """Remove a participant from chat (admin only)"""
-        try:
-            participant = ChatParticipant.objects.get(
-                chat_room=request.chat_room, id=pk
-            )
-            ChatParticipantsService.remove_participant_from_chat(
-                request.chat_room, participant.user
-            )
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except ChatParticipant.DoesNotExist:
+        chat_room = self.get_chat_room()
+        if not chat_room:
             return Response(
-                {"detail": "Participant not found"},
+                {"detail": "Chat room not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        participant = ChatParticipant.objects.get(chat_room=chat_room, id=pk)
+        ChatParticipantsService.remove_participant_from_chat(
+            chat_room, participant.user, request.user
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)

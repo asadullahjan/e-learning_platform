@@ -32,7 +32,7 @@ class ChatService:
         # Extract data
         chat_type = validated_data.get("chat_type")
         course = validated_data.get("course")
-        participant_ids = validated_data.get("participant_ids", [])
+        participants = validated_data.get("participants", [])
 
         # Check if user can create this type of chat room
         ChatPolicy.check_can_create_chat_room(
@@ -40,8 +40,8 @@ class ChatService:
         )
 
         # For direct chats, check if one already exists
-        if chat_type == "direct" and len(participant_ids) == 1:
-            other_user_id = participant_ids[0]
+        if chat_type == "direct" and len(participants) == 1:
+            other_user_id = participants[0]
             try:
                 other_user = User.objects.get(id=other_user_id, is_active=True)
                 existing_chat = ChatService._find_existing_direct_chat(
@@ -75,10 +75,10 @@ class ChatService:
         )
 
         # Add other participants if specified
-        if participant_ids:
-            participants = User.objects.filter(id__in=participant_ids)
+        if participants:
+            participants = User.objects.filter(id__in=participants)
             ChatParticipantsService.add_participants_to_chat(
-                chat_room, list(participants)
+                chat_room, list(participants), creator
             )
 
         return chat_room

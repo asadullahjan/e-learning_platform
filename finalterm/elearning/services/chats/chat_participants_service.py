@@ -9,8 +9,15 @@ class ChatParticipantsService:
     """Service for managing chat participants"""
 
     @staticmethod
-    def add_user_to_chat_by_username(chat_room: ChatRoom, username: str):
+    def add_user_to_chat_by_username(
+        chat_room: ChatRoom, username: str, requesting_user: User
+    ):
         """Add a user to a chat room by username"""
+        # Check permissions using policy
+        ChatParticipantPolicy.check_can_add_participant(
+            requesting_user, chat_room, raise_exception=True
+        )
+
         try:
             user = User.objects.get(username=username, is_active=True)
         except User.DoesNotExist:
@@ -32,8 +39,15 @@ class ChatParticipantsService:
         return participant
 
     @staticmethod
-    def add_participants_to_chat(chat_room: ChatRoom, users: list[User]):
+    def add_participants_to_chat(
+        chat_room: ChatRoom, users: list[User], requesting_user: User
+    ):
         """Add multiple users to a chat room"""
+        # Check permissions using policy
+        ChatParticipantPolicy.check_can_add_participant(
+            requesting_user, chat_room, raise_exception=True
+        )
+
         participants = []
         for user in users:
             if not ChatParticipant.objects.filter(
@@ -47,8 +61,15 @@ class ChatParticipantsService:
         return participants
 
     @staticmethod
-    def remove_participant_from_chat(chat_room: ChatRoom, user: User):
+    def remove_participant_from_chat(
+        chat_room: ChatRoom, user: User, requesting_user: User
+    ):
         """Remove a participant from a chat room"""
+        # Check permissions using policy
+        ChatParticipantPolicy.check_can_remove_participant(
+            requesting_user, chat_room, user, raise_exception=True
+        )
+
         try:
             participant = ChatParticipant.objects.get(
                 chat_room=chat_room, user=user
@@ -56,7 +77,9 @@ class ChatParticipantsService:
             participant.delete()
             return True
         except ChatParticipant.DoesNotExist:
-            return False
+            raise ServiceError.not_found(
+                f"User '{user.username}' is not a participant " f"in this chat"
+            )
 
     @staticmethod
     def join_public_chat(chat_room: ChatRoom, user: User):
@@ -98,7 +121,7 @@ class ChatParticipantsService:
         """Update a participant's role (admin only)"""
         # Check if admin user can update roles
         ChatParticipantPolicy.check_can_update_participant_role(
-            admin_user, chat_room, raise_exception=True
+            admin_user, chat_room, target_user, raise_exception=True
         )
 
         try:
@@ -115,8 +138,16 @@ class ChatParticipantsService:
             )
 
     @staticmethod
-    def deactivate_chat_for_user(chat_room: ChatRoom, user: User):
+    def deactivate_chat_for_user(
+        chat_room: ChatRoom, user: User, requesting_user: User = None
+    ):
         """Deactivate a user's participation in a chat"""
+        # If requesting_user is provided, check permissions
+        if requesting_user and requesting_user != user:
+            ChatParticipantPolicy.check_can_deactivate_participant(
+                requesting_user, chat_room, user, raise_exception=True
+            )
+
         try:
             participant = ChatParticipant.objects.get(
                 chat_room=chat_room, user=user
@@ -125,7 +156,9 @@ class ChatParticipantsService:
             participant.save()
             return True
         except ChatParticipant.DoesNotExist:
-            return False
+            raise ServiceError.not_found(
+                f"User '{user.username}' is not a participant " f"in this chat"
+            )
 
     @staticmethod
     def deactivate_participant_by_admin(
@@ -133,10 +166,10 @@ class ChatParticipantsService:
     ):
         """Deactivate a participant from a chat (admin only)"""
         # Check if admin user can deactivate participants
-        ChatParticipantPolicy.check_can_remove_participant(
-            admin_user, chat_room, raise_exception=True
+        ChatParticipantPolicy.check_can_deactivate_participant(
+            admin_user, chat_room, target_user, raise_exception=True
         )
-        
+
         try:
             participant = ChatParticipant.objects.get(
                 chat_room=chat_room, user=target_user
@@ -151,8 +184,16 @@ class ChatParticipantsService:
             )
 
     @staticmethod
-    def reactivate_chat_for_user(chat_room: ChatRoom, user: User):
+    def reactivate_chat_for_user(
+        chat_room: ChatRoom, user: User, requesting_user: User = None
+    ):
         """Reactivate a user's participation in a chat"""
+        # If requesting_user is provided, check permissions
+        if requesting_user and requesting_user != user:
+            ChatParticipantPolicy.check_can_reactivate_participant(
+                requesting_user, chat_room, user, raise_exception=True
+            )
+
         try:
             participant = ChatParticipant.objects.get(
                 chat_room=chat_room, user=user
@@ -168,30 +209,16 @@ class ChatParticipantsService:
             return True
 
     @staticmethod
-    def get_chat_participants(chat_room: ChatRoom, is_active: bool = True):
+    def get_chat_participants(
+        chat_room: ChatRoom,
+        requesting_user: User,
+        is_active: bool = True,
+    ):
         """Get all participants for a chat room"""
+        ChatParticipantPolicy.check_can_get_participants(
+            requesting_user, chat_room, raise_exception=True
+        )
+
         return ChatParticipant.objects.filter(
             chat_room=chat_room, is_active=is_active
         ).select_related("user")
-
-    @staticmethod
-    def get_user_participant(chat_room: ChatRoom, user: User):
-        """Get a specific user's participation in a chat room"""
-        try:
-            return ChatParticipant.objects.get(chat_room=chat_room, user=user)
-        except ChatParticipant.DoesNotExist:
-            return None
-
-    @staticmethod
-    def is_user_participant(chat_room: ChatRoom, user: User):
-        """Check if a user is an active participant in a chat room"""
-        return ChatParticipant.objects.filter(
-            chat_room=chat_room, user=user, is_active=True
-        ).exists()
-
-    @staticmethod
-    def is_user_admin(chat_room: ChatRoom, user: User):
-        """Check if a user is an admin of a chat room"""
-        return ChatParticipant.objects.filter(
-            chat_room=chat_room, user=user, role="admin", is_active=True
-        ).exists()

@@ -1,6 +1,7 @@
 from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from rest_framework import status
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class ServiceError(Exception):
@@ -36,33 +37,32 @@ def custom_exception_handler(exc, context):
     """Custom exception handler to handle ServiceError and common exceptions"""
     # Let DRF handle its own exceptions first
     response = exception_handler(exc, context)
-    
+
     if response is not None:
         return response
-    
+
     # Handle our custom ServiceError
     if isinstance(exc, ServiceError):
         return Response({"detail": exc.message}, status=exc.status_code)
-    
+
     # Handle common Python exceptions that should be user-friendly
     if isinstance(exc, ValueError):
         return Response(
-            {"detail": str(exc)}, 
-            status=status.HTTP_400_BAD_REQUEST
+            {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
         )
-    
+
     if isinstance(exc, KeyError):
         return Response(
-            {"detail": f"Missing required field: {str(exc)}"}, 
-            status=status.HTTP_400_BAD_REQUEST
+            {"detail": f"Missing required field: {str(exc)}"},
+            status=status.HTTP_400_BAD_REQUEST,
         )
-    
+
     if isinstance(exc, TypeError):
         return Response(
-            {"detail": "Invalid data type provided"}, 
-            status=status.HTTP_400_BAD_REQUEST
+            {"detail": f"Invalid data type provided: {str(exc)}"},
+            status=status.HTTP_400_BAD_REQUEST,
         )
-    
+
     # For any other unhandled exceptions, let Django handle them
     # This allows proper error messages in debug mode and proper logging
     return None

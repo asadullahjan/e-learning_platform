@@ -15,8 +15,6 @@ from ...serializers.chats.chat_room_serializers import (
     ChatRoomSerializer,
 )
 from ...services.chats.chat_service import ChatService
-from ...models import ChatRoom
-from ...services.chats.chat_participants_service import ChatParticipantsService
 
 
 @extend_schema(
@@ -30,6 +28,11 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Use the service for business logic with computed fields
         return ChatService.get_chats_with_computed_fields(self.request.user)
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return ChatRoomListSerializer
+        return ChatRoomSerializer
 
     @extend_schema(
         responses={
@@ -85,11 +88,6 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
-
-    def get_serializer_class(self):
-        if self.action == "list":
-            return ChatRoomListSerializer
-        return ChatRoomSerializer
 
     @extend_schema(
         responses={

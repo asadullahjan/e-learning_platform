@@ -229,6 +229,7 @@ class ChatRoom(models.Model):
     ]
 
     name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
     chat_type = models.CharField(max_length=10, choices=CHAT_TYPE_CHOICES)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     course = models.ForeignKey(

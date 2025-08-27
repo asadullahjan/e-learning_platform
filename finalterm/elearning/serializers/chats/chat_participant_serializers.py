@@ -8,7 +8,14 @@ class ChatParticipantListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ChatParticipant
-        fields = ["user", "role", "joined_at", "is_active", "last_seen_at"]
+        fields = [
+            "id",
+            "user",
+            "role",
+            "joined_at",
+            "is_active",
+            "last_seen_at",
+        ]
 
 
 class ChatParticipantRoleUpdateSerializer(serializers.ModelSerializer):
@@ -28,14 +35,11 @@ class ChatParticipantRoleUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Invalid role")
         return value
 
-    def validate(self, attrs):
-        """Validate that user is not changing their own role"""
-        user = attrs.get("user")
-        request_user = self.context["request"].user
-
-        if user == request_user:
-            raise serializers.ValidationError("Cannot change your own role")
-        return attrs
+    def validate_user(self, value):
+        """Validate that user field is provided"""
+        if not value:
+            raise serializers.ValidationError("User field is required")
+        return value
 
 
 class ChatParticipantCreateSerializer(serializers.Serializer):

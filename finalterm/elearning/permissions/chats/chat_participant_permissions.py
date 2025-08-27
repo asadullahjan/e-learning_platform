@@ -1,77 +1,32 @@
 from rest_framework.permissions import BasePermission
-from elearning.models import ChatRoom, ChatParticipant
+from elearning.models import ChatParticipant
 from elearning.exceptions import ServiceError
 
 
 class ChatParticipantPermission(BasePermission):
-    """DRF permission class for chat participant operations"""
+    """DRF permission class for chat participant operations - basic checks only"""
 
     def has_permission(self, request, view):
-        chat_room_pk = view.kwargs.get("chat_room_pk")
+        """Basic permission checks without database queries"""
 
-        if not chat_room_pk:
-            return False
+        # Check if user is authenticated for actions that require it
+        if view.action in [
+            "create",
+            "update_role",
+            "deactivate",
+            "reactivate",
+            "destroy",
+        ]:
+            if not request.user.is_authenticated:
+                return False
 
-        try:
-            chat_room = ChatRoom.objects.get(id=chat_room_pk)
-            request.chat_room = chat_room
-        except ChatRoom.DoesNotExist:
-            return False
-
+        # For list action, allow all users
         if view.action == "list":
             return True
 
-        if not request.user.is_authenticated:
-            return False
-
-        if view.action == "create":
-            # Check if user is adding someone else
-            # (admin only) or joining themselves
-            username = request.data.get("username")
-            if username:
-                # Adding another user - only admins or direct chat creators
-                # can do this
-                if (
-                    chat_room.chat_type == "direct"
-                    and chat_room.created_by == request.user
-                ):
-                    return True
-                return ChatParticipant.objects.filter(
-                    chat_room=chat_room, user=request.user, role="admin"
-                ).exists()
-            else:
-                # Joining themselves - check if chat is public
-                return chat_room.is_public
-
-        if view.action == "update_role":
-            # Only admins can update roles
-            if (
-                chat_room.chat_type == "direct"
-                and chat_room.created_by == request.user
-            ):
-                return True
-            return ChatParticipant.objects.filter(
-                chat_room=chat_room, user=request.user, role="admin"
-            ).exists()
-
-        if view.action in ["deactivate", "reactivate"]:
-            # Users can deactivate/reactivate themselves,
-            # admins can do it for others
-            return True
-
-        if view.action == "destroy":
-            # Only admins can remove participants
-            if (
-                chat_room.chat_type == "direct"
-                and chat_room.created_by == request.user
-            ):
-                return True
-            return ChatParticipant.objects.filter(
-                chat_room=chat_room, user=request.user, role="admin"
-            ).exists()
-
-        # Default: only chat creator has access
-        return request.user == chat_room.created_by
+        # For other actions, basic checks passed - detailed checks will be done
+        # in policies
+        return True
 
 
 class ChatParticipantPolicy:
@@ -133,7 +88,7 @@ class ChatParticipantPolicy:
 
     @staticmethod
     def check_can_update_participant_role(
-        user, chat_room, raise_exception=False
+        user, chat_room, target_user, raise_exception=False
     ):
         """Check if user can update participant roles"""
         if not user.is_authenticated:
@@ -141,6 +96,10 @@ class ChatParticipantPolicy:
             if raise_exception:
                 raise ServiceError.permission_denied(error_msg)
             return False
+
+        # Users cannot change their own role
+        if user == target_user:
+            raise ServiceError.permission_denied("Cannot change your own role")
 
         # Direct chat creators can update roles
         if chat_room.chat_type == "direct" and chat_room.created_by == user:
@@ -172,6 +131,88 @@ class ChatParticipantPolicy:
 
         # Private chats require invitation
         error_msg = "This chat is private and requires an invitation"
+        if raise_exception:
+            raise ServiceError.permission_denied(error_msg)
+        return False
+
+    @staticmethod
+    def check_can_get_participants(user, chat_room, raise_exception=False):
+        """Check if user can get participants of a chat room"""
+        # For public chats, anyone can see participants
+        if chat_room.is_public:
+            return True
+
+        # For private chats, only participants can see participants
+        if user.is_authenticated:
+            if ChatParticipant.objects.filter(
+                chat_room=chat_room, user=user, is_active=True
+            ).exists():
+                return True
+
+        # Unauthenticated users can't see private chat participants
+        error_msg = (
+            "You must be logged in to view participants of private chats"
+        )
+        if raise_exception:
+            raise ServiceError.permission_denied(error_msg)
+        return False
+
+    @staticmethod
+    def check_can_deactivate_participant(
+        user, chat_room, target_user, raise_exception=False
+    ):
+        """Check if user can deactivate a participant"""
+        if not user.is_authenticated:
+            error_msg = "You must be logged in to deactivate participants"
+            if raise_exception:
+                raise ServiceError.permission_denied(error_msg)
+            return False
+
+        # Users can deactivate themselves
+        if user == target_user:
+            return True
+
+        # Direct chat creators can deactivate participants
+        if chat_room.chat_type == "direct" and chat_room.created_by == user:
+            return True
+
+        # Admins can deactivate participants
+        if ChatParticipant.objects.filter(
+            chat_room=chat_room, user=user, role="admin"
+        ).exists():
+            return True
+
+        error_msg = "Only admins can deactivate participants from this chat"
+        if raise_exception:
+            raise ServiceError.permission_denied(error_msg)
+        return False
+
+    @staticmethod
+    def check_can_reactivate_participant(
+        user, chat_room, target_user, raise_exception=False
+    ):
+        """Check if user can reactivate a participant"""
+        if not user.is_authenticated:
+            error_msg = "You must be logged in to reactivate participants"
+            if raise_exception:
+                raise ServiceError.permission_denied(error_msg)
+            return False
+
+        # Users can reactivate themselves
+        if user == target_user:
+            return True
+
+        # Direct chat creators can reactivate participants
+        if chat_room.chat_type == "direct" and chat_room.created_by == user:
+            return True
+
+        # Admins can reactivate participants
+        if ChatParticipant.objects.filter(
+            chat_room=chat_room, user=user, role="admin"
+        ).exists():
+            return True
+
+        error_msg = "Only admins can reactivate participants in this chat"
         if raise_exception:
             raise ServiceError.permission_denied(error_msg)
         return False
