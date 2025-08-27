@@ -34,10 +34,7 @@ from .courses.course_permissions import (
     CourseAccessPermission
 )
 from .courses.enrollment_permissions import EnrollmentPermission
-from .courses import (
-    LessonDownloadPermission,
-    IsEnrolledInCourse,
-)
+from .courses.lesson_permissions import LessonPermission
 from .courses.feedback_permissions import (
     CourseFeedbackPermission,
     CourseFeedbackPolicy,
@@ -77,13 +74,12 @@ __all__ = [
     "CoursePermission",
     "CourseAccessPermission",
     "EnrollmentPermission",
-    "LessonDownloadPermission",
+    "LessonPermission",
     "CourseFeedbackPermission",
     "CourseFeedbackPolicy",
     "StudentRestrictionPermission",
     "StudentRestrictionPolicy",
     "FilePolicy",
-    "IsEnrolledInCourse",
     # Course Policies
     "CoursePolicy",
     "LessonPolicy",

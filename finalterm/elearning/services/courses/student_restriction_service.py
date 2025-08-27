@@ -1,10 +1,14 @@
 from elearning.models import (
-    StudentRestriction, Enrollment, ChatParticipant, User, Course
+    StudentRestriction,
+    Enrollment,
+    ChatParticipant,
+    User,
+    Course,
 )
 from elearning.services.notification_service import NotificationService
 from elearning.exceptions import ServiceError
 from elearning.permissions.courses.restriction_permissions import (
-    StudentRestrictionPolicy
+    StudentRestrictionPolicy,
 )
 
 
@@ -19,15 +23,15 @@ class StudentRestrictionService:
     ) -> bool:
         """
         Check if a teacher can create a restriction for a student.
-        
+
         This method provides early permission checking that can be used by
         both permissions classes and the service itself.
-        
+
         Args:
             teacher: User attempting to create restriction
             student_id: ID of the student to restrict
             course_id: Optional course ID for course-specific restriction
-            
+
         Returns:
             bool: True if teacher can create restriction, False otherwise
         """
@@ -64,7 +68,7 @@ class StudentRestrictionService:
             course = None
             if course_id:
                 course = Course.objects.get(id=course_id)
-            
+
             # Use the permission policy for validation
             StudentRestrictionPolicy.check_can_create_restriction(
                 teacher, student, course, raise_exception=True
@@ -128,7 +132,7 @@ class StudentRestrictionService:
         StudentRestrictionPolicy.check_can_delete_restriction(
             user, restriction, raise_exception=True
         )
-        
+
         # Remove restriction effects before deleting
         StudentRestrictionService._remove_restriction_effects(restriction)
 
@@ -271,11 +275,11 @@ class StudentRestrictionService:
         StudentRestrictionPolicy.check_can_modify_restriction(
             user, restriction, raise_exception=True
         )
-        
+
         # Update restriction fields
         for field, value in kwargs.items():
             if hasattr(restriction, field):
                 setattr(restriction, field, value)
-        
+
         restriction.save()
         return restriction

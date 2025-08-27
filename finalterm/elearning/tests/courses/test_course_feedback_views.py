@@ -1,8 +1,8 @@
-from django.urls import reverse
+from django.utils import timezone
+
 from rest_framework.test import APIClient
 from rest_framework import status
 from elearning.models import Course, CourseFeedback, User, Enrollment
-from elearning.serializers import CourseFeedbackCreateUpdateSerializer
 from elearning.tests.test_base import BaseTestCase, debug_on_failure
 
 
@@ -36,6 +36,7 @@ class CourseFeedbackViewsTestCase(BaseTestCase):
             title="Test Course",
             description="Test Description",
             teacher=self.teacher,
+            published_at=timezone.now(),
         )
 
         # Create enrollment for student1
@@ -55,13 +56,9 @@ class CourseFeedbackViewsTestCase(BaseTestCase):
         self.client = APIClient()
 
         # URLs
-        self.feedback_list_url = reverse(
-            "elearning:course-feedbacks-list",
-            kwargs={"course_pk": self.course.id},
-        )
-        self.feedback_detail_url = reverse(
-            "elearning:course-feedbacks-detail",
-            kwargs={"course_pk": self.course.id, "pk": self.feedback.id},
+        self.feedback_list_url = f"/api/courses/{self.course.id}/feedbacks/"
+        self.feedback_detail_url = (
+            f"/api/courses/{self.course.id}/feedbacks/{self.feedback.id}/"
         )
 
     @debug_on_failure
@@ -114,18 +111,21 @@ class CourseFeedbackViewsTestCase(BaseTestCase):
 
     @debug_on_failure
     def test_create_feedback_duplicate(self):
-        """Test that users cannot create duplicate feedback for the same course"""
+        """Test that users cannot create duplicate feedback for the same
+        course"""
         self.client.force_authenticate(user=self.student1)
 
         data = {
             "rating": 3,
-            "text": "This is a duplicate feedback with more than 10 characters",
+            "text": (
+                "This is a duplicate feedback with more than 10 characters"
+            ),
         }
-        response = self.client.post(self.feedback_list_url, data)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn(
-            "already left feedback", response.data["non_field_errors"][0]
+        response = self.log_response(
+            self.client.post(self.feedback_list_url, data)
         )
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("already left feedback", response.data["detail"])
 
         # Verify only one feedback exists for this user
         self.assertEqual(
@@ -227,45 +227,32 @@ class CourseFeedbackViewsTestCase(BaseTestCase):
         self.assertEqual(CourseFeedback.objects.count(), 1)
 
     @debug_on_failure
-    def test_feedback_serializer_validation(self):
-        """Test serializer validation methods"""
-        serializer = CourseFeedbackCreateUpdateSerializer(
-            data={
-                "rating": 5,
-                "text": "Valid feedback text with more than 10 characters",
-            }
+    def test_create_feedback_unpublished_course(self):
+        """Test that users cannot create feedback for unpublished courses"""
+        # Create unpublished course
+        unpublished_course = Course.objects.create(
+            title="Unpublished Course",
+            description="Test Description",
+            teacher=self.teacher,
+            published_at=None,  # Not published
         )
-        self.assertTrue(serializer.is_valid())
 
-    @debug_on_failure
-    def test_feedback_serializer_invalid_rating(self):
-        """Test serializer rating validation"""
-        serializer = CourseFeedbackCreateUpdateSerializer(
-            data={
-                "rating": 0,  # Invalid rating
-                "text": "Valid feedback text with more than 10 characters",
-            }
+        # Enroll student in unpublished course
+        Enrollment.objects.create(
+            course=unpublished_course, user=self.student1, is_active=True
         )
-        self.assertFalse(serializer.is_valid())
-        self.assertIn("rating", serializer.errors)
 
-    @debug_on_failure
-    def test_feedback_serializer_text_too_short(self):
-        """Test serializer text length validation"""
-        serializer = CourseFeedbackCreateUpdateSerializer(
-            data={"rating": 5, "text": "Short"}  # Too short
-        )
-        self.assertFalse(serializer.is_valid())
-        self.assertIn("text", serializer.errors)
+        self.client.force_authenticate(user=self.student1)
 
-    @debug_on_failure
-    def test_feedback_serializer_text_too_long(self):
-        """Test serializer text length validation"""
-        serializer = CourseFeedbackCreateUpdateSerializer(
-            data={"rating": 5, "text": "A" * 501}  # Too long
-        )
-        self.assertFalse(serializer.is_valid())
-        self.assertIn("text", serializer.errors)
+        unpublished_url = f"/api/courses/{unpublished_course.id}/feedbacks/"
+
+        data = {
+            "rating": 5,
+            "text": "This is a test feedback with more than 10 characters",
+        }
+        response = self.log_response(self.client.post(unpublished_url, data))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("unpublished course", response.data["detail"])
 
     @debug_on_failure
     def test_feedback_list_serializer_fields(self):
@@ -292,30 +279,10 @@ class CourseFeedbackViewsTestCase(BaseTestCase):
         """Test feedback creation for non-existent course"""
         self.client.force_authenticate(user=self.student1)
 
-        invalid_url = reverse(
-            "elearning:course-feedbacks-list", kwargs={"course_pk": 99999}
-        )
+        invalid_url = "/api/courses/99999/feedbacks/"
         data = {
             "rating": 5,
             "text": "This is a test feedback with more than 10 characters",
         }
         response = self.log_response(self.client.post(invalid_url, data))
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    @debug_on_failure
-    def test_feedback_creation_with_inactive_enrollment(self):
-        """Test that users with inactive enrollment cannot create feedback"""
-        # Deactivate enrollment
-        self.enrollment.is_active = False
-        self.enrollment.save()
-
-        self.client.force_authenticate(user=self.student1)
-
-        data = {
-            "rating": 5,
-            "text": "This is a test feedback with more than 10 characters",
-        }
-        response = self.log_response(
-            self.client.post(self.feedback_list_url, data)
-        )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

@@ -460,3 +460,255 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
         self.assertEqual(
             "User with ID 99999 not found", response.data["detail"]
         )
+
+    @debug_on_failure
+    def test_list_chats_public_unauthenticated_access(self):
+        """Test that unauthenticated users can see public chats only"""
+        # Create a public chat
+        public_chat = ChatRoom.objects.create(
+            name="Public Chat",
+            chat_type="group",
+            created_by=self.teacher,
+            is_public=True,
+        )
+
+        # Create a private chat
+        private_chat = ChatRoom.objects.create(
+            name="Private Chat",
+            chat_type="group",
+            created_by=self.teacher,
+            is_public=False,
+        )
+
+        # Unauthenticated request
+        response = self.log_response(self.client.get("/api/chats/"))
+
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        # Should only see public chat
+        chat_ids = [chat["id"] for chat in response.data["results"]]
+        self.assertIn(public_chat.id, chat_ids)
+        self.assertNotIn(private_chat.id, chat_ids)
+
+    @debug_on_failure
+    def test_list_chats_authenticated_user_access(self):
+        """Test that authenticated users see public + their private chats"""
+        self.client.force_authenticate(user=self.student)
+
+        # Create public chat
+        public_chat = ChatRoom.objects.create(
+            name="Public Chat",
+            chat_type="group",
+            created_by=self.teacher,
+            is_public=True,
+        )
+
+        # Create private chat where student is participant
+        student_private_chat = ChatRoom.objects.create(
+            name="Student Private Chat",
+            chat_type="group",
+            created_by=self.teacher,
+            is_public=False,
+        )
+        ChatParticipant.objects.create(
+            chat_room=student_private_chat,
+            user=self.student,
+            role="participant",
+            is_active=True,
+        )
+
+        # Create private chat where student is NOT participant
+        other_private_chat = ChatRoom.objects.create(
+            name="Other Private Chat",
+            chat_type="group",
+            created_by=self.teacher,
+            is_public=False,
+        )
+
+        response = self.log_response(self.client.get("/api/chats/"))
+
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        chat_ids = [chat["id"] for chat in response.data["results"]]
+
+        # Should see public chat and their private chat
+        self.assertIn(public_chat.id, chat_ids)
+        self.assertIn(student_private_chat.id, chat_ids)
+        # Should NOT see other user's private chat
+        self.assertNotIn(other_private_chat.id, chat_ids)
+
+    @debug_on_failure
+    def test_retrieve_public_chat_unauthenticated(self):
+        """Test that unauthenticated users can retrieve public chats"""
+        public_chat = ChatRoom.objects.create(
+            name="Public Chat",
+            chat_type="group",
+            created_by=self.teacher,
+            is_public=True,
+        )
+
+        response = self.log_response(
+            self.client.get(f"/api/chats/{public_chat.id}/")
+        )
+
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], public_chat.id)
+        self.assertEqual(response.data["name"], "Public Chat")
+
+    @debug_on_failure
+    def test_retrieve_private_chat_unauthenticated_forbidden(self):
+        """Test that unauthenticated users cannot retrieve private chats"""
+        self.client.force_authenticate(user=self.teacher)
+        private_chat = ChatRoom.objects.create(
+            name="Private Chat",
+            chat_type="group",
+            created_by=self.teacher,
+            is_public=False,
+        )
+
+        self.client.force_authenticate(None)
+        response = self.log_response(
+            self.client.get(f"/api/chats/{private_chat.id}/")
+        )
+
+        self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)
+
+    @debug_on_failure
+    def test_retrieve_private_chat_non_participant_forbidden(self):
+        """Test that non-participants cannot retrieve private chats"""
+        # Create a private chat via model (not API) to control participants
+        private_chat = ChatRoom.objects.create(
+            name="Teacher Private Chat",
+            chat_type="group",
+            created_by=self.teacher,
+            is_public=False,
+        )
+        # Only add teacher as participant, student is not a participant
+        ChatParticipant.objects.create(
+            chat_room=private_chat,
+            user=self.teacher,
+            role="admin",
+            is_active=True,
+        )
+
+        # Student (non-participant) tries to access the chat
+        self.client.force_authenticate(user=self.student)
+        response = self.log_response(
+            self.client.get(f"/api/chats/{private_chat.id}/")
+        )
+
+        self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)
+
+    @debug_on_failure
+    def test_retrieve_private_chat_participant_access(self):
+        """Test that participants can retrieve private chats"""
+        self.client.force_authenticate(user=self.student)
+
+        private_chat = self.log_response(
+            self.client.post(
+                "/api/chats/",
+                {
+                    "name": "Accessible Private Chat",
+                    "chat_type": "group",
+                    "is_public": False,
+                },
+            )
+        )
+        self.log_response(
+            self.client.post(
+                f"/api/chats/{private_chat.data['id']}/participants/",
+                {
+                    "user": self.student.id,
+                    "role": "participant",
+                },
+            )
+        )
+
+        response = self.log_response(
+            self.client.get(f"/api/chats/{private_chat.data['id']}/")
+        )
+
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], private_chat.data["id"])
+
+    @debug_on_failure
+    def test_update_chat_room_only_creator_allowed(self):
+        """Test that only creators can update chat rooms"""
+        self.client.force_authenticate(user=self.teacher)
+
+        # Create chat room
+        chat_room = self.log_response(
+            self.client.post(
+                "/api/chats/",
+                {
+                    "name": "Original Chat",
+                    "chat_type": "group",
+                    "is_public": True,
+                },
+            )
+        )
+
+        # Teacher (creator) should be able to update
+        response = self.log_response(
+            self.client.patch(
+                f"/api/chats/{chat_room.data['id']}/", {"name": "Updated Chat"}
+            )
+        )
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        self.assertEqual(response.data["name"], "Updated Chat")
+
+        # Student (non-creator) should NOT be able to update
+        self.client.force_authenticate(user=self.student)
+        response = self.log_response(
+            self.client.patch(
+                f"/api/chats/{chat_room.data['id']}/", {"name": "Hacked Chat"}
+            )
+        )
+        self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)
+
+    @debug_on_failure
+    def test_delete_chat_room_only_creator_allowed(self):
+        """Test that only creators can delete chat rooms"""
+        self.client.force_authenticate(user=self.teacher)
+
+        # Create chat room
+        chat_room = self.log_response(
+            self.client.post(
+                "/api/chats/",
+                {
+                    "name": "To Delete Chat",
+                    "chat_type": "group",
+                    "is_public": True,
+                },
+            )
+        )
+        chat_id = chat_room.data["id"]
+
+        # Student (non-creator) should NOT be able to delete
+        self.client.force_authenticate(user=self.student)
+        response = self.log_response(
+            self.client.delete(f"/api/chats/{chat_id}/")
+        )
+        self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)
+
+        # Verify chat still exists
+        self.assertTrue(ChatRoom.objects.filter(id=chat_id).exists())
+
+        # Teacher (creator) should be able to delete
+        self.client.force_authenticate(user=self.teacher)
+        response = self.log_response(
+            self.client.delete(f"/api/chats/{chat_id}/")
+        )
+        self.assertStatusCode(response, status.HTTP_204_NO_CONTENT)
+
+        # Verify chat is deleted
+        self.assertFalse(ChatRoom.objects.filter(id=chat_id).exists())
+
+    @debug_on_failure
+    def test_find_or_create_direct_unauthenticated_forbidden(self):
+        """Test that unauthenticated users cannot use find_or_create_direct"""
+        response = self.log_response(
+            self.client.post(
+                "/api/chats/find_or_create_direct/",
+                {"username": self.student.username},
+            )
+        )
+        self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)

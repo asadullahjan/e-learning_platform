@@ -47,18 +47,20 @@ class UserLoginSerializer(serializers.Serializer):
                 if user.check_password(password):
                     if not user.is_active:
                         raise serializers.ValidationError(
-                            "User account is disabled"
+                            {"non_field_errors": ["User account is disabled"]}
                         )
                     attrs["user"] = user
                 else:
-                    raise serializers.ValidationError("Invalid credentials")
+                    raise serializers.ValidationError(
+                        {"non_field_errors": ["Invalid credentials"]}
+                    )
             except User.DoesNotExist:
                 raise serializers.ValidationError(
-                    "User does not exist for this email"
+                    {"email": ["User does not exist for this email"]}
                 )
         else:
             raise serializers.ValidationError(
-                "Must include email and password"
+                {"non_field_errors": ["Must include email and password"]}
             )
 
         return attrs

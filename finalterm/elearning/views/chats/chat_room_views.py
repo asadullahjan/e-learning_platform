@@ -10,9 +10,11 @@ from drf_spectacular.utils import (
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
 from elearning.permissions import ChatRoomPermission
+from elearning.models import ChatRoom
 from ...serializers.chats.chat_room_serializers import (
     ChatRoomListSerializer,
     ChatRoomSerializer,
+    ChatRoomCreateUpdateSerializer,
 )
 from ...services.chats.chat_service import ChatService
 
@@ -26,27 +28,21 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
     permission_classes = [ChatRoomPermission]
 
     def get_queryset(self):
-        # Use the service for business logic with computed fields
-        return ChatService.get_chats_with_computed_fields(self.request.user)
+        # For list actions, filter by permissions
+        if self.action == "list":
+            return ChatService.get_chats_with_computed_fields(
+                self.request.user
+            )
+        # For detail actions (retrieve, update, delete), get all chat rooms
+        # Permission checks will be done in service layer to return proper 403
+        return ChatRoom.objects.all()
 
     def get_serializer_class(self):
         if self.action == "list":
             return ChatRoomListSerializer
+        elif self.action in ["create", "update", "partial_update"]:
+            return ChatRoomCreateUpdateSerializer
         return ChatRoomSerializer
-
-    @extend_schema(
-        responses={
-            200: ChatRoomListSerializer(many=True),
-        },
-        description=(
-            "List all chat rooms accessible to the current user "
-            "(public chats + user's private chats)"
-        ),
-        summary="List accessible chat rooms",
-    )
-    def list(self, request, *args, **kwargs):
-        """List all accessible chat rooms for the current user"""
-        return super().list(request, *args, **kwargs)
 
     @extend_schema(
         parameters=[
@@ -69,23 +65,14 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
     )
     def retrieve(self, request, *args, **kwargs):
         """Override retrieve to populate computed fields for single chat"""
-        # Get the chat from the queryset that has computed fields
         chat_id = kwargs.get("pk")
-        try:
-            instance = ChatService.get_chat_with_permission_check(
-                int(chat_id), request.user
-            )
-            # Populate computed fields before serialization
-            instance = ChatService.populate_chat_computed_fields(
-                instance, request.user
-            )
-        except Exception:
-            # Fall back to default behavior if service fails
-            instance = self.get_object()
-            instance = ChatService.populate_chat_computed_fields(
-                instance, request.user
-            )
-
+        instance = ChatService.get_chat_with_permission_check(
+            int(chat_id), request.user
+        )
+        # Populate computed fields before serialization
+        instance = ChatService.populate_chat_computed_fields(
+            instance, request.user
+        )
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
@@ -177,7 +164,7 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
             )
 
     @extend_schema(
-        request=ChatRoomSerializer,
+        request=ChatRoomCreateUpdateSerializer,
         responses={
             201: ChatRoomSerializer,
             400: inline_serializer(
@@ -213,3 +200,19 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
             chat_room, self.request.user
         )
         serializer.instance = chat_room
+
+    def perform_update(self, serializer):
+        """Override update to use service layer for permission checks"""
+        instance = serializer.instance
+        ChatService.update_chat_room(
+            instance, self.request.user, **serializer.validated_data
+        )
+        # Populate computed fields before saving
+        instance = ChatService.populate_chat_computed_fields(
+            instance, self.request.user
+        )
+        serializer.instance = instance
+
+    def perform_destroy(self, instance):
+        """Override destroy to use service layer for permission checks"""
+        ChatService.delete_chat_room(instance, self.request.user)

@@ -1,8 +1,8 @@
 from rest_framework import serializers
 from typing import Optional, Dict, Any
 from drf_spectacular.utils import extend_schema_field
-from ..user_serializers import UserSerializer
-from ..course_serializers import CourseSerializer
+from elearning.serializers.user_serializers import UserSerializer
+from elearning.serializers.courses.course_serializers import CourseSerializer
 from elearning.models import StudentRestriction
 
 
@@ -49,9 +49,17 @@ class StudentRestrictionCreateUpdateSerializer(serializers.ModelSerializer):
         if request and student_id:
             # ✅ CORRECT: Only validation logic, no database queries
             if student_id == request.user.id:
-                raise serializers.ValidationError("Cannot restrict yourself")
+                raise serializers.ValidationError(
+                    {"student_id": ["Cannot restrict yourself"]}
+                )
 
         return data
+
+    def to_representation(self, instance):
+        """Use read serializer for response representation"""
+        return StudentRestrictionDetailSerializer(
+            instance, context=self.context
+        ).data
 
 
 class StudentRestrictionDetailSerializer(serializers.ModelSerializer):

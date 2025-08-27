@@ -1,10 +1,14 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.filters import OrderingFilter
+from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import (
-    extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
+    extend_schema,
+    OpenApiParameter,
+    OpenApiExample,
+    inline_serializer,
 )
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
@@ -55,7 +59,7 @@ class CourseFilter(filters.FilterSet):
             name="id",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.PATH,
-            description="Course ID"
+            description="Course ID",
         ),
     ],
 )
@@ -71,6 +75,7 @@ class CourseViewSet(viewsets.ModelViewSet):
 
     # Add the custom filter
     filterset_class = CourseFilter
+    permission_classes = [CoursePermission]
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -79,24 +84,13 @@ class CourseViewSet(viewsets.ModelViewSet):
             return CourseDetailSerializer
         return CourseSerializer
 
-    def get_permissions(self):
-        if self.action in ["list", "retrieve"]:
-            # Anyone can view courses (no authentication required)
-            return [AllowAny()]
-        elif self.action == "create":
-            return [IsAuthenticated(), CoursePermission()]
-        elif self.action in ["update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), CoursePermission()]
-        return [IsAuthenticated()]
-
     def get_queryset(self):
-        # Use computed fields method for detail serializer, basic method for list
-        if self.action == "retrieve":
-            return CourseService.get_courses_with_computed_fields(
-                self.request.user
-            )
-        else:
+        # For list actions, filter by permissions
+        if self.action == "list":
             return CourseService.get_courses_for_user(self.request.user)
+        # For detail actions (retrieve, update, delete), get all courses
+        # Permission checks will be done in service layer to return proper 403
+        return Course.objects.all()
 
     @extend_schema(
         request=CourseSerializer,
@@ -105,9 +99,7 @@ class CourseViewSet(viewsets.ModelViewSet):
             400: inline_serializer(
                 name="CourseCreateBadRequestResponse",
                 fields={
-                    "error": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "error": serializers.CharField(help_text="Error message"),
                 },
             ),
         },
@@ -117,7 +109,7 @@ class CourseViewSet(viewsets.ModelViewSet):
                 value={
                     "title": "Web Development Intro",
                     "description": "Learn web development fundamentals",
-                    "published_at": "2024-01-01T00:00:00Z"
+                    "published_at": "2024-01-01T00:00:00Z",
                 },
                 request_only=True,
                 status_codes=["201"],
@@ -127,12 +119,39 @@ class CourseViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # ✅ CORRECT: Delegate to service
         course = CourseService.create_course_with_chat(
-            teacher=self.request.user,
-            course_data=serializer.validated_data
+            teacher=self.request.user, course_data=serializer.validated_data
         )
-        
+
         # Populate computed fields before setting instance
         course = CourseService.populate_course_computed_fields(
             course, self.request.user
         )
         serializer.instance = course
+
+    def retrieve(self, request, *args, **kwargs):
+        """Override retrieve to use service for permission checking"""
+        course_id = kwargs.get("pk")
+        instance = CourseService.get_course_with_permission_check(
+            int(course_id), request.user
+        )
+        # Populate computed fields before serialization
+        instance = CourseService.populate_course_computed_fields(
+            instance, request.user
+        )
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    def perform_update(self, serializer):
+        """Override update to use service layer for permission checks"""
+        instance = serializer.instance
+        CourseService.update_course(
+            instance, serializer.validated_data, self.request.user
+        )
+        instance = CourseService.populate_course_computed_fields(
+            instance, self.request.user
+        )
+        serializer.instance = instance
+
+    def perform_destroy(self, instance):
+        """Override destroy to use service layer for permission checks"""
+        CourseService.delete_course(instance, self.request.user)

@@ -143,3 +143,17 @@ class EnrollmentService:
         
         enrollment.save()
         return enrollment
+
+    @staticmethod
+    def get_enrollments_for_course(course: Course, user: User):
+        """Get enrollments for a course with permission filtering"""
+        # Teachers see all enrollments for their courses
+        if user.is_authenticated and course.teacher == user:
+            return Enrollment.objects.filter(course=course)
+        
+        # Students see only their own enrollment for this course
+        if user.is_authenticated:
+            return Enrollment.objects.filter(course=course, user=user)
+        
+        # Unauthenticated users see nothing
+        return Enrollment.objects.none()

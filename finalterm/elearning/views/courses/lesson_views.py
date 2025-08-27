@@ -2,9 +2,11 @@ from elearning.models import Course, CourseLesson
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework import status
 from drf_spectacular.utils import (
-    extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
+    extend_schema,
+    OpenApiParameter,
+    OpenApiExample,
+    inline_serializer,
 )
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
@@ -18,11 +20,7 @@ from elearning.serializers import (
     CourseLessonCreateSerializer,
     CourseLessonUpdateSerializer,
 )
-from elearning.permissions import (
-    IsTeacher,
-    IsEnrolledInCourse,
-    LessonDownloadPermission,
-)
+from elearning.permissions.courses.lesson_permissions import LessonPermission
 from elearning.services.courses.course_lesson_service import (
     CourseLessonService,
 )
@@ -35,13 +33,13 @@ from elearning.services.courses.course_lesson_service import (
             name="course_pk",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.PATH,
-            description="Course ID"
+            description="Course ID",
         ),
         OpenApiParameter(
             name="id",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.PATH,
-            description="Lesson ID"
+            description="Lesson ID",
         ),
     ],
 )
@@ -52,54 +50,38 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
     Students can view lessons for courses they're enrolled in.
     """
 
+    permission_classes = [LessonPermission]
+
     def get_queryset(self):
-        user = self.request.user
-        course_id = self.kwargs.get("course_pk")
-
+        """Return lessons with permission filtering"""
         # Handle swagger schema generation
-        if getattr(self, 'swagger_fake_view', False):
+        if getattr(self, "swagger_fake_view", False):
             return CourseLesson.objects.none()
 
-        if course_id:
-            course = get_object_or_404(Course, id=course_id)
-
-            # Teacher sees all lessons (drafts, published, archived)
-            if course.teacher == user:
-                return CourseLesson.objects.filter(course=course)
-
-            # Students only see published lessons in published courses
-            elif (
-                user.enrollments.filter(course=course, is_active=True).exists()
-                and course.published_at
-            ):
-                return CourseLesson.objects.filter(
-                    course=course,
-                    published_at__isnull=False,
-                )
-
+        # For list actions, use service layer filtering
+        if self.action == "list":
+            course_id = self.kwargs.get("course_pk")
+            if course_id:
+                try:
+                    course = Course.objects.get(id=course_id)
+                    return CourseLessonService.get_lessons_for_course(
+                        course, self.request.user
+                    )
+                except Course.DoesNotExist:
+                    return CourseLesson.objects.none()
             return CourseLesson.objects.none()
 
-    def get_object(self):
-        lesson_id = self.kwargs.get("pk")
-        if lesson_id:
-            lesson = get_object_or_404(CourseLesson, id=lesson_id)
-            self.check_object_permissions(self.request, lesson)
-            return lesson
-        return super().get_object()
+        # For detail actions, return all (service handles 403 vs 404)
+        return CourseLesson.objects.all()
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        course_id = self.kwargs.get("course_pk")
-        if course_id:
-            course = get_object_or_404(Course, id=course_id)
-            context["course"] = course
-
-        lesson_id = self.kwargs.get("pk")
-        if lesson_id:
-            lesson = get_object_or_404(CourseLesson, id=lesson_id)
-            context["lesson"] = lesson
-
-        return context
+    def retrieve(self, request, *args, **kwargs):
+        """Override retrieve to use service for permission checking"""
+        lesson_id = kwargs.get("pk")
+        instance = CourseLessonService.get_lesson_with_permission_check(
+            int(lesson_id), request.user
+        )
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -110,13 +92,6 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
             return CourseLessonUpdateSerializer
         return CourseLessonDetailSerializer
 
-    def get_permissions(self):
-        if self.action in ["list", "retrieve"]:
-            return [IsEnrolledInCourse()]
-        elif self.action == "download":
-            return [LessonDownloadPermission()]
-        return [IsTeacher()]
-
     @extend_schema(
         request=CourseLessonCreateSerializer,
         responses={
@@ -124,9 +99,7 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
             400: inline_serializer(
                 name="CourseLessonCreateBadRequestResponse",
                 fields={
-                    "error": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "error": serializers.CharField(help_text="Error message"),
                 },
             ),
         },
@@ -137,7 +110,7 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
                     "title": "Introduction to Python",
                     "description": "Learn the basics of Python programming",
                     "content": "Python programming basics...",
-                    "file": "file_upload"
+                    "file": "file_upload",
                 },
                 request_only=True,
                 status_codes=["201"],
@@ -145,14 +118,16 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
         ],
     )
     def perform_create(self, serializer):
-        course = serializer.context["course"]
+        course_id = self.kwargs.get("course_pk")
+        course = get_object_or_404(Course, id=course_id)
         user = self.request.user
+        file_data = self.request.FILES.get("file")
 
         lesson = CourseLessonService.create_lesson_with_file(
-            course, serializer.validated_data, user
+            course, user, serializer.validated_data, file_data
         )
 
-        return lesson
+        serializer.instance = lesson
 
     @extend_schema(
         request=CourseLessonUpdateSerializer,
@@ -161,9 +136,7 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
             400: inline_serializer(
                 name="CourseLessonUpdateBadRequestResponse",
                 fields={
-                    "error": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "error": serializers.CharField(help_text="Error message"),
                 },
             ),
         },
@@ -174,9 +147,7 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
                     "title": "Updated Python Introduction",
                     "description": "Updated description",
                     "content": "Updated content...",
-                    "published_at": (
-                        "2024-01-01T00:00:00Z"
-                    )
+                    "published_at": ("2024-01-01T00:00:00Z"),
                 },
                 request_only=True,
                 status_codes=["200"],
@@ -191,14 +162,16 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
             lesson = CourseLessonService.toggle_lesson_publish_status(
                 serializer.instance, serializer.validated_data["published_at"]
             )
-            return lesson
+            serializer.instance = lesson
+            return
 
         # Regular update
+        file_data = self.request.FILES.get("file")
         lesson = CourseLessonService.update_lesson_with_file(
-            serializer.instance, serializer.validated_data, user
+            serializer.instance, serializer.validated_data, user, file_data
         )
 
-        return lesson
+        serializer.instance = lesson
 
     @extend_schema(
         responses={
@@ -223,9 +196,7 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
             404: inline_serializer(
                 name="FileNotFoundResponse",
                 fields={
-                    "detail": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "detail": serializers.CharField(help_text="Error message"),
                 },
             ),
         },
@@ -233,23 +204,18 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def download(self, request, course_pk=None, pk=None):
         """Download lesson file"""
-        lesson = self.get_object()
-
-        if not lesson.file:
-            return Response(
-                {"detail": "No file available for download"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        # Use service layer for proper permission checking
+        lesson_id = pk
+        file_obj = CourseLessonService.get_lesson_file_with_permission_check(
+            int(lesson_id), request.user
+        )
 
         # Return file for download
-        file_path = lesson.file.file.path
-        filename = lesson.file.original_name
+        file_path = file_obj.file.path
+        filename = file_obj.original_name
 
         response = FileResponse(
-            open(file_path, "rb"), 
-            content_type="application/octet-stream"
+            open(file_path, "rb"), content_type="application/octet-stream"
         )
-        response["Content-Disposition"] = (
-            f'attachment; filename="{filename}"'
-        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response

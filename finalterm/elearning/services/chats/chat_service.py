@@ -38,7 +38,7 @@ class ChatService:
         ChatPolicy.check_can_create_chat_room(
             creator, chat_type, course, raise_exception=True
         )
-
+        
         # For direct chats, check if one already exists
         if chat_type == "direct" and len(participants) == 1:
             other_user_id = participants[0]
@@ -164,24 +164,6 @@ class ChatService:
         ).distinct()
 
     @staticmethod
-    def get_all_available_chats(user):
-        """Get all chats available to the user
-        (public, participated, or teachable)"""
-        if not user.is_authenticated:
-            # Anonymous users only see public chats
-            return ChatRoom.objects.filter(is_public=True)
-
-        # Authenticated users see:
-        # 1. Public chats
-        # 2. Private chats they participate in
-        # 3. Course chats they teach
-        return ChatRoom.objects.filter(
-            models.Q(is_public=True)
-            | models.Q(participants__user=user, participants__is_active=True)
-            | models.Q(course__teacher=user)
-        ).distinct()
-
-    @staticmethod
     def get_chat_with_permission_check(chat_id: int, user: User):
         """Get chat with permission check"""
         try:
@@ -260,9 +242,26 @@ class ChatService:
         return chat_room
 
     @staticmethod
+    def get_chat_rooms(user: User = None):
+        """Get chat rooms with permission checking"""
+        if not user or not user.is_authenticated:
+            # Unauthenticated users only see public chats
+            return ChatRoom.objects.filter(is_public=True)
+
+        # Authenticated users see:
+        # 1. Public chats
+        # 2. Private chats they participate in
+        # 3. Course chats they teach
+        return ChatRoom.objects.filter(
+            models.Q(is_public=True)
+            | models.Q(participants__user=user, participants__is_active=True)
+            | models.Q(course__teacher=user)
+        ).distinct()
+
+    @staticmethod
     def get_chats_with_computed_fields(user: User = None):
         """Get chat rooms with computed fields populated"""
-        chat_rooms = ChatRoom.objects.all()
+        chat_rooms = ChatService.get_chat_rooms(user)
 
         # Populate computed fields for each chat room
         for chat_room in chat_rooms:

@@ -189,6 +189,129 @@ class CourseViewsTest(BaseAPITestCase):
         self.assertStatusCode(response, status.HTTP_200_OK)
 
     @debug_on_failure
+    def test_retrieve_published_course_unauthenticated(self):
+        """Test that unauthenticated users can retrieve published courses"""
+        description = "Test Description, adding more text to get 20 characters"
+        course = Course.objects.create(
+            title="Public Course",
+            description=description,
+            teacher=self.teacher,
+            published_at=timezone.now(),
+        )
+        response = self.log_response(
+            self.client.get(f"/api/courses/{course.id}/")
+        )
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        self.assertEqual(response.data["title"], "Public Course")
+
+    @debug_on_failure
+    def test_retrieve_unpublished_course_unauthenticated_forbidden(
+        self
+    ):
+        """Test that unauthenticated users cannot retrieve unpublished courses"""
+        description = "Test Description, adding more text to get 20 characters"
+        course = Course.objects.create(
+            title="Private Course",
+            description=description,
+            teacher=self.teacher,
+            published_at=None,
+        )
+        response = self.log_response(
+            self.client.get(f"/api/courses/{course.id}/")
+        )
+        self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)
+
+    @debug_on_failure
+    def test_retrieve_unpublished_course_by_owner_allowed(self):
+        """Test that course owners can retrieve their unpublished courses"""
+        self.client.force_authenticate(user=self.teacher)
+        description = "Test Description, adding more text to get 20 characters"
+        course = Course.objects.create(
+            title="My Draft Course",
+            description=description,
+            teacher=self.teacher,
+            published_at=None,
+        )
+        response = self.log_response(
+            self.client.get(f"/api/courses/{course.id}/")
+        )
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        self.assertEqual(response.data["title"], "My Draft Course")
+
+    @debug_on_failure
+    def test_retrieve_unpublished_course_by_non_owner_forbidden(self):
+        """Test that non-owners cannot retrieve unpublished courses"""
+        self.client.force_authenticate(user=self.teacher2)
+        description = "Test Description, adding more text to get 20 characters"
+        course = Course.objects.create(
+            title="Another Teacher Course",
+            description=description,
+            teacher=self.teacher,
+            published_at=None,
+        )
+        response = self.log_response(
+            self.client.get(f"/api/courses/{course.id}/")
+        )
+        self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)
+
+    @debug_on_failure
+    def test_delete_course_only_owner_allowed(self):
+        """Test that only course owners can delete courses"""
+        self.client.force_authenticate(user=self.teacher)
+        description = "Test Description, adding more text to get 20 characters"
+        course = Course.objects.create(
+            title="To Delete Course",
+            description=description,
+            teacher=self.teacher,
+        )
+        course_id = course.id
+
+        # Owner should be able to delete
+        response = self.log_response(
+            self.client.delete(f"/api/courses/{course_id}/")
+        )
+        self.assertStatusCode(response, status.HTTP_204_NO_CONTENT)
+
+        # Verify course is deleted
+        self.assertFalse(Course.objects.filter(id=course_id).exists())
+
+    @debug_on_failure
+    def test_delete_course_by_non_owner_forbidden(self):
+        """Test that non-owners cannot delete courses"""
+        description = "Test Description, adding more text to get 20 characters"
+        course = Course.objects.create(
+            title="Protected Course",
+            description=description,
+            teacher=self.teacher,
+        )
+        course_id = course.id
+
+        # Different teacher should NOT be able to delete
+        self.client.force_authenticate(user=self.teacher2)
+        response = self.log_response(
+            self.client.delete(f"/api/courses/{course_id}/")
+        )
+        self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)
+
+        # Verify course still exists
+        self.assertTrue(Course.objects.filter(id=course_id).exists())
+
+    @debug_on_failure
+    def test_create_course_unauthenticated_forbidden(self):
+        """Test that unauthenticated users cannot create courses"""
+        description = "Test Description, adding more text to get 20 characters"
+        response = self.log_response(
+            self.client.post(
+                "/api/courses/",
+                {
+                    "title": "Unauthorized Course",
+                    "description": description,
+                },
+            )
+        )
+        self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)
+
+    @debug_on_failure
     def test_chatroom_creation_on_course_creation(self):
         self.client.force_authenticate(user=self.teacher)
         description = "Test Description, adding more text to get 20 characters"

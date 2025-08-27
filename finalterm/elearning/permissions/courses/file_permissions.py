@@ -13,22 +13,22 @@ class FilePolicy:
                 raise ServiceError.permission_denied(error_msg)
             return False
 
+        # Only teachers can upload files
+        if user.role != "teacher":
+            error_msg = "Only teachers can upload files"
+            if raise_exception:
+                raise ServiceError.permission_denied(error_msg)
+            return False
+
         # Teachers can upload files to their courses
-        if user.role == "teacher":
-            if course and course.teacher == user:
-                return True
-            if not course:  # General file upload
-                return True
+        if course and course.teacher == user:
+            return True
 
-        # Students can upload files to courses they're enrolled in
-        if user.role == "student" and course:
-            from elearning.models import Enrollment
-            if Enrollment.objects.filter(
-                user=user, course=course, is_active=True
-            ).exists():
-                return True
+        # General file upload for teachers (no specific course)
+        if not course:
+            return True
 
-        error_msg = "You don't have permission to upload files"
+        error_msg = "You can only upload files to your own courses"
         if raise_exception:
             raise ServiceError.permission_denied(error_msg)
         return False
@@ -47,15 +47,22 @@ class FilePolicy:
             return True
 
         # Course teachers can download files from their courses
-        if hasattr(file_obj, 'course') and file_obj.course:
-            if file_obj.course.teacher == user:
+        # Check through lesson relationship
+        if file_obj.lessons.exists():
+            lesson = file_obj.lessons.first()
+            if lesson.course.teacher == user:
                 return True
 
-            # Students can download files from courses they're enrolled in
-            if user.role == "student":
+            # Students can download files from courses they're enrolled in if
+            # both lesson and course are published
+            if (
+                user.role == "student"
+                and lesson.published_at
+                and lesson.course.published_at  # Course must be published
+            ):
                 from elearning.models import Enrollment
                 if Enrollment.objects.filter(
-                    user=user, course=file_obj.course, is_active=True
+                    user=user, course=lesson.course, is_active=True
                 ).exists():
                     return True
 
@@ -78,8 +85,10 @@ class FilePolicy:
             return True
 
         # Course teachers can delete files from their courses
-        if hasattr(file_obj, 'course') and file_obj.course:
-            if file_obj.course.teacher == user:
+        # Check through lesson relationship
+        if file_obj.lessons.exists():
+            lesson = file_obj.lessons.first()
+            if lesson.course.teacher == user:
                 return True
 
         error_msg = "You don't have permission to delete this file"

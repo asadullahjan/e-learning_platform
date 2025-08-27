@@ -1,21 +1,22 @@
 from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from rest_framework import status
-from django.core.exceptions import ObjectDoesNotExist
+from rest_framework.exceptions import ErrorDetail
 
 
 class ServiceError(Exception):
     """General service layer exception"""
 
-    def __init__(self, message, status_code=400):
+    def __init__(self, message, status_code=400, code=None):
         self.message = message
         self.status_code = status_code
+        self.code = code or "service_error"
         super().__init__(self.message)
 
     @classmethod
     def permission_denied(cls, message="Permission denied"):
         """Create a permission denied error (403)"""
-        return cls(message, status_code=403)
+        return cls(message, status_code=403, code="permission_denied")
 
     @classmethod
     def not_found(cls, message="Resource not found"):
@@ -43,7 +44,8 @@ def custom_exception_handler(exc, context):
 
     # Handle our custom ServiceError
     if isinstance(exc, ServiceError):
-        return Response({"detail": exc.message}, status=exc.status_code)
+        detail = ErrorDetail(exc.message, code=exc.code)
+        return Response({"detail": detail}, status=exc.status_code)
 
     # Handle common Python exceptions that should be user-friendly
     if isinstance(exc, ValueError):

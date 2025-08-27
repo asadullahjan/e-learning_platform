@@ -6,8 +6,7 @@ functionality such as course creation, enrollment, feedback, and restrictions.
 """
 
 from .lesson_permissions import (
-    LessonDownloadPermission,
-    IsEnrolledInCourse,
+    LessonPermission,
     LessonPolicy,
 )
 from .feedback_permissions import (
@@ -23,8 +22,7 @@ from .course_permissions import (
 from .enrollment_permissions import EnrollmentPermission, EnrollmentPolicy
 
 __all__ = [
-    "LessonDownloadPermission",
-    "IsEnrolledInCourse",
+    "LessonPermission",
     "CourseFeedbackPermission",
     "StudentRestrictionPermission",
     "CourseFeedbackPolicy",

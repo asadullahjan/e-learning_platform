@@ -2,7 +2,7 @@ from rest_framework import viewsets
 from rest_framework.filters import OrderingFilter
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import (
-    extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
+    extend_schema, OpenApiParameter, inline_serializer
 )
 from drf_spectacular.types import OpenApiTypes
 from elearning.models import Course, Enrollment
@@ -15,6 +15,7 @@ from elearning.serializers import (
     TeacherEnrollmentSerializer,
 )
 from rest_framework import serializers
+from elearning.services.courses.enrollment_service import EnrollmentService
 
 
 class EnrollmentFilter(filters.FilterSet):
@@ -63,32 +64,32 @@ class CourseEnrollmentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing enrollments within a specific course.
     - Teachers can see all enrollments for their course
-    - Students can enroll/unenroll themselves
+    - Students can enroll/activate/deactivate their enrollment
+    - Teachers can activate/deactivate student enrollments
     - All operations are scoped to the specific course
     """
 
-    http_method_names = ["get", "post", "delete"]
+    http_method_names = ["get", "post", "patch", "put"]
     serializer_class = EnrollmentSerializer
     permission_classes = [EnrollmentPermission]
 
     def get_queryset(self):
-        """Return enrollments for the specific course"""
+        """Return enrollments with permission filtering"""
         # Handle swagger schema generation
         if getattr(self, 'swagger_fake_view', False):
             return Enrollment.objects.none()
             
+        # Use service layer filtering for all actions
         course_id = self.kwargs.get("course_pk")
-        try:
-            course = Course.objects.get(id=course_id)
-            # Teachers see all enrollments, students see only their own
-            if course.teacher == self.request.user:
-                return Enrollment.objects.filter(course=course)
-            else:
-                return Enrollment.objects.filter(
-                    course=course, user=self.request.user
+        if course_id:
+            try:
+                course = Course.objects.get(id=course_id)
+                return EnrollmentService.get_enrollments_for_course(
+                    course, self.request.user
                 )
-        except Course.DoesNotExist:
-            return Enrollment.objects.none()
+            except Course.DoesNotExist:
+                return Enrollment.objects.none()
+        return Enrollment.objects.none()
 
     def get_serializer_class(self):
         """Return appropriate serializer based on user role"""
@@ -117,7 +118,6 @@ class CourseEnrollmentViewSet(viewsets.ModelViewSet):
     )
     def perform_create(self, serializer):
         """Create enrollment for the specific course"""
-        from ...services.courses.enrollment_service import EnrollmentService
 
         course_id = self.kwargs.get("course_pk")
         course = Course.objects.get(id=course_id)
@@ -127,6 +127,15 @@ class CourseEnrollmentViewSet(viewsets.ModelViewSet):
             course, self.request.user
         )
 
+        serializer.instance = enrollment
+
+    def perform_update(self, serializer):
+        """Update enrollment (activate/deactivate) using service layer"""
+        
+        # Use service layer to modify enrollment
+        enrollment = EnrollmentService.modify_enrollment(
+            serializer.instance, self.request.user, **serializer.validated_data
+        )
         serializer.instance = enrollment
 
 

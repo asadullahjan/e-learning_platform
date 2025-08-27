@@ -48,12 +48,29 @@ class StudentRestrictionViewSet(viewsets.ModelViewSet):
             return StudentRestrictionListSerializer
 
     def get_queryset(self):
-        """Return restrictions created by the current teacher."""
+        """Return restrictions with permission filtering"""
         if getattr(self, "swagger_fake_view", False):
             return StudentRestriction.objects.none()
-        return StudentRestrictionService.get_teacher_restrictions(
-            self.request.user
+
+        # For list actions, use service layer filtering
+        if self.action == "list":
+            return StudentRestrictionService.get_teacher_restrictions(
+                self.request.user
+            )
+
+        # For detail actions, return all (service handles 403 vs 404)
+        return StudentRestriction.objects.all()
+
+    def retrieve(self, request, *args, **kwargs):
+        """Override retrieve to use service for permission checking"""
+        restriction_id = kwargs.get("pk")
+        instance = (
+            StudentRestrictionService.get_restriction_with_permission_check(
+                int(restriction_id), request.user
+            )
         )
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     @extend_schema(
         request=StudentRestrictionCreateUpdateSerializer,

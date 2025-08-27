@@ -20,11 +20,7 @@ class ChatRoomListSerializer(serializers.ModelSerializer):
 
 
 class ChatRoomSerializer(serializers.ModelSerializer):
-    participants = serializers.ListField(
-        child=serializers.IntegerField(),
-        write_only=True,
-        required=False,
-    )
+    """Read serializer for chat room details"""
 
     # This field will be populated by the service layer
     current_user_status = serializers.SerializerMethodField()
@@ -41,7 +37,6 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             "is_public",
             "created_at",
             "updated_at",
-            "participants",
             "current_user_status",
         ]
         read_only_fields = [
@@ -50,7 +45,6 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             "updated_at",
             "created_by",
             "current_user_status",
-            "created_by",
         ]
 
     def get_current_user_status(self, obj) -> Dict[str, Any]:
@@ -60,7 +54,30 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             return obj._current_user_status
         return {"is_participant": False, "role": None}
 
+
+class ChatRoomCreateUpdateSerializer(serializers.ModelSerializer):
+    """Write serializer for creating and updating chat rooms"""
+
+    participants = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        write_only=True,
+        help_text="List of user IDs to add as participants",
+    )
+
+    class Meta:
+        model = ChatRoom
+        fields = [
+            "name",
+            "description",
+            "chat_type",
+            "course",
+            "is_public",
+            "participants",
+        ]
+
     def validate_name(self, value):
+        """Validate chat room name"""
         if len(value) < 3:
             raise serializers.ValidationError(
                 "Name must be at least 3 characters long"
@@ -68,6 +85,7 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         return value
 
     def validate_chat_type(self, value):
+        """Validate chat type is allowed"""
         if value not in [
             chat_type[0] for chat_type in ChatRoom.CHAT_TYPE_CHOICES
         ]:
@@ -96,7 +114,7 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         return list(dict.fromkeys(value))
 
     def validate(self, attrs):
-        """Cross-field validation only"""
+        """Cross-field validation"""
         chat_type = attrs.get("chat_type")
         course = attrs.get("course")
         participants = attrs.get("participants", [])
@@ -104,19 +122,25 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         # Business logic validation
         if chat_type == "course" and not course:
             raise serializers.ValidationError(
-                "Course is required for course-wide chat"
+                {"course": ["Course is required for course-wide chat"]}
             )
 
         if chat_type != "course" and course:
             raise serializers.ValidationError(
-                "Course is not allowed for non-course-wide chat"
+                {"course": ["Course is not allowed for non-course-wide chat"]}
             )
 
         if chat_type == "direct":
             if len(participants) != 1:
                 raise serializers.ValidationError(
-                    "Direct chats must have exactly 1 participant specified "
-                    "(creator will be added automatically)"
+                    {"participants": [
+                        "Direct chats must have exactly 1 participant "
+                        "specified (creator will be added automatically)"
+                    ]}
                 )
 
         return attrs
+
+    def to_representation(self, instance):
+        """Use read serializer for response representation"""
+        return ChatRoomSerializer(instance, context=self.context).data

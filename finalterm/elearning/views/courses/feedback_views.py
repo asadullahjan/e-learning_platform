@@ -1,6 +1,11 @@
 from rest_framework import viewsets
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import (
-    extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
+    extend_schema,
+    OpenApiParameter,
+    OpenApiExample,
+    inline_serializer,
 )
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
@@ -23,13 +28,13 @@ from elearning.services.courses.course_feedback_service import (
             name="course_pk",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.PATH,
-            description="Course ID"
+            description="Course ID",
         ),
         OpenApiParameter(
             name="id",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.PATH,
-            description="Feedback ID"
+            description="Feedback ID",
         ),
     ],
 )
@@ -37,18 +42,30 @@ class FeedbackViewSet(viewsets.ModelViewSet):
     permission_classes = [CourseFeedbackPermission]
 
     def get_queryset(self):
+        """Return feedback with permission filtering"""
         # Handle swagger schema generation
-        if getattr(self, 'swagger_fake_view', False):
+        if getattr(self, "swagger_fake_view", False):
             return CourseFeedback.objects.none()
-            
-        course_id = self.kwargs.get("course_pk")
-        course = Course.objects.get(id=course_id)
-        return CourseFeedbackService.get_course_feedback(course)
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context["course_id"] = self.kwargs.get("course_pk")
-        return context
+        # For list actions, use service layer filtering
+        if self.action == "list":
+            course_id = self.kwargs.get("course_pk")
+            if course_id:
+                course = get_object_or_404(Course, id=course_id)
+                return CourseFeedbackService.get_course_feedback(course)
+            return CourseFeedback.objects.none()
+
+        # For detail actions, return all (service handles 403 vs 404)
+        return CourseFeedback.objects.all()
+
+    def retrieve(self, request, *args, **kwargs):
+        """Override retrieve to use service for permission checking"""
+        feedback_id = kwargs.get("pk")
+        instance = CourseFeedbackService.get_feedback_with_permission_check(
+            int(feedback_id), request.user
+        )
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -62,29 +79,23 @@ class FeedbackViewSet(viewsets.ModelViewSet):
             400: inline_serializer(
                 name="CourseFeedbackCreateBadRequestResponse",
                 fields={
-                    "error": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "error": serializers.CharField(help_text="Error message"),
                 },
             ),
         },
         examples=[
             OpenApiExample(
                 "Create Feedback",
-                value={
-                    "rating": 5,
-                    "text": "Great course! Very informative."
-                },
+                value={"rating": 5, "text": "Great course! Very informative."},
                 request_only=True,
                 status_codes=["201"],
             ),
         ],
     )
     def perform_create(self, serializer):
-        # ✅ CORRECT: ServiceError handled automatically by custom
-        # exception handler
+
         course_id = self.kwargs.get("course_pk")
-        course = Course.objects.get(id=course_id)
+        course = get_object_or_404(Course, id=course_id)
 
         feedback = CourseFeedbackService.create_feedback(
             user=self.request.user,
@@ -102,26 +113,21 @@ class FeedbackViewSet(viewsets.ModelViewSet):
             400: inline_serializer(
                 name="CourseFeedbackUpdateBadRequestResponse",
                 fields={
-                    "error": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "error": serializers.CharField(help_text="Error message"),
                 },
             ),
         },
         examples=[
             OpenApiExample(
                 "Update Feedback",
-                value={
-                    "rating": 4,
-                    "text": "Updated feedback text"
-                },
+                value={"rating": 4, "text": "Updated feedback text"},
                 request_only=True,
                 status_codes=["200"],
             ),
         ],
     )
     def perform_update(self, serializer):
-        # ✅ CORRECT: ServiceError handled automatically by custom
+        # ServiceError handled automatically by custom
         # exception handler
         feedback = CourseFeedbackService.update_feedback(
             feedback=serializer.instance,
@@ -136,7 +142,7 @@ class FeedbackViewSet(viewsets.ModelViewSet):
         },
     )
     def perform_destroy(self, instance):
-        # ✅ CORRECT: ServiceError handled automatically by custom
+        # ServiceError handled automatically by custom
         # exception handler
         CourseFeedbackService.delete_feedback(
             feedback=instance, user=self.request.user

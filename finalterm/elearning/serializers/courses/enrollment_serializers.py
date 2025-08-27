@@ -1,6 +1,6 @@
-from ..models import Enrollment
+from elearning.models import Enrollment
 from rest_framework import serializers
-from .user_serializers import UserSerializer
+from elearning.serializers.user_serializers import UserSerializer
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):
@@ -21,7 +21,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
 
 class StudentEnrollmentCourseSerializer(serializers.ModelSerializer):
     """Course serializer for student enrollments with full teacher details"""
-    
+
     teacher = UserSerializer(read_only=True)
 
     class Meta:

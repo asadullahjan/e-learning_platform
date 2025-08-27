@@ -89,7 +89,7 @@ class ChatParticipantsService:
             chat_room = ChatRoom.objects.get(id=chat_room_id)
         except ChatRoom.DoesNotExist:
             raise ServiceError.not_found("Chat room not found")
-        
+
         # Check if user can join this chat
         ChatParticipantPolicy.check_can_join_chat(
             user, chat_room, raise_exception=True
@@ -115,7 +115,7 @@ class ChatParticipantsService:
             chat_room = ChatRoom.objects.get(id=chat_room_id)
         except ChatRoom.DoesNotExist:
             raise ServiceError.not_found("Chat room not found")
-        
+
         try:
             participant = ChatParticipant.objects.get(
                 chat_room=chat_room, user=user
@@ -232,7 +232,7 @@ class ChatParticipantsService:
             chat_room = ChatRoom.objects.get(id=chat_room_id)
         except ChatRoom.DoesNotExist:
             raise ServiceError.not_found("Chat room not found")
-        
+
         # Check if user can get participants of this chat room
         ChatParticipantPolicy.check_can_get_participants(
             requesting_user, chat_room, raise_exception=True

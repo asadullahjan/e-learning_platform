@@ -5,12 +5,12 @@ from .user_serializers import (
     UserSerializer,
     UserDetailSerializer,
 )
-from .course_serializers import (
+from .courses.course_serializers import (
     CourseSerializer,
     CourseDetailSerializer,
     CourseListSerializer,
 )
-from .enrollment_serializers import (
+from .courses.enrollment_serializers import (
     EnrollmentSerializer,
     StudentEnrollmentSerializer,
     TeacherEnrollmentSerializer,

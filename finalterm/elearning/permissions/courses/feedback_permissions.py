@@ -21,44 +21,19 @@ class CourseFeedbackPermission(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        """Check if user has permission to access feedback"""
+        """Basic permission checks without database queries"""
         if request.method in permissions.SAFE_METHODS:
             return True  # Anyone can view feedback
-
-        # Must be logged in to create/edit
-        if not request.user.is_authenticated:
-            self.message = "You must be logged in to leave feedback"
-            return False
-
-        # For create/update/delete, check if user can leave feedback
-        course_id = view.kwargs.get("course_pk")
-        if course_id:
-            try:
-                course = Course.objects.get(pk=course_id)
-                # Use policy method that returns boolean for permissions
-                # and sets appropriate error message
-                if not CourseFeedbackPolicy.check_can_leave_feedback(
-                    request.user, course, permission_obj=self
-                ):
-                    return False
-            except Course.DoesNotExist:
-                self.message = "Course not found"
-                return False
-
-        return True
+        # For create/update/delete, require authentication
+        return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        """Check if user can modify specific feedback object"""
+        """Check object-level permissions without database queries"""
         if request.method in permissions.SAFE_METHODS:
             return True  # Anyone can view feedback
 
-        # Check if user can update/delete feedback and set appropriate message
-        if not CourseFeedbackPolicy.check_can_update_or_delete_feedback(
-            request.user, obj, permission_obj=self
-        ):
-            return False
-
-        return True
+        # Only feedback authors can modify their feedback
+        return obj.user == request.user
 
 
 class CourseFeedbackPolicy:
@@ -71,7 +46,7 @@ class CourseFeedbackPolicy:
 
     @staticmethod
     def check_can_leave_feedback(
-        user: User, course: Course, permission_obj=None, raise_exception=False
+        user: User, course: Course, raise_exception=False
     ) -> bool:
         """
         Check if a user can leave feedback for a course.
@@ -98,8 +73,7 @@ class CourseFeedbackPolicy:
             error_msg = "Cannot leave feedback for unpublished course"
             if raise_exception:
                 raise ServiceError.bad_request(error_msg)
-            if permission_obj:
-                permission_obj.message = error_msg
+
             return False
 
         # Check if user is enrolled in the course
@@ -110,8 +84,7 @@ class CourseFeedbackPolicy:
             error_msg = "You must be enrolled in this course to leave feedback"
             if raise_exception:
                 raise ServiceError.permission_denied(error_msg)
-            if permission_obj:
-                permission_obj.message = error_msg
+
             return False
 
         # Check if user already left feedback
@@ -122,8 +95,7 @@ class CourseFeedbackPolicy:
             error_msg = "You have already left feedback for this course"
             if raise_exception:
                 raise ServiceError.conflict(error_msg)
-            if permission_obj:
-                permission_obj.message = error_msg
+
             return False
 
         return True
@@ -132,7 +104,6 @@ class CourseFeedbackPolicy:
     def check_can_update_or_delete_feedback(
         user: User,
         feedback: CourseFeedback,
-        permission_obj=None,
         raise_exception=False,
     ) -> bool:
         """
@@ -159,8 +130,7 @@ class CourseFeedbackPolicy:
             error_msg = "You can only edit or delete your own feedback"
             if raise_exception:
                 raise ServiceError.permission_denied(error_msg)
-            if permission_obj:
-                permission_obj.message = error_msg
+
             return False
 
         return True

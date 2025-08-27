@@ -1,7 +1,8 @@
+from django.db import transaction
 from elearning.models import CourseFeedback, Course, User
 from elearning.exceptions import ServiceError
 from elearning.permissions.courses.feedback_permissions import (
-    CourseFeedbackPolicy
+    CourseFeedbackPolicy,
 )
 
 
@@ -21,6 +22,7 @@ class CourseFeedbackService:
     """
 
     @staticmethod
+    @transaction.atomic
     def create_feedback(user: User, course: Course, rating: int, text: str):
         """
         Create course feedback for a user.
@@ -61,6 +63,7 @@ class CourseFeedbackService:
         return feedback
 
     @staticmethod
+    @transaction.atomic
     def update_feedback(feedback: CourseFeedback, user: User, **data):
         """
         Update existing feedback.
