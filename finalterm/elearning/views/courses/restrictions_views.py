@@ -2,43 +2,86 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiParameter,
+    OpenApiExample,
+)
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import inline_serializer
+from rest_framework import serializers
+from elearning.models import StudentRestriction
 from elearning.serializers.courses.student_restriction_serializer import (
     StudentRestrictionCreateUpdateSerializer,
+    StudentRestrictionDetailSerializer,
     StudentRestrictionListSerializer,
-)
-from elearning.permissions.courses.restriction_permissions import (
-    StudentRestrictionPermission
 )
 from elearning.services.courses.student_restriction_service import (
     StudentRestrictionService,
 )
 
 
+@extend_schema(
+    tags=["Student Restrictions"],
+    parameters=[
+        OpenApiParameter(
+            name="id",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description="Restriction ID",
+        ),
+    ],
+)
 class StudentRestrictionViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing student restrictions.
     Only allows list, create, and delete operations.
     """
 
-    permission_classes = [StudentRestrictionPermission]
-    http_method_names = ["get", "post", "delete"]
+    def get_serializer_class(self):
+        """Return appropriate serializer class based on action."""
+        if self.action in ["create", "update", "partial_update"]:
+            return StudentRestrictionCreateUpdateSerializer
+        elif self.action == "retrieve":
+            return StudentRestrictionDetailSerializer
+        else:
+            return StudentRestrictionListSerializer
 
     def get_queryset(self):
         """Return restrictions created by the current teacher."""
+        if getattr(self, "swagger_fake_view", False):
+            return StudentRestriction.objects.none()
         return StudentRestrictionService.get_teacher_restrictions(
             self.request.user
         )
 
-    def get_serializer_class(self):
-        """Return appropriate serializer based on action."""
-        if self.action == "list":
-            return StudentRestrictionListSerializer
-        return StudentRestrictionCreateUpdateSerializer
-
+    @extend_schema(
+        request=StudentRestrictionCreateUpdateSerializer,
+        responses={
+            201: StudentRestrictionDetailSerializer,
+            400: inline_serializer(
+                name="StudentRestrictionCreateBadRequestResponse",
+                fields={
+                    "error": serializers.CharField(help_text="Error message"),
+                },
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Create Restriction",
+                value={
+                    "student_id": 1,
+                    "course_id": 1,
+                    "reason": "Academic misconduct",
+                },
+                request_only=True,
+                status_codes=["201"],
+            ),
+        ],
+    )
     def perform_create(self, serializer):
         """Create restriction using the service."""
-        # ✅ CORRECT: ServiceError handled automatically by custom 
+        # ✅ CORRECT: ServiceError handled automatically by custom
         # exception handler
         restriction = StudentRestrictionService.create_restriction(
             teacher=self.request.user,
@@ -49,10 +92,59 @@ class StudentRestrictionViewSet(viewsets.ModelViewSet):
         # Update serializer instance for response
         serializer.instance = restriction
 
+    @extend_schema(
+        responses={
+            204: None,
+        },
+    )
     def perform_destroy(self, instance):
         """Delete restriction using the service."""
         StudentRestrictionService.delete_restriction(instance)
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="student_id",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Student ID to check",
+            ),
+            OpenApiParameter(
+                name="course_id",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Course ID (optional)",
+            ),
+        ],
+        responses={
+            200: inline_serializer(
+                name="RestrictionCheckResultResponse",
+                fields={
+                    "student_id": serializers.IntegerField(
+                        help_text="Student ID"
+                    ),
+                    "course_id": serializers.IntegerField(
+                        help_text="Course ID (optional)"
+                    ),
+                    "is_restricted": serializers.BooleanField(
+                        help_text="Restriction status"
+                    ),
+                },
+            ),
+            400: inline_serializer(
+                name="RestrictionCheckBadRequestResponse",
+                fields={
+                    "detail": serializers.CharField(help_text="Error message"),
+                },
+            ),
+            404: inline_serializer(
+                name="RestrictionCheckNotFoundResponse",
+                fields={
+                    "detail": serializers.CharField(help_text="Error message"),
+                },
+            ),
+        },
+    )
     @action(detail=False, methods=["get"])
     def check_student(self, request):
         """

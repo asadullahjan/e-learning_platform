@@ -1,35 +1,20 @@
 from rest_framework import serializers
+from typing import Optional, Dict, Any
+from drf_spectacular.utils import extend_schema_field
+from ..user_serializers import UserSerializer
+from ..course_serializers import CourseSerializer
 from elearning.models import StudentRestriction
 
 
 class StudentRestrictionCreateUpdateSerializer(serializers.ModelSerializer):
     """
     Serializer for creating and updating student restrictions.
+    INPUT ONLY - Frontend sends IDs
     """
-
-    student_id = serializers.IntegerField(write_only=True)
-    course_id = serializers.IntegerField(
-        required=False, allow_null=True, write_only=True
-    )
-
-    # Read-only fields for display
-    student = serializers.SerializerMethodField()
-    course = serializers.SerializerMethodField()
-    teacher = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentRestriction
-        fields = [
-            "id",
-            "student_id",
-            "course_id",
-            "reason",
-            "student",
-            "course",
-            "teacher",
-            "created_at",
-        ]
-        read_only_fields = ["id", "student", "course", "teacher", "created_at"]
+        fields = ["student_id", "course_id", "teacher_id", "reason"]
 
     def validate_student_id(self, value):
         """Validate that the student_id is a positive integer."""
@@ -48,6 +33,14 @@ class StudentRestrictionCreateUpdateSerializer(serializers.ModelSerializer):
                 )
         return value
 
+    def validate_teacher_id(self, value):
+        """Validate that the teacher_id is a positive integer."""
+        if not isinstance(value, int) or value <= 0:
+            raise serializers.ValidationError(
+                "Teacher ID must be a positive integer"
+            )
+        return value
+
     def validate(self, data):
         """Validate the restriction data."""
         request = self.context.get("request")
@@ -60,42 +53,47 @@ class StudentRestrictionCreateUpdateSerializer(serializers.ModelSerializer):
 
         return data
 
-    def get_student(self, obj):
-        """Return student information."""
+
+class StudentRestrictionDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer for detailed view of student restrictions.
+    OUTPUT ONLY - Returns full objects
+    """
+
+    student = serializers.SerializerMethodField()
+    course = serializers.SerializerMethodField()
+    teacher = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StudentRestriction
+        fields = ["id", "student", "course", "teacher", "reason", "created_at"]
+
+    @extend_schema_field(UserSerializer)
+    def get_student(self, obj) -> Optional[Dict[str, Any]]:
+        """Return student information using UserSerializer."""
         if obj.student:
-            return {
-                "id": obj.student.id,
-                "username": obj.student.username,
-                "email": obj.student.email,
-                "role": obj.student.role,
-            }
+            return UserSerializer(obj.student).data
         return None
 
-    def get_course(self, obj):
-        """Return course information if applicable."""
+    @extend_schema_field(CourseSerializer)
+    def get_course(self, obj) -> Optional[Dict[str, Any]]:
+        """Return course information using CourseSerializer."""
         if obj.course:
-            return {
-                "id": obj.course.id,
-                "title": obj.course.title,  # Fixed: using 'title' not 'name'
-                "description": obj.course.description,
-            }
+            return CourseSerializer(obj.course).data
         return None
 
-    def get_teacher(self, obj):
-        """Return teacher information."""
+    @extend_schema_field(UserSerializer)
+    def get_teacher(self, obj) -> Optional[Dict[str, Any]]:
+        """Return teacher information using UserSerializer."""
         if obj.teacher:
-            return {
-                "id": obj.teacher.id,
-                "username": obj.teacher.username,
-                "email": obj.teacher.email,
-                "role": obj.teacher.role,
-            }
+            return UserSerializer(obj.teacher).data
         return None
 
 
 class StudentRestrictionListSerializer(serializers.ModelSerializer):
     """
     Serializer for listing student restrictions.
+    OUTPUT ONLY - Returns full objects
     """
 
     student = serializers.SerializerMethodField()
@@ -105,22 +103,16 @@ class StudentRestrictionListSerializer(serializers.ModelSerializer):
         model = StudentRestriction
         fields = ["id", "student", "course", "reason", "created_at"]
 
+    @extend_schema_field(UserSerializer)
     def get_student(self, obj):
-        """Return student information."""
+        """Return student information using UserSerializer."""
         if obj.student:
-            return {
-                "id": obj.student.id,
-                "username": obj.student.username,
-                "email": obj.student.email,
-            }
+            return UserSerializer(obj.student).data
         return None
 
+    @extend_schema_field(CourseSerializer)
     def get_course(self, obj):
-        """Return course information if applicable."""
+        """Return course information using CourseSerializer."""
         if obj.course:
-            return {
-                "id": obj.course.id,
-                "title": obj.course.title,  # Fixed: using 'title' not 'name'
-                "description": obj.course.description,
-            }
+            return CourseSerializer(obj.course).data
         return None

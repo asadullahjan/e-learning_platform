@@ -1,6 +1,11 @@
 from rest_framework import viewsets
+from drf_spectacular.utils import (
+    extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
+)
+from drf_spectacular.types import OpenApiTypes
+from rest_framework import serializers
 
-from elearning.models import Course
+from elearning.models import Course, CourseFeedback
 from elearning.permissions import CourseFeedbackPermission
 from elearning.serializers import (
     CourseFeedbackCreateUpdateSerializer,
@@ -11,10 +16,31 @@ from elearning.services.courses.course_feedback_service import (
 )
 
 
+@extend_schema(
+    tags=["Course Feedback"],
+    parameters=[
+        OpenApiParameter(
+            name="course_pk",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description="Course ID"
+        ),
+        OpenApiParameter(
+            name="id",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description="Feedback ID"
+        ),
+    ],
+)
 class FeedbackViewSet(viewsets.ModelViewSet):
     permission_classes = [CourseFeedbackPermission]
 
     def get_queryset(self):
+        # Handle swagger schema generation
+        if getattr(self, 'swagger_fake_view', False):
+            return CourseFeedback.objects.none()
+            
         course_id = self.kwargs.get("course_pk")
         course = Course.objects.get(id=course_id)
         return CourseFeedbackService.get_course_feedback(course)
@@ -29,6 +55,31 @@ class FeedbackViewSet(viewsets.ModelViewSet):
             return CourseFeedbackListSerializerForCourse
         return CourseFeedbackCreateUpdateSerializer
 
+    @extend_schema(
+        request=CourseFeedbackCreateUpdateSerializer,
+        responses={
+            201: CourseFeedbackCreateUpdateSerializer,
+            400: inline_serializer(
+                name="CourseFeedbackCreateBadRequestResponse",
+                fields={
+                    "error": serializers.CharField(
+                        help_text="Error message"
+                    ),
+                },
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Create Feedback",
+                value={
+                    "rating": 5,
+                    "text": "Great course! Very informative."
+                },
+                request_only=True,
+                status_codes=["201"],
+            ),
+        ],
+    )
     def perform_create(self, serializer):
         # ✅ CORRECT: ServiceError handled automatically by custom
         # exception handler
@@ -44,6 +95,31 @@ class FeedbackViewSet(viewsets.ModelViewSet):
 
         serializer.instance = feedback
 
+    @extend_schema(
+        request=CourseFeedbackCreateUpdateSerializer,
+        responses={
+            200: CourseFeedbackCreateUpdateSerializer,
+            400: inline_serializer(
+                name="CourseFeedbackUpdateBadRequestResponse",
+                fields={
+                    "error": serializers.CharField(
+                        help_text="Error message"
+                    ),
+                },
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Update Feedback",
+                value={
+                    "rating": 4,
+                    "text": "Updated feedback text"
+                },
+                request_only=True,
+                status_codes=["200"],
+            ),
+        ],
+    )
     def perform_update(self, serializer):
         # ✅ CORRECT: ServiceError handled automatically by custom
         # exception handler
@@ -54,6 +130,11 @@ class FeedbackViewSet(viewsets.ModelViewSet):
         )
         serializer.instance = feedback
 
+    @extend_schema(
+        responses={
+            204: None,
+        },
+    )
     def perform_destroy(self, instance):
         # ✅ CORRECT: ServiceError handled automatically by custom
         # exception handler

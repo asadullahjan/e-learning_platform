@@ -1,6 +1,10 @@
 from rest_framework import viewsets
 from rest_framework.filters import OrderingFilter
 from django_filters import rest_framework as filters
+from drf_spectacular.utils import (
+    extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
+)
+from drf_spectacular.types import OpenApiTypes
 from elearning.models import Course, Enrollment
 from elearning.permissions.courses.enrollment_permissions import (
     EnrollmentPermission,
@@ -10,6 +14,7 @@ from elearning.serializers import (
     StudentEnrollmentSerializer,
     TeacherEnrollmentSerializer,
 )
+from rest_framework import serializers
 
 
 class EnrollmentFilter(filters.FilterSet):
@@ -37,6 +42,23 @@ class EnrollmentFilter(filters.FilterSet):
         return queryset
 
 
+@extend_schema(
+    tags=["Course Enrollments"],
+    parameters=[
+        OpenApiParameter(
+            name="course_pk",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description="Course ID"
+        ),
+        OpenApiParameter(
+            name="id",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description="Enrollment ID"
+        ),
+    ],
+)
 class CourseEnrollmentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing enrollments within a specific course.
@@ -51,6 +73,10 @@ class CourseEnrollmentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return enrollments for the specific course"""
+        # Handle swagger schema generation
+        if getattr(self, 'swagger_fake_view', False):
+            return Enrollment.objects.none()
+            
         course_id = self.kwargs.get("course_pk")
         try:
             course = Course.objects.get(id=course_id)
@@ -76,6 +102,19 @@ class CourseEnrollmentViewSet(viewsets.ModelViewSet):
                 pass
         return EnrollmentSerializer
 
+    @extend_schema(
+        responses={
+            201: EnrollmentSerializer,
+            400: inline_serializer(
+                name="EnrollmentCreateBadRequestResponse",
+                fields={
+                    "error": serializers.CharField(
+                        help_text="Error message"
+                    ),
+                },
+            ),
+        },
+    )
     def perform_create(self, serializer):
         """Create enrollment for the specific course"""
         from ...services.courses.enrollment_service import EnrollmentService
@@ -91,6 +130,17 @@ class CourseEnrollmentViewSet(viewsets.ModelViewSet):
         serializer.instance = enrollment
 
 
+@extend_schema(
+    tags=["User Enrollments"],
+    parameters=[
+        OpenApiParameter(
+            name="id",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description="Enrollment ID"
+        ),
+    ],
+)
 class EnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for users to view their own enrollments.

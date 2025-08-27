@@ -1,5 +1,6 @@
 import base64
 from rest_framework import serializers
+from typing import Optional
 from elearning.models import CourseLesson, File
 
 
@@ -23,7 +24,7 @@ class FileSerializer(serializers.ModelSerializer):
             "download_url",
         ]
 
-    def get_download_url(self, obj):
+    def get_download_url(self, obj) -> Optional[str]:
         request = self.context.get("request")
         lesson = self.context.get("lesson")
         if not lesson or not request:
@@ -32,7 +33,7 @@ class FileSerializer(serializers.ModelSerializer):
             f"/api/courses/{lesson.course.id}/lessons/{lesson.id}/download/"
         )
 
-    def get_file_content(self, obj):
+    def get_file_content(self, obj) -> Optional[str]:
         if obj.file:
             with open(obj.file.path, "rb") as f:
                 return base64.b64encode(f.read()).decode("utf-8")

@@ -3,6 +3,11 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.filters import OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
+from drf_spectacular.utils import (
+    extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
+)
+from drf_spectacular.types import OpenApiTypes
+from rest_framework import serializers
 
 from elearning.models import Course
 from elearning.permissions.courses.course_permissions import CoursePermission
@@ -43,6 +48,17 @@ class CourseFilter(filters.FilterSet):
         return queryset
 
 
+@extend_schema(
+    tags=["Courses"],
+    parameters=[
+        OpenApiParameter(
+            name="id",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description="Course ID"
+        ),
+    ],
+)
 class CourseViewSet(viewsets.ModelViewSet):
     """ViewSet for course operations"""
 
@@ -82,6 +98,32 @@ class CourseViewSet(viewsets.ModelViewSet):
         else:
             return CourseService.get_courses_for_user(self.request.user)
 
+    @extend_schema(
+        request=CourseSerializer,
+        responses={
+            201: CourseDetailSerializer,
+            400: inline_serializer(
+                name="CourseCreateBadRequestResponse",
+                fields={
+                    "error": serializers.CharField(
+                        help_text="Error message"
+                    ),
+                },
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Create Course",
+                value={
+                    "title": "Web Development Intro",
+                    "description": "Learn web development fundamentals",
+                    "published_at": "2024-01-01T00:00:00Z"
+                },
+                request_only=True,
+                status_codes=["201"],
+            ),
+        ],
+    )
     def perform_create(self, serializer):
         # ✅ CORRECT: Delegate to service
         course = CourseService.create_course_with_chat(

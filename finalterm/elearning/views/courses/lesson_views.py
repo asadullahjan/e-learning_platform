@@ -3,6 +3,11 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
+from drf_spectacular.utils import (
+    extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
+)
+from drf_spectacular.types import OpenApiTypes
+from rest_framework import serializers
 
 from django.shortcuts import get_object_or_404
 from django.http import FileResponse
@@ -23,6 +28,23 @@ from elearning.services.courses.course_lesson_service import (
 )
 
 
+@extend_schema(
+    tags=["Course Lessons"],
+    parameters=[
+        OpenApiParameter(
+            name="course_pk",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description="Course ID"
+        ),
+        OpenApiParameter(
+            name="id",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description="Lesson ID"
+        ),
+    ],
+)
 class CourseLessonViewSet(viewsets.ModelViewSet):
     """
     ViewSet for course lesson operations.
@@ -33,6 +55,10 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         course_id = self.kwargs.get("course_pk")
+
+        # Handle swagger schema generation
+        if getattr(self, 'swagger_fake_view', False):
+            return CourseLesson.objects.none()
 
         if course_id:
             course = get_object_or_404(Course, id=course_id)
@@ -91,6 +117,33 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
             return [LessonDownloadPermission()]
         return [IsTeacher()]
 
+    @extend_schema(
+        request=CourseLessonCreateSerializer,
+        responses={
+            201: CourseLessonDetailSerializer,
+            400: inline_serializer(
+                name="CourseLessonCreateBadRequestResponse",
+                fields={
+                    "error": serializers.CharField(
+                        help_text="Error message"
+                    ),
+                },
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Create Lesson",
+                value={
+                    "title": "Introduction to Python",
+                    "description": "Learn the basics of Python programming",
+                    "content": "Python programming basics...",
+                    "file": "file_upload"
+                },
+                request_only=True,
+                status_codes=["201"],
+            ),
+        ],
+    )
     def perform_create(self, serializer):
         course = serializer.context["course"]
         user = self.request.user
@@ -101,6 +154,35 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
 
         return lesson
 
+    @extend_schema(
+        request=CourseLessonUpdateSerializer,
+        responses={
+            200: CourseLessonDetailSerializer,
+            400: inline_serializer(
+                name="CourseLessonUpdateBadRequestResponse",
+                fields={
+                    "error": serializers.CharField(
+                        help_text="Error message"
+                    ),
+                },
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Update Lesson",
+                value={
+                    "title": "Updated Python Introduction",
+                    "description": "Updated description",
+                    "content": "Updated content...",
+                    "published_at": (
+                        "2024-01-01T00:00:00Z"
+                    )
+                },
+                request_only=True,
+                status_codes=["200"],
+            ),
+        ],
+    )
     def perform_update(self, serializer):
         user = self.request.user
 
@@ -118,11 +200,36 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
 
         return lesson
 
+    @extend_schema(
+        responses={
+            204: None,
+        },
+    )
     def perform_destroy(self, instance):
         user = self.request.user
 
         CourseLessonService.delete_lesson_with_file(instance, user)
 
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="FileDownloadResponse",
+                fields={
+                    "file_content": serializers.CharField(
+                        help_text="Binary file content"
+                    ),
+                },
+            ),
+            404: inline_serializer(
+                name="FileNotFoundResponse",
+                fields={
+                    "detail": serializers.CharField(
+                        help_text="Error message"
+                    ),
+                },
+            ),
+        },
+    )
     @action(detail=True, methods=["get"])
     def download(self, request, course_pk=None, pk=None):
         """Download lesson file"""
@@ -139,7 +246,10 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
         filename = lesson.file.original_name
 
         response = FileResponse(
-            open(file_path, "rb"), content_type="application/octet-stream"
+            open(file_path, "rb"), 
+            content_type="application/octet-stream"
         )
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response["Content-Disposition"] = (
+            f'attachment; filename="{filename}"'
+        )
         return response

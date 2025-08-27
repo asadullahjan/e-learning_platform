@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from typing import Dict, Any
 from elearning.models import ChatRoom
 
 
@@ -47,7 +48,7 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             "current_user_status",
         ]
 
-    def get_current_user_status(self, obj):
+    def get_current_user_status(self, obj) -> Dict[str, Any]:
         """Get current user's participant status for this chat room"""
         # This will be populated by the service layer before serialization
         if hasattr(obj, '_current_user_status'):

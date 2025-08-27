@@ -1,6 +1,7 @@
 from ..models import User
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
+from drf_spectacular.utils import extend_schema_field
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -15,13 +16,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             "email",
             "password",
             "role",
-            "first_name",
-            "last_name",
         ]
         extra_kwargs = {
             "password": {"write_only": True},
-            "first_name": {"required": False, "allow_blank": True},
-            "last_name": {"required": False, "allow_blank": True},
         }
 
     def validate_password(self, value):
@@ -100,14 +97,16 @@ class UserDetailSerializer(UserSerializer):
             "courses_enrolled_count",
         ]
 
+    @extend_schema_field(serializers.IntegerField())
     def get_courses_taught_count(self, obj):
         """Get courses taught count from service-populated field"""
-        if hasattr(obj, '_courses_taught_count'):
+        if hasattr(obj, "_courses_taught_count"):
             return obj._courses_taught_count
         return 0
 
+    @extend_schema_field(serializers.IntegerField())
     def get_courses_enrolled_count(self, obj):
         """Get courses enrolled count from service-populated field"""
-        if hasattr(obj, '_courses_enrolled_count'):
+        if hasattr(obj, "_courses_enrolled_count"):
             return obj._courses_enrolled_count
         return 0

@@ -2,6 +2,11 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
+from drf_spectacular.utils import (
+    extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
+)
+from drf_spectacular.types import OpenApiTypes
+from rest_framework import serializers
 from elearning.serializers.chats.chat_participant_serializers import (
     ChatParticipantListSerializer,
     ChatParticipantRoleUpdateSerializer,
@@ -14,6 +19,23 @@ from elearning.permissions import ChatParticipantPermission
 from elearning.models import ChatParticipant
 
 
+@extend_schema(
+    tags=["Chat Participants"],
+    parameters=[
+        OpenApiParameter(
+            name="chat_room_pk",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description="Chat room ID"
+        ),
+        OpenApiParameter(
+            name="id",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description="Participant ID"
+        ),
+    ],
+)
 class ChatParticipantViewSet(viewsets.ModelViewSet):
     """ViewSet for chat participant operations"""
 
@@ -30,11 +52,20 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return participants for the specific chat room"""
+        # Handle swagger schema generation
+        if getattr(self, 'swagger_fake_view', False):
+            return ChatParticipant.objects.none()
+            
         chat_room_id = self.kwargs["chat_room_pk"]
         return ChatParticipant.objects.filter(
             chat_room_id=chat_room_id
         ).select_related("user")
 
+    @extend_schema(
+        responses={
+            200: ChatParticipantListSerializer(many=True),
+        },
+    )
     def list(self, request, chat_room_pk=None):
         """List all chat participants"""
         chat_participants = ChatParticipantsService.get_chat_participants(
@@ -69,6 +100,46 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
                 "participant": participant,
             }
 
+    @extend_schema(
+        request=ChatParticipantCreateSerializer,
+        responses={
+            201: inline_serializer(
+                name="ChatParticipantCreateResponse",
+                fields={
+                    "message": serializers.CharField(
+                        help_text="Success message"
+                    ),
+                    "participant": ChatParticipantListSerializer,
+                    "role": serializers.CharField(
+                        help_text="User role in chat",
+                        required=False
+                    ),
+                },
+            ),
+            400: inline_serializer(
+                name="ChatParticipantCreateBadRequestResponse",
+                fields={
+                    "error": serializers.CharField(
+                        help_text="Error message"
+                    ),
+                },
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Add User to Chat",
+                value={"username": "john_doe"},
+                request_only=True,
+                status_codes=["201"],
+            ),
+            OpenApiExample(
+                "Join Chat",
+                value={},
+                request_only=True,
+                status_codes=["201"],
+            ),
+        ],
+    )
     def create(self, request, chat_room_pk=None):
         """Create a new chat participant (join a chat or add user)"""
         serializer = self.get_serializer(data=request.data)
@@ -112,6 +183,31 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
 
         return response
 
+    @extend_schema(
+        request=ChatParticipantRoleUpdateSerializer,
+        responses={
+            200: ChatParticipantRoleUpdateSerializer,
+            400: inline_serializer(
+                name="ChatParticipantRoleUpdateBadRequestResponse",
+                fields={
+                    "error": serializers.CharField(
+                        help_text="Error message"
+                    ),
+                },
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Update Role",
+                value={
+                    "user": 1,
+                    "role": "admin"
+                },
+                request_only=True,
+                status_codes=["200"],
+            ),
+        ],
+    )
     @action(detail=False, methods=["post"])
     def update_role(self, request, chat_room_pk=None):
         """Update a chat participant role (admin only)"""
@@ -126,6 +222,11 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        responses={
+            200: None,
+        },
+    )
     @action(detail=False, methods=["post"])
     def deactivate(self, request, chat_room_pk=None):
         """Deactivate a chat participant"""
@@ -134,6 +235,11 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
         )
         return Response(status=status.HTTP_200_OK)
 
+    @extend_schema(
+        responses={
+            200: None,
+        },
+    )
     @action(detail=False, methods=["post"])
     def reactivate(self, request, chat_room_pk=None):
         """Reactivate a chat participant"""
@@ -142,6 +248,19 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
         )
         return Response(status=status.HTTP_200_OK)
 
+    @extend_schema(
+        responses={
+            204: None,
+            404: inline_serializer(
+                name="ChatParticipantNotFoundResponse",
+                fields={
+                    "detail": serializers.CharField(
+                        help_text="Error message"
+                    ),
+                },
+            ),
+        },
+    )
     def destroy(self, request, chat_room_pk=None, pk=None):
         """Remove a participant from chat (admin only)"""
         try:

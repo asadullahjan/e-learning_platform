@@ -2,6 +2,12 @@ from rest_framework import viewsets
 from rest_framework.filters import OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiParameter,
+    OpenApiExample,
+)
+from drf_spectacular.types import OpenApiTypes
 
 from ..models import Status
 from ..permissions import StatusPermission
@@ -13,18 +19,18 @@ from ..serializers.status_serializers import (
 
 
 class StatusFilter(filters.FilterSet):
-    """Filter for status updates"""
+    """
+    Filter for status updates
 
-    # Filter by user (username or ID)
+    Filters status updates by user, username, and content.
+    """
+
     user = filters.NumberFilter(field_name="user__id")
     username = filters.CharFilter(
         field_name="user__username", lookup_expr="icontains"
     )
-
-    # Filter by content
     content = filters.CharFilter(lookup_expr="icontains")
 
-    # Filter by date range
     created_after = filters.DateTimeFilter(
         field_name="created_at", lookup_expr="gte"
     )
@@ -43,10 +49,28 @@ class StatusFilter(filters.FilterSet):
         ]
 
 
+@extend_schema(
+    tags=["Status Updates"],
+    parameters=[
+        OpenApiParameter(
+            name="id",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description="Status ID",
+        ),
+    ],
+)
 class StatusViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for status updates.
+    ViewSet for status updates
+
     Users can view all statuses, create their own, and edit/delete their own.
+
+    **Actions:**
+    - list: View all statuses
+    - retrieve: View a specific status
+    - create: Create a new status
+    - update: Update an existing status
     """
 
     permission_classes = [StatusPermission]

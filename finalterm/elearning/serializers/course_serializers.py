@@ -1,6 +1,7 @@
 from ..models import Course
 from rest_framework import serializers
 from django.utils import timezone
+from typing import Optional
 from .user_serializers import UserSerializer
 
 
@@ -90,25 +91,25 @@ class CourseDetailSerializer(CourseSerializer):
             "course_chat_id",
         ]
 
-    def get_enrollment_count(self, obj):
+    def get_enrollment_count(self, obj) -> int:
         """Get enrollment count from service-populated field"""
         if hasattr(obj, '_enrollment_count'):
             return obj._enrollment_count
         return 0
 
-    def get_total_enrollments(self, obj):
+    def get_total_enrollments(self, obj) -> int:
         """Get total enrollments from service-populated field"""
         if hasattr(obj, '_total_enrollments'):
             return obj._total_enrollments
         return 0
 
-    def get_is_enrolled(self, obj):
+    def get_is_enrolled(self, obj) -> bool:
         """Get enrollment status from service-populated field"""
         if hasattr(obj, '_is_enrolled'):
             return obj._is_enrolled
         return False
 
-    def get_course_chat_id(self, obj):
+    def get_course_chat_id(self, obj) -> Optional[int]:
         """Get course chat ID from service-populated field"""
         if hasattr(obj, '_course_chat_id'):
             return obj._course_chat_id

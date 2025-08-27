@@ -49,3 +49,6 @@ psycopg2-binary==2.9.9
 dj-database-url==2.2.0
 # Rate limiting
 django-ratelimit==4.1.0
+djangorestframework-stubs>=3.16.0
+django-stubs[compatible]>=5.2.0
+mypy>=1.0.0

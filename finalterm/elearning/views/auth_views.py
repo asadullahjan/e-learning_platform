@@ -3,6 +3,13 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth import login, logout
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiExample,
+    inline_serializer,
+)
+from rest_framework import serializers
+
 from ..serializers import (
     UserRegistrationSerializer,
     UserLoginSerializer,
@@ -10,19 +17,85 @@ from ..serializers import (
 )
 
 
-class AuthViewSet(viewsets.ViewSet):
+class AuthViewSet(viewsets.GenericViewSet):
     """ViewSet for authentication operations"""
-    
+
     def get_permissions(self):
         """Set permissions based on action"""
-        if self.action in ['register', 'login']:
+        if self.action in ["register", "login"]:
             return [AllowAny()]
         return [IsAuthenticated()]
 
-    @action(detail=False, methods=['post'])
+    def get_serializer_class(self):
+        """Return appropriate serializer class based on action"""
+        if self.action == "register":
+            return UserRegistrationSerializer
+        elif self.action == "login":
+            return UserLoginSerializer
+        elif self.action == "logout":
+            return None  # No serializer needed for logout
+        return UserSerializer
+
+    def get_serializer(self, *args, **kwargs):
+        """Override to handle logout action without serializer"""
+        if self.action == "logout":
+            return None
+        return super().get_serializer(*args, **kwargs)
+
+    @extend_schema(
+        request=UserRegistrationSerializer,
+        responses={
+            201: inline_serializer(
+                name="RegisterResponse",
+                fields={
+                    "message": serializers.CharField(
+                        help_text="Success message"
+                    ),
+                    "user": UserSerializer,
+                },
+            ),
+            400: inline_serializer(
+                name="RegisterError",
+                fields={
+                    "error": serializers.CharField(help_text="Error message")
+                },
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Success Response",
+                value={
+                    "message": "User registered successfully",
+                    "user": {
+                        "id": 1,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student",
+                    },
+                },
+                response_only=True,
+                status_codes=["201"],
+            ),
+        ],
+    )
+    @action(detail=False, methods=["post"])
     def register(self, request):
-        """User registration endpoint"""
-        serializer = UserRegistrationSerializer(data=request.data)
+        """
+        User registration endpoint
+
+        Registers a new user with email and password.
+
+        **Request Body:**
+        - email: User's email address
+        - password: User's password
+        - username: User's username
+        - role: User's role {STUDENT, TEACHER}
+
+        **Response:**
+        - 201: User registered successfully, returns user data
+        - 400: Invalid data
+        """
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
             login(request, user)
@@ -33,37 +106,110 @@ class AuthViewSet(viewsets.ViewSet):
                 },
                 status=status.HTTP_201_CREATED,
             )
-        return Response(
-            serializer.errors, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['post'])
+    @extend_schema(
+        request=UserLoginSerializer,
+        responses={
+            200: inline_serializer(
+                name="LoginResponse",
+                fields={
+                    "message": serializers.CharField(
+                        help_text="Success message"
+                    ),
+                    "user": UserSerializer,
+                },
+            ),
+            400: inline_serializer(
+                name="LoginError",
+                fields={
+                    "error": serializers.CharField(help_text="Error message")
+                },
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Success Response",
+                value={
+                    "message": "Login successful",
+                    "user": {
+                        "id": 1,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student",
+                    },
+                },
+                response_only=True,
+                status_codes=["200"],
+            ),
+        ],
+    )
+    @action(detail=False, methods=["post"])
     def login(self, request):
-        """User login endpoint"""
-        serializer = UserLoginSerializer(data=request.data)
+        """
+        User login endpoint
+
+        Authenticates a user with email and password.
+
+        **Request Body:**
+        - email: User's email address
+        - password: User's password
+
+        **Response:**
+        - 200: Login successful, returns user data and token
+        - 400: Invalid credentials
+        """
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data["user"]
             login(request, user)
             return Response(
                 {
-                    "message": "Login successful", 
-                    "user": UserSerializer(user).data
+                    "message": "Login successful",
+                    "user": UserSerializer(user).data,
                 },
                 status=status.HTTP_200_OK,
             )
-        return Response(
-            serializer.errors, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['post'])
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="LogoutResponse",
+                fields={
+                    "message": serializers.CharField(
+                        help_text="Success message"
+                    )
+                },
+            )
+        },
+        examples=[
+            OpenApiExample(
+                "Success Response",
+                value={"message": "Logout successful"},
+                response_only=True,
+                status_codes=["200"],
+            ),
+        ],
+    )
+    @action(detail=False, methods=["post"])
     def logout(self, request):
-        """User logout endpoint"""
-        # Always logout regardless of authentication status
-        if request.user.is_authenticated:
-            logout(request)
+        """
+        User logout endpoint
+
+        Logs out the current user.
+
+        **Response:**
+        - 200: Logout successful, returns success message
+
+        **Response Body:**
+        ```json
+        {
+            "message": "Logout successful"
+        }
+        ```
+        """
+        logout(request)
         return Response(
-            {"message": "Logout successful"}, 
-            status=status.HTTP_200_OK
+            {"message": "Logout successful"}, status=status.HTTP_200_OK
         )

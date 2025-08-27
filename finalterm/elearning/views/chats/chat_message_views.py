@@ -1,6 +1,11 @@
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
+from drf_spectacular.utils import (
+    extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
+)
+from drf_spectacular.types import OpenApiTypes
+from rest_framework import serializers
 
 from elearning.serializers.chats.chat_message_serializers import (
     ChatMessageCreateUpdateSerializer,
@@ -14,6 +19,23 @@ from elearning.services.chats.chat_websocket_service import (
 )
 
 
+@extend_schema(
+    tags=["Chat Messages"],
+    parameters=[
+        OpenApiParameter(
+            name="chat_room_pk",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description="Chat room ID"
+        ),
+        OpenApiParameter(
+            name="id",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description="Message ID"
+        ),
+    ],
+)
 class ChatMessageViewSet(viewsets.ModelViewSet):
     """
     ViewSet for chat messages with automatic pagination and filtering.
@@ -30,6 +52,10 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         Filter messages by chat room and order by creation date.
         This enables automatic pagination and filtering.
         """
+        # Handle swagger schema generation
+        if getattr(self, 'swagger_fake_view', False):
+            return ChatMessage.objects.none()
+            
         chat_room_id = self.kwargs["chat_room_pk"]
         return ChatMessage.objects.filter(chat_room_id=chat_room_id).order_by(
             "-created_at"
@@ -43,6 +69,28 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
             return ChatMessageCreateUpdateSerializer
         return ChatMessageSerializer
 
+    @extend_schema(
+        request=ChatMessageCreateUpdateSerializer,
+        responses={
+            201: ChatMessageSerializer,
+            400: inline_serializer(
+                name="ChatMessageBadRequestResponse",
+                fields={
+                    "error": serializers.CharField(
+                        help_text="Error message"
+                    ),
+                },
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Create Message",
+                value={"content": "Hello everyone!"},
+                request_only=True,
+                status_codes=["201"],
+            ),
+        ],
+    )
     def create(self, request, chat_room_pk=None):
         """
         Create a new message and broadcast via WebSocket.
@@ -62,6 +110,28 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         )
         return Response(response_data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+        request=ChatMessageCreateUpdateSerializer,
+        responses={
+            200: ChatMessageSerializer,
+            400: inline_serializer(
+                name="ChatMessageUpdateBadRequestResponse",
+                fields={
+                    "error": serializers.CharField(
+                        help_text="Error message"
+                    ),
+                },
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Update Message",
+                value={"content": "Updated message content"},
+                request_only=True,
+                status_codes=["200"],
+            ),
+        ],
+    )
     def partial_update(self, request, chat_room_pk=None, pk=None):
         """
         Update a message and broadcast via WebSocket.
@@ -81,6 +151,19 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         )
         return Response(response_data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        responses={
+            204: None,
+            404: inline_serializer(
+                name="ChatMessageNotFoundResponse",
+                fields={
+                    "detail": serializers.CharField(
+                        help_text="Error message"
+                    ),
+                },
+            ),
+        },
+    )
     def destroy(self, request, chat_room_pk=None, pk=None):
         """
         Delete a message and broadcast via WebSocket.

@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "crispy_forms",
     "channels",
     "corsheaders",
+    "drf_spectacular",
     # Local apps
     "elearning",
 ]
@@ -195,6 +196,26 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
     ],
     "EXCEPTION_HANDLER": "elearning.exceptions.custom_exception_handler",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+# DRF Spectacular Configuration
+SPECTACULAR_SETTINGS = {
+    "TITLE": "E-Learning Platform API",
+    "DESCRIPTION": (
+        "A comprehensive e-learning platform with courses, lessons, "
+        "chat, and user management"
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SCHEMA_PATH_PREFIX": "/api/",
+    "ENUM_NAME_OVERRIDES": {
+        "UserRoleEnum": "elearning.models.User.ROLE_CHOICES",
+        "ChatParticipantRoleEnum": (
+            "elearning.models.ChatParticipant.ROLE_CHOICES"
+        ),
+    },
 }
 
 # Crispy Forms Configuration
