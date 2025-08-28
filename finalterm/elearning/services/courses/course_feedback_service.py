@@ -4,6 +4,7 @@ from elearning.exceptions import ServiceError
 from elearning.permissions.courses.feedback_permissions import (
     CourseFeedbackPolicy,
 )
+from elearning.services.courses.course_service import CourseService
 
 
 class CourseFeedbackService:
@@ -151,6 +152,26 @@ class CourseFeedbackService:
         )
 
     @staticmethod
+    def get_feedback_with_permission_check(feedback_id: int, user: User):
+        """Get feedback with permission check including course access validation"""
+        try:
+            feedback = CourseFeedback.objects.get(id=feedback_id)
+
+            # First check if user can access the course this feedback belongs to
+            CourseService.get_course_with_permission_check(
+                feedback.course.id, user
+            )
+
+            # Then check if user can view this specific feedback
+            CourseFeedbackPolicy.check_can_view_feedback(
+                user, feedback, raise_exception=True
+            )
+
+            return feedback
+        except CourseFeedback.DoesNotExist:
+            raise ServiceError.not_found("Feedback not found")
+
+    @staticmethod
     def get_user_feedback(user: User):
         """
         Get all feedback by a user.
@@ -169,16 +190,3 @@ class CourseFeedbackService:
             >>> print(f"User has left {user_feedback.count()} feedback")
         """
         return CourseFeedback.objects.filter(user=user).order_by("-created_at")
-
-    @staticmethod
-    def get_feedback_with_permission_check(feedback_id: int, user: User):
-        """Get feedback with permission check"""
-        try:
-            feedback = CourseFeedback.objects.get(id=feedback_id)
-            # Check if user can view this feedback
-            CourseFeedbackPolicy.check_can_view_feedback(
-                user, feedback, raise_exception=True
-            )
-            return feedback
-        except CourseFeedback.DoesNotExist:
-            raise ServiceError.not_found("Feedback not found")

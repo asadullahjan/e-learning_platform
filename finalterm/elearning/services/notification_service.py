@@ -8,7 +8,7 @@ from elearning.permissions.users.notification_permissions import (
 
 
 class NotificationService:
-    """Service for creating notifications and sending WebSocket messages"""
+    """Service for notification operations with policy-based gatekeeping"""
 
     @staticmethod
     def create_notifications_and_send(
@@ -68,11 +68,11 @@ class NotificationService:
     @staticmethod
     def get_notification_with_permission_check(
         notification_id: int, user: User
-    ):
-        """Get notification with permission check"""
+    ) -> Notification:
+        """Get notification with permission check using policy"""
         try:
             notification = Notification.objects.get(id=notification_id)
-            # Check if user can view this notification
+            # Use policy for gatekeeping
             NotificationPolicy.check_can_view_notification(
                 user, notification, raise_exception=True
             )
@@ -81,21 +81,32 @@ class NotificationService:
             raise ServiceError.not_found("Notification not found")
 
     @staticmethod
-    def mark_notification_read(notification: Notification, user: User):
-        """Mark notification as read with permission check"""
-        # Check if user can mark this notification as read
+    def mark_notification_read(
+        notification: Notification, user: User
+    ) -> Notification:
+        """Mark notification as read with policy-based gatekeeping"""
+        # Use policy for gatekeeping
         NotificationPolicy.check_can_mark_notification_read(
             user, notification, raise_exception=True
         )
-        
+
         notification.is_read = True
         notification.save()
         return notification
 
     @staticmethod
+    def mark_all_notifications_read(user: User) -> int:
+        """Mark all notifications as read for a user"""
+        # Simple operation - no complex gatekeeping needed
+        updated_count = Notification.objects.filter(
+            user=user, is_read=False
+        ).update(is_read=True)
+        return updated_count
+
+    @staticmethod
     def delete_notification(notification: Notification, user: User):
-        """Delete notification with permission check"""
-        # Check if user can delete this notification
+        """Delete notification with policy-based gatekeeping"""
+        # Use policy for gatekeeping
         NotificationPolicy.check_can_delete_notification(
             user, notification, raise_exception=True
         )

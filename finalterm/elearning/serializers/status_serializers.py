@@ -6,7 +6,7 @@ from .user_serializers import UserSerializer
 class StatusListSerializer(serializers.ModelSerializer):
     """Status serializer for list views - returns full user object"""
 
-    user = UserSerializer(read_only=True)
+    user = UserSerializer()
 
     class Meta:
         model = Status
@@ -17,7 +17,7 @@ class StatusListSerializer(serializers.ModelSerializer):
 class StatusSerializer(serializers.ModelSerializer):
     """Detailed status serializer for retrieve operations"""
 
-    user = UserSerializer(read_only=True)
+    user = UserSerializer()
 
     class Meta:
         model = Status
@@ -42,27 +42,6 @@ class StatusCreateUpdateSerializer(serializers.ModelSerializer):
             )
         return value.strip()
 
-    def create(self, validated_data):
-        """Set the user from the request"""
-        validated_data["user"] = self.context["request"].user
-        return super().create(validated_data)
-
-
-class UserStatusesQuerySerializer(serializers.Serializer):
-    """Serializer for validating user_statuses query parameters"""
-
-    user_id = serializers.IntegerField(
-        required=True,
-        error_messages={
-            "required": "user_id parameter is required",
-            "invalid": "user_id must be a valid integer",
-        },
-    )
-
-    def validate_user_id(self, value):
-        """Validate that user_id is a positive integer"""
-        if value <= 0:
-            raise serializers.ValidationError(
-                "User ID must be a positive integer"
-            )
-        return value
+    def to_representation(self, instance):
+        """Use read serializer for response representation"""
+        return StatusSerializer(instance, context=self.context).data

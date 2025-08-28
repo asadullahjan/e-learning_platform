@@ -46,7 +46,7 @@ class StatusPolicy:
 
     @staticmethod
     def check_can_create_status(
-        user: User, permission_obj=None, raise_exception=False
+        user: User, raise_exception=False
     ) -> bool:
         """
         Check if a user can create a status.
@@ -57,8 +57,8 @@ class StatusPolicy:
 
         Args:
             user: User attempting to create status
-            permission_obj: Permission object to set custom messages (optional)
-            raise_exception: If True, raises ServiceError instead of returning False
+            raise_exception: If True, raises ServiceError instead of 
+                           returning False
 
         Returns:
             bool: True if user can create status, False otherwise
@@ -70,8 +70,6 @@ class StatusPolicy:
             error_msg = "You must be logged in to create status updates"
             if raise_exception:
                 raise ServiceError.permission_denied(error_msg)
-            if permission_obj:
-                permission_obj.message = error_msg
             return False
 
         return True

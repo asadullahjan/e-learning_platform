@@ -1,5 +1,6 @@
-from elearning.models import Course, CourseLesson
+from elearning.models import CourseLesson, Course
 from rest_framework import viewsets
+from django.shortcuts import get_object_or_404
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import (
@@ -11,7 +12,6 @@ from drf_spectacular.utils import (
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
 
-from django.shortcuts import get_object_or_404
 from django.http import FileResponse
 
 from elearning.serializers import (
@@ -24,6 +24,7 @@ from elearning.permissions.courses.lesson_permissions import LessonPermission
 from elearning.services.courses.course_lesson_service import (
     CourseLessonService,
 )
+from elearning.services.courses.course_service import CourseService
 
 
 @extend_schema(
@@ -63,11 +64,14 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
             course_id = self.kwargs.get("course_pk")
             if course_id:
                 try:
-                    course = Course.objects.get(id=course_id)
+                    # Use CourseService for consistent course access validation
+                    course = CourseService.get_course_with_permission_check(
+                        int(course_id), self.request.user
+                    )
                     return CourseLessonService.get_lessons_for_course(
                         course, self.request.user
                     )
-                except Course.DoesNotExist:
+                except Exception:
                     return CourseLesson.objects.none()
             return CourseLesson.objects.none()
 
@@ -119,6 +123,8 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
     )
     def perform_create(self, serializer):
         course_id = self.kwargs.get("course_pk")
+        # Get course object - no need for permission check here since 
+        # lesson creation is controlled by user role (teacher only)
         course = get_object_or_404(Course, id=course_id)
         user = self.request.user
         file_data = self.request.FILES.get("file")

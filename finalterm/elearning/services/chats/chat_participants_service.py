@@ -19,9 +19,35 @@ class ChatParticipantsService:
         )
 
         try:
-            user = User.objects.get(username=username, is_active=True)
+            user = User.objects.select_related().get(
+                username=username, is_active=True
+            )
         except User.DoesNotExist:
             raise ServiceError.not_found(f"User '{username}' not found")
+
+        # Check if user is restricted from course chat
+        if chat_room.chat_type == "course" and chat_room.course:
+            from elearning.services.courses.student_restriction_service import (
+                StudentRestrictionService,
+            )
+
+            restriction_info = StudentRestrictionService.get_restriction_info(
+                user, chat_room.course
+            )
+
+            if restriction_info["is_restricted"]:
+                if restriction_info["restriction_type"] == "teacher_all_courses":
+                    error_msg = (
+                        f"User '{username}' is restricted from accessing "
+                        f"all courses by {restriction_info['teacher']}. "
+                        f"Reason: {restriction_info['reason']}"
+                    )
+                else:  # course-specific
+                    error_msg = (
+                        f"User '{username}' is restricted from accessing "
+                        f"this course. Reason: {restriction_info['reason']}"
+                    )
+                raise ServiceError.permission_denied(error_msg)
 
         # Check if user is already a participant
         if ChatParticipant.objects.filter(
@@ -50,6 +76,20 @@ class ChatParticipantsService:
 
         participants = []
         for user in users:
+            # Check if user is restricted from course chat
+            if chat_room.chat_type == "course" and chat_room.course:
+                from elearning.services.courses.student_restriction_service import (
+                    StudentRestrictionService,
+                )
+                
+                restriction_info = StudentRestrictionService.get_restriction_info(
+                    user, chat_room.course
+                )
+                
+                if restriction_info["is_restricted"]:
+                    # Skip restricted users instead of raising error for bulk operations
+                    continue
+            
             if not ChatParticipant.objects.filter(
                 chat_room=chat_room, user=user
             ).exists():
@@ -64,21 +104,24 @@ class ChatParticipantsService:
     def remove_participant_from_chat(
         chat_room: ChatRoom, user: User, requesting_user: User
     ):
-        """Remove a participant from a chat room"""
+        """Remove a participant from a chat room (soft delete)"""
         # Check permissions using policy
         ChatParticipantPolicy.check_can_remove_participant(
             requesting_user, chat_room, user, raise_exception=True
         )
 
         try:
-            participant = ChatParticipant.objects.get(
-                chat_room=chat_room, user=user
+            participant = ChatParticipant.objects.select_related(
+                'user', 'chat_room', 'chat_room__course'
+            ).get(
+                chat_room=chat_room, user=user, is_active=True
             )
-            participant.delete()
+            participant.is_active = False
+            participant.save()
             return True
         except ChatParticipant.DoesNotExist:
             raise ServiceError.not_found(
-                f"User '{user.username}' is not a participant " f"in this chat"
+                f"User '{user.username}' is not an active participant " f"in this chat"
             )
 
     @staticmethod
@@ -86,7 +129,7 @@ class ChatParticipantsService:
         """Join a public chat room"""
         # Get chat room and check if it exists
         try:
-            chat_room = ChatRoom.objects.get(id=chat_room_id)
+            chat_room = ChatRoom.objects.select_related('course').get(id=chat_room_id)
         except ChatRoom.DoesNotExist:
             raise ServiceError.not_found("Chat room not found")
 
@@ -95,9 +138,33 @@ class ChatParticipantsService:
             user, chat_room, raise_exception=True
         )
 
+        # Check if user is restricted from course chat
+        if chat_room.chat_type == "course" and chat_room.course:
+            from elearning.services.courses.student_restriction_service import (
+                StudentRestrictionService,
+            )
+            
+            restriction_info = StudentRestrictionService.get_restriction_info(
+                user, chat_room.course
+            )
+            
+            if restriction_info["is_restricted"]:
+                if restriction_info["restriction_type"] == "teacher_all_courses":
+                    error_msg = (
+                        f"You are restricted from accessing all courses by "
+                        f"{restriction_info['teacher']}. "
+                        f"Reason: {restriction_info['reason']}"
+                    )
+                else:  # course-specific
+                    error_msg = (
+                        f"You are restricted from accessing this course. "
+                        f"Reason: {restriction_info['reason']}"
+                    )
+                raise ServiceError.permission_denied(error_msg)
+
         # Check if already a participant
         participant, created = ChatParticipant.objects.get_or_create(
-            chat_room=chat_room, user=user, defaults={"role": "participant"}
+            chat_room=chat_room, user=user, defaults={"role": "participant", "is_active": True}
         )
 
         if not created and not participant.is_active:
@@ -117,7 +184,9 @@ class ChatParticipantsService:
             raise ServiceError.not_found("Chat room not found")
 
         try:
-            participant = ChatParticipant.objects.get(
+            participant = ChatParticipant.objects.select_related(
+                'user', 'chat_room', 'chat_room__course'
+            ).get(
                 chat_room=chat_room, user=user
             )
             participant.is_active = False
@@ -137,7 +206,9 @@ class ChatParticipantsService:
         )
 
         try:
-            participant = ChatParticipant.objects.get(
+            participant = ChatParticipant.objects.select_related(
+                'user', 'chat_room', 'chat_room__course'
+            ).get(
                 chat_room=chat_room, user=target_user
             )
             participant.role = new_role
@@ -161,7 +232,9 @@ class ChatParticipantsService:
             )
 
         try:
-            participant = ChatParticipant.objects.get(
+            participant = ChatParticipant.objects.select_related(
+                'user', 'chat_room', 'chat_room__course'
+            ).get(
                 chat_room=chat_room, user=user
             )
             participant.is_active = False
@@ -183,7 +256,9 @@ class ChatParticipantsService:
         )
 
         try:
-            participant = ChatParticipant.objects.get(
+            participant = ChatParticipant.objects.select_related(
+                'user', 'chat_room', 'chat_room__course'
+            ).get(
                 chat_room=chat_room, user=target_user
             )
             participant.is_active = False
@@ -206,8 +281,34 @@ class ChatParticipantsService:
                 requesting_user, chat_room, user, raise_exception=True
             )
 
+        # Check if user is restricted from course chat
+        if chat_room.chat_type == "course" and chat_room.course:
+            from elearning.services.courses.student_restriction_service import (
+                StudentRestrictionService,
+            )
+            
+            restriction_info = StudentRestrictionService.get_restriction_info(
+                user, chat_room.course
+            )
+            
+            if restriction_info["is_restricted"]:
+                if restriction_info["restriction_type"] == "teacher_all_courses":
+                    error_msg = (
+                        f"You are restricted from accessing all courses by "
+                        f"{restriction_info['teacher']}. "
+                        f"Reason: {restriction_info['reason']}"
+                    )
+                else:  # course-specific
+                    error_msg = (
+                        f"You are restricted from accessing this course. "
+                        f"Reason: {restriction_info['reason']}"
+                    )
+                raise ServiceError.permission_denied(error_msg)
+
         try:
-            participant = ChatParticipant.objects.get(
+            participant = ChatParticipant.objects.select_related(
+                'user', 'chat_room', 'chat_room__course'
+            ).get(
                 chat_room=chat_room, user=user
             )
             participant.is_active = True
@@ -216,7 +317,7 @@ class ChatParticipantsService:
         except ChatParticipant.DoesNotExist:
             # Create new participant if doesn't exist
             participant = ChatParticipant.objects.create(
-                chat_room=chat_room, user=user, role="participant"
+                chat_room=chat_room, user=user, role="participant", is_active=True
             )
             return True
 

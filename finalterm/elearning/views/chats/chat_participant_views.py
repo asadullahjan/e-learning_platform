@@ -62,7 +62,7 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
         chat_room_id = self.kwargs["chat_room_pk"]
 
         # Check permissions and get participants via service
-        # Service will raise ServiceError if permission denied, 
+        # Service will raise ServiceError if permission denied,
         # which DRF handles
         participants = ChatParticipantsService.get_chat_participants(
             chat_room_id, self.request.user, is_active=True
@@ -294,7 +294,9 @@ class ChatParticipantViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        participant = ChatParticipant.objects.get(chat_room=chat_room, id=pk)
+        participant = ChatParticipant.objects.select_related(
+            "user", "chat_room", "chat_room__course"
+        ).get(chat_room=chat_room, id=pk)
         ChatParticipantsService.remove_participant_from_chat(
             chat_room, participant.user, request.user
         )

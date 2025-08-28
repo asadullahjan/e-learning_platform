@@ -70,7 +70,6 @@ class CourseEnrollmentViewSet(viewsets.ModelViewSet):
     """
 
     http_method_names = ["get", "post", "patch", "put"]
-    serializer_class = EnrollmentSerializer
     permission_classes = [EnrollmentPermission]
 
     def get_queryset(self):
@@ -78,18 +77,24 @@ class CourseEnrollmentViewSet(viewsets.ModelViewSet):
         # Handle swagger schema generation
         if getattr(self, 'swagger_fake_view', False):
             return Enrollment.objects.none()
-            
-        # Use service layer filtering for all actions
+
         course_id = self.kwargs.get("course_pk")
-        if course_id:
-            try:
-                course = Course.objects.get(id=course_id)
-                return EnrollmentService.get_enrollments_for_course(
-                    course, self.request.user
-                )
-            except Course.DoesNotExist:
-                return Enrollment.objects.none()
-        return Enrollment.objects.none()
+        if not course_id:
+            return Enrollment.objects.none()
+
+        try:
+            course = Course.objects.get(id=course_id)
+            qs = EnrollmentService.get_enrollments_for_course(course, self.request.user)
+        except Course.DoesNotExist:
+            return Enrollment.objects.none()
+
+        # Optimize based on user role
+        if self.request.user.role == "teacher":
+            # Teachers need user data for all enrollments in their course
+            return qs.select_related("user")
+        else:  # student
+            # Students only see their own enrollment, no need for user data
+            return qs.select_related("course", "course__teacher")
 
     def get_serializer_class(self):
         """Return appropriate serializer based on user role"""
@@ -165,4 +170,6 @@ class EnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         """Return user's own enrollments"""
-        return Enrollment.objects.filter(user=self.request.user)
+        return Enrollment.objects.select_related(
+            'course', 'course__teacher'
+        ).filter(user=self.request.user)

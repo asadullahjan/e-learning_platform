@@ -3,6 +3,7 @@ from elearning.models import CourseLesson, Course, File, User
 from elearning.exceptions import ServiceError
 from elearning.permissions.courses.lesson_permissions import LessonPolicy
 from elearning.permissions.courses.file_permissions import FilePolicy
+from elearning.services.courses.course_service import CourseService
 
 
 class CourseLessonService:
@@ -126,10 +127,16 @@ class CourseLessonService:
 
     @staticmethod
     def get_lesson_with_permission_check(lesson_id: int, user: User):
-        """Get lesson with permission check"""
+        """Get lesson with permission check including course access validation"""
         try:
             lesson = CourseLesson.objects.get(id=lesson_id)
-            # Check if user can view this lesson
+            
+            # First check if user can access the course this lesson belongs to
+            CourseService.get_course_with_permission_check(
+                lesson.course.id, user
+            )
+            
+            # Then check if user can view this specific lesson
             LessonPolicy.check_can_view_lesson(
                 user, lesson, raise_exception=True
             )
@@ -162,15 +169,21 @@ class CourseLessonService:
 
     @staticmethod
     def get_lessons_for_course(course: Course, user: User):
-        """Get lessons for a course with permission filtering"""
+        """Get lessons for a course with permission filtering.
+
+        Note: Course access validation (including restrictions) should be
+        done by view using CourseService.get_course_with_permission_check()
+        """
         # Teachers see all lessons for their courses
         if user.is_authenticated and course.teacher == user:
             return CourseLesson.objects.filter(course=course)
 
         # Students see only published lessons in published courses if enrolled
-        if user.is_authenticated and course.published_at:
-            # Check if user is enrolled in the course
-            if user.enrollments.filter(course=course, is_active=True).exists():
+        if user.is_authenticated and user.role == "student":
+            if (course.published_at and
+                    user.enrollments.filter(
+                        course=course, is_active=True
+                    ).exists()):
                 return CourseLesson.objects.filter(
                     course=course,
                     published_at__isnull=False,

@@ -2,6 +2,9 @@ from django.db import transaction
 from elearning.models import Course, ChatRoom, ChatParticipant, User
 from elearning.exceptions import ServiceError
 from elearning.permissions.courses.course_permissions import CoursePolicy
+from elearning.services.courses.student_restriction_service import (
+    StudentRestrictionService,
+)
 
 
 class CourseService:
@@ -99,33 +102,23 @@ class CourseService:
             user_courses = Course.objects.filter(teacher=user)
             return (published_courses | user_courses).distinct()
 
-        # Students see only published courses
-        return Course.objects.filter(published_at__isnull=False)
+        # Students see only published courses they're not restricted from
+        published_courses = Course.objects.filter(published_at__isnull=False)
 
-    @staticmethod
-    def can_user_access_course(user, course):
-        """
-        Check if user can access a specific course.
+        # Filter courses using optimized restriction checking
+        if user.role == "student":
+            # Get all restricted course IDs using optimized method
+            restricted_course_ids = (
+                StudentRestrictionService.get_restricted_courses_for_student(
+                    user
+                )
+            )
+            if restricted_course_ids:
+                return published_courses.exclude(id__in=restricted_course_ids)
+            else:
+                return published_courses
 
-        This is a convenience method that delegates to check_can_access_course
-        for consistency. It maintains backward compatibility while ensuring
-        all access checks use the same logic.
-
-        Args:
-            user: User object
-            course: Course object
-
-        Returns:
-            bool: True if user can access, False otherwise
-
-        Example:
-            >>> if CourseService.can_user_access_course(user, course):
-            ...     # Show course content
-            ... else:
-            ...     # Show access denied message
-        """
-        # Use the permission policy for consistent validation
-        return CoursePolicy.check_can_access_course(user, course)
+        return published_courses
 
     @staticmethod
     def update_course(course: Course, course_data: dict, user: User):
@@ -156,10 +149,10 @@ class CourseService:
 
     @staticmethod
     def get_course_with_permission_check(course_id: int, user: User):
-        """Get course with permission check"""
+        """Get course with permission check including restrictions."""
         try:
             course = Course.objects.get(id=course_id)
-            # Check if user can access this course
+            # Check if user can access this course (includes restrictions)
             CoursePolicy.check_can_access_course(
                 user, course, raise_exception=True
             )

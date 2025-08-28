@@ -381,9 +381,9 @@ class CourseLessonViewSetTestCase(BaseTestCase):
         self.assertEqual(response["Content-Type"], "application/octet-stream")
 
     @debug_on_failure
-    def test_download_lesson_file_unauthorized(self):
-        """Test downloading a lesson file without permission"""
-        # Create lesson with file
+    def test_download_lesson_file_unauthorized_scenarios(self):
+        """Test downloading a lesson file in various unauthorized scenarios"""
+        # Create lesson with file using the same helper pattern
         test_file = SimpleUploadedFile(
             name="test_document.pdf",
             content=b"This is a test PDF content",
@@ -395,6 +395,7 @@ class CourseLessonViewSetTestCase(BaseTestCase):
             title="Test Lesson",
             description="Test Description",
             content="Test Content",
+            published_at=timezone.now(),  # Published for some tests
         )
 
         file_obj = File.objects.create(
@@ -404,12 +405,25 @@ class CourseLessonViewSetTestCase(BaseTestCase):
         lesson.file = file_obj
         lesson.save()
 
-        # Test download without authentication
+        # Create non-enrolled student for testing
+        non_enrolled_student = User.objects.create_user(
+            username="nonenrolled",
+            email="nonenrolled@example.com",
+            password="testpassword",
+            role="student",
+        )
+
+        # Test 1: Download without authentication
         self.client.force_authenticate(user=None)
         url = f"/api/courses/{self.course.id}/lessons/{lesson.id}/download/"
         response = self.log_response(self.client.get(url))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.assertEqual(response.status_code, 403)
+        # Test 2: Download as non-enrolled student
+        self.client.force_authenticate(user=non_enrolled_student)
+        response = self.log_response(self.client.get(url))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("permission_denied", response.data["detail"].code)
 
     @debug_on_failure
     def test_download_lesson_file_no_file(self):
@@ -426,51 +440,10 @@ class CourseLessonViewSetTestCase(BaseTestCase):
         url = f"/api/courses/{self.course.id}/lessons/{lesson.id}/download/"
         response = self.log_response(self.client.get(url))
 
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertIn(
             "No file available for download", response.data["detail"]
         )
-
-    @debug_on_failure
-    def test_download_lesson_file_student_not_enrolled(self):
-        """Test downloading a lesson file as non-enrolled student"""
-        # Create another student who is not enrolled
-        non_enrolled_student = User.objects.create_user(
-            username="nonenrolled",
-            email="nonenrolled@example.com",
-            password="testpassword",
-            role="student",
-        )
-
-        # Create lesson with file
-        test_file = SimpleUploadedFile(
-            name="test_document.pdf",
-            content=b"This is a test PDF content",
-            content_type="application/pdf",
-        )
-
-        lesson = CourseLesson.objects.create(
-            course=self.course,
-            title="Test Lesson",
-            description="Test Description",
-            content="Test Content",
-            published_at=timezone.now(),
-        )
-
-        file_obj = File.objects.create(
-            file=test_file,
-            uploaded_by=self.teacher,
-        )
-        lesson.file = file_obj
-        lesson.save()
-
-        # Test download as non-enrolled student
-        self.client.force_authenticate(user=non_enrolled_student)
-        url = f"/api/courses/{self.course.id}/lessons/{lesson.id}/download/"
-        response = self.log_response(self.client.get(url))
-
-        self.assertEqual(response.status_code, 403)
-        self.assertIn("permission_denied", response.data["detail"].code)
 
     @debug_on_failure
     def test_publish_lesson(self):
@@ -528,3 +501,85 @@ class CourseLessonViewSetTestCase(BaseTestCase):
         # Assert lesson was unpublished
         lesson.refresh_from_db()
         self.assertIsNone(lesson.published_at)
+
+    @debug_on_failure
+    def test_student_cannot_create_lesson(self):
+        """Test that students cannot create lessons"""
+        self.client.force_authenticate(user=self.student)
+
+        data = {
+            "title": "Student Lesson",
+            "description": "Test Description",
+            "content": "Test Content",
+        }
+
+        url = f"/api/courses/{self.course.id}/lessons/"
+        response = self.log_response(
+            self.client.post(url, data, format="json")
+        )
+
+        # Assert forbidden
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @debug_on_failure
+    def test_teacher_cannot_create_lesson_in_other_course(self):
+        """Test that teachers cannot create lessons in other courses"""
+        # Create another teacher and course
+        other_teacher = User.objects.create_user(
+            username="otherteacher",
+            email="other@example.com",
+            password="testpassword",
+            role="teacher",
+        )
+        other_course = Course.objects.create(
+            title="Other Course",
+            description="Other Description",
+            teacher=other_teacher,
+        )
+
+        # Try to create lesson in other teacher's course
+        data = {
+            "title": "Unauthorized Lesson",
+            "description": "Test Description",
+            "content": "Test Content",
+        }
+
+        url = f"/api/courses/{other_course.id}/lessons/"
+        response = self.log_response(
+            self.client.post(url, data, format="json")
+        )
+
+        # Assert forbidden
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @debug_on_failure
+    def test_student_cannot_access_unpublished_course_lessons(self):
+        """Test that students cannot access lessons in unpublished courses"""
+        # Create unpublished course
+        unpublished_course = Course.objects.create(
+            title="Unpublished Course",
+            description="Test Description",
+            teacher=self.teacher,
+            # No published_at - course is unpublished
+        )
+
+        # Enroll student in unpublished course
+        Enrollment.objects.create(user=self.student, course=unpublished_course)
+
+        # Create published lesson in unpublished course
+        CourseLesson.objects.create(
+            course=unpublished_course,
+            title="Published Lesson in Unpublished Course",
+            description="Test Description",
+            content="Test Content",
+            published_at=timezone.now(),
+        )
+
+        self.client.force_authenticate(user=self.student)
+        response = self.log_response(
+            self.client.get(f"/api/courses/{unpublished_course.id}/lessons/")
+        )
+
+        # Should see no lessons since course is not published
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["results"]), 0)

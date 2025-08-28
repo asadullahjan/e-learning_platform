@@ -9,11 +9,11 @@ from .models import (
     ChatParticipant,
     StudentRestriction,
     Notification,
+    Status,
 )
 
 # Register your models here.
 
-# add user model to admin
 admin.site.register(User)
 admin.site.register(Course)
 admin.site.register(Enrollment)
@@ -23,3 +23,4 @@ admin.site.register(ChatParticipant)
 admin.site.register(CourseLesson)
 admin.site.register(StudentRestriction)
 admin.site.register(Notification)
+admin.site.register(Status)

@@ -12,9 +12,15 @@ class StudentRestrictionCreateUpdateSerializer(serializers.ModelSerializer):
     INPUT ONLY - Frontend sends IDs
     """
 
+    # Explicitly declare the ID fields for input
+    student_id = serializers.IntegerField(write_only=True)
+    course_id = serializers.IntegerField(
+        write_only=True, allow_null=True, required=False
+    )
+
     class Meta:
         model = StudentRestriction
-        fields = ["student_id", "course_id", "teacher_id", "reason"]
+        fields = ["student_id", "course_id", "reason"]
 
     def validate_student_id(self, value):
         """Validate that the student_id is a positive integer."""
@@ -31,14 +37,6 @@ class StudentRestrictionCreateUpdateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "Course ID must be a positive integer"
                 )
-        return value
-
-    def validate_teacher_id(self, value):
-        """Validate that the teacher_id is a positive integer."""
-        if not isinstance(value, int) or value <= 0:
-            raise serializers.ValidationError(
-                "Teacher ID must be a positive integer"
-            )
         return value
 
     def validate(self, data):

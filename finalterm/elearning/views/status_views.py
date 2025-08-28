@@ -5,17 +5,18 @@ from django_filters import rest_framework as filters
 from drf_spectacular.utils import (
     extend_schema,
     OpenApiParameter,
-    OpenApiExample,
 )
 from drf_spectacular.types import OpenApiTypes
+from rest_framework.response import Response
 
 from ..models import Status
-from ..permissions import StatusPermission
+from ..permissions.users.status_permissions import StatusPermission
 from ..serializers.status_serializers import (
     StatusSerializer,
     StatusListSerializer,
     StatusCreateUpdateSerializer,
 )
+from ..services.status_service import StatusService
 
 
 class StatusFilter(filters.FilterSet):
@@ -97,3 +98,30 @@ class StatusViewSet(viewsets.ModelViewSet):
             return StatusSerializer
         else:
             return StatusListSerializer
+
+    def perform_create(self, serializer):
+        """Create status using service layer"""
+        content = serializer.validated_data["content"]
+        status = StatusService.create_status(self.request.user, content)
+        serializer.instance = status
+
+    def retrieve(self, request, *args, **kwargs):
+        """Override retrieve to use service for permission checking"""
+        status_id = kwargs.get("pk")
+        instance = StatusService.get_status_with_permission_check(
+            int(status_id), request.user
+        )
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    def perform_update(self, serializer):
+        """Update status using service layer"""
+        content = serializer.validated_data["content"]
+        updated_status = StatusService.update_status(
+            serializer.instance, self.request.user, content
+        )
+        serializer.instance = updated_status
+
+    def perform_destroy(self, instance):
+        """Delete status using service layer"""
+        StatusService.delete_status(instance, self.request.user)

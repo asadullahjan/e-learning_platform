@@ -1,13 +1,17 @@
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.filters import SearchFilter
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from drf_spectacular.utils import (
-    extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
+    extend_schema,
+    OpenApiParameter,
+    OpenApiExample,
+    inline_serializer,
 )
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
+
+from elearning.permissions.users.user_permissions import IsUserOwner
 
 from ..models import User
 from ..serializers.user_serializers import UserSerializer, UserDetailSerializer
@@ -21,7 +25,7 @@ from ..services.user_service import UserService
             name="id",
             type=OpenApiTypes.STR,
             location=OpenApiParameter.PATH,
-            description="Username"
+            description="Username",
         ),
     ],
 )
@@ -41,7 +45,7 @@ class UserViewSet(ModelViewSet):
     """
 
     queryset = User.objects.filter(is_active=True).order_by("username")
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsUserOwner]
     filter_backends = [SearchFilter]
     search_fields = ["username", "first_name", "last_name"]
 
@@ -103,9 +107,7 @@ class UserViewSet(ModelViewSet):
             400: inline_serializer(
                 name="UserProfileUpdateBadRequestResponse",
                 fields={
-                    "error": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "error": serializers.CharField(help_text="Error message"),
                 },
             ),
         },
@@ -115,7 +117,7 @@ class UserViewSet(ModelViewSet):
                 value={
                     "first_name": "John",
                     "last_name": "Doe",
-                    "email": "john.doe@example.com"
+                    "email": "john.doe@example.com",
                 },
                 request_only=True,
                 status_codes=["200"],
@@ -151,9 +153,7 @@ class UserViewSet(ModelViewSet):
             404: inline_serializer(
                 name="UserNotFoundResponse",
                 fields={
-                    "detail": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "detail": serializers.CharField(help_text="Error message"),
                 },
             ),
         },

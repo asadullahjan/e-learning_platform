@@ -22,8 +22,20 @@ class EnrollmentPermission(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        """Basic permission checks without database queries"""
-        return request.user.is_authenticated
+        """Basic permission checks (no DB yet)"""
+        if not request.user.is_authenticated:
+            return False
+
+        if view.action in ["list"]:
+            # Only teachers can list enrollments
+            return request.user.role == "teacher"
+
+        if view.action in ["create"]:
+            # Only students can enroll
+            return request.user.role == "student"
+
+        # retrieve, update, partial_update, destroy
+        return True  # defer to object-level checks
 
     def has_object_permission(self, request, view, obj):
         """Check object-level permissions without database queries"""

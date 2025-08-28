@@ -16,7 +16,6 @@ from .feedback_permissions import (
 from .restriction_permissions import StudentRestrictionPermission
 from .course_permissions import (
     CoursePermission,
-    CourseAccessPermission,
     CoursePolicy,
 )
 from .enrollment_permissions import EnrollmentPermission, EnrollmentPolicy
@@ -27,7 +26,6 @@ __all__ = [
     "StudentRestrictionPermission",
     "CourseFeedbackPolicy",
     "CoursePermission",
-    "CourseAccessPermission",
     "CoursePolicy",
     "EnrollmentPermission",
     "EnrollmentPolicy",

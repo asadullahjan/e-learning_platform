@@ -1,6 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+
 from drf_spectacular.utils import (
     extend_schema,
     OpenApiParameter,
@@ -10,7 +11,7 @@ from drf_spectacular.utils import (
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
 
-from elearning.models import Course, CourseFeedback
+from elearning.models import CourseFeedback, Course
 from elearning.permissions import CourseFeedbackPermission
 from elearning.serializers import (
     CourseFeedbackCreateUpdateSerializer,
@@ -19,6 +20,7 @@ from elearning.serializers import (
 from elearning.services.courses.course_feedback_service import (
     CourseFeedbackService,
 )
+from elearning.services.courses.course_service import CourseService
 
 
 @extend_schema(
@@ -51,8 +53,14 @@ class FeedbackViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             course_id = self.kwargs.get("course_pk")
             if course_id:
-                course = get_object_or_404(Course, id=course_id)
-                return CourseFeedbackService.get_course_feedback(course)
+                try:
+                    # Use CourseService for consistent course access validation
+                    course = CourseService.get_course_with_permission_check(
+                        int(course_id), self.request.user
+                    )
+                    return CourseFeedbackService.get_course_feedback(course)
+                except Exception:
+                    return CourseFeedback.objects.none()
             return CourseFeedback.objects.none()
 
         # For detail actions, return all (service handles 403 vs 404)
@@ -93,8 +101,9 @@ class FeedbackViewSet(viewsets.ModelViewSet):
         ],
     )
     def perform_create(self, serializer):
-
         course_id = self.kwargs.get("course_pk")
+        # Get course object - no need for permission check here since 
+        # feedback creation is controlled by chat participation
         course = get_object_or_404(Course, id=course_id)
 
         feedback = CourseFeedbackService.create_feedback(

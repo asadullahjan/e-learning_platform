@@ -11,35 +11,35 @@ from elearning.exceptions import ServiceError
 
 
 class CoursePermission(permissions.BasePermission):
-    """DRF permission class for course operations - basic checks only"""
+    """
+    DRF permission class for course operations (basic checks only).
+    More detailed business rules are handled in services/policies.
+    """
 
     def has_permission(self, request, view):
-        """Basic permission checks without database queries"""
+        # Anyone can list or retrieve courses (object-level checks apply later)
         if view.action in ["list", "retrieve"]:
-            return True  # Anyone can view courses
-        # For create, check if user is teacher
+            return True
+
+        # Only teachers can create new courses
         if view.action == "create":
-            return request.user.is_authenticated and request.user.role == "teacher"
-        # For update/delete, require authentication (object check below)
+            return (
+                request.user.is_authenticated
+                and request.user.role == "teacher"
+            )
+
+        # For update/delete, just require authentication
+        # (ownership checked below)
         return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        """Check object-level permissions without database queries"""
+        # For safe methods: show only published courses,
+        # unless user is the teacher
         if request.method in permissions.SAFE_METHODS:
-            return True  # Anyone can view (service handles published/unpublished)
-        
-        # Only course owners can modify/delete their courses
+            return obj.published_at is not None or obj.teacher == request.user
+
+        # For write actions: only the teacher (owner) can modify/delete
         return obj.teacher == request.user
-
-
-class CourseAccessPermission(permissions.BasePermission):
-    """DRF permission class for course access operations - basic checks only"""
-
-    def has_permission(self, request, view):
-        """Basic permission checks without database queries"""
-        if view.action in ["list", "retrieve"]:
-            return True  # Anyone can view courses
-        return request.user.is_authenticated
 
 
 class CoursePolicy:
@@ -123,6 +123,11 @@ class CoursePolicy:
             if raise_exception:
                 raise ServiceError.permission_denied(error_msg)
             return False
+
+        # Note: Student restrictions are handled automatically through
+        # enrollment.is_active status. When a student is restricted,
+        # their enrollment is deactivated, which prevents access to
+        # lessons, files, and other course content.
 
         return True
 

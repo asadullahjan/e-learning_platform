@@ -19,6 +19,9 @@ from elearning.serializers.courses.student_restriction_serializer import (
 from elearning.services.courses.student_restriction_service import (
     StudentRestrictionService,
 )
+from elearning.permissions.courses.restriction_permissions import (
+    StudentRestrictionPermission,
+)
 
 
 @extend_schema(
@@ -37,6 +40,8 @@ class StudentRestrictionViewSet(viewsets.ModelViewSet):
     ViewSet for managing student restrictions.
     Only allows list, create, and delete operations.
     """
+
+    permission_classes = [StudentRestrictionPermission]
 
     def get_serializer_class(self):
         """Return appropriate serializer class based on action."""
@@ -116,7 +121,7 @@ class StudentRestrictionViewSet(viewsets.ModelViewSet):
     )
     def perform_destroy(self, instance):
         """Delete restriction using the service."""
-        StudentRestrictionService.delete_restriction(instance)
+        StudentRestrictionService.delete_restriction(instance, self.request.user)
 
     @extend_schema(
         parameters=[

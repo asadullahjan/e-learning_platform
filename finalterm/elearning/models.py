@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models import Q
 from elearning.storage import PrivateCourseStorage
 import os
 from django.core.validators import (
@@ -196,6 +197,10 @@ class Enrollment(models.Model):
         db_table = "enrollments"
         unique_together = ("user", "course")
         ordering = ["-enrolled_at"]
+        indexes = [
+            # Single compound index covers most queries
+            models.Index(fields=["course", "is_active", "enrolled_at"]),
+        ]
 
 
 class Status(models.Model):
@@ -311,6 +316,10 @@ class ChatParticipant(models.Model):
         db_table = "chat_participants"
         unique_together = ("chat_room", "user")
         ordering = ["-joined_at"]
+        indexes = [
+            # Only index for active participant filtering
+            models.Index(fields=["chat_room", "is_active"]),
+        ]
 
 
 class StudentRestriction(models.Model):
@@ -343,6 +352,9 @@ class StudentRestriction(models.Model):
 
     class Meta:
         unique_together = ["teacher", "student", "course"]
+        indexes = [
+            models.Index(fields=["student", "teacher"]),
+        ]
 
 
 class Notification(models.Model):
@@ -356,6 +368,5 @@ class Notification(models.Model):
     class Meta:
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["user", "is_read"]),
-            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["user", "is_read", "created_at"]),
         ]

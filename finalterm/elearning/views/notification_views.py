@@ -11,10 +11,13 @@ from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
 
 from elearning.models import Notification
-from elearning.permissions import NotificationPermission
+from elearning.permissions.users.notification_permissions import (
+    NotificationPermission
+)
 from elearning.serializers.notification_serializers import (
     NotificationSerializer,
 )
+from elearning.services.notification_service import NotificationService
 
 
 @extend_schema(
@@ -42,7 +45,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         """Return only notifications for the current user"""
         if getattr(self, "swagger_fake_view", False):
             return Notification.objects.none()
-        return Notification.objects.filter(user=self.request.user)
+        return NotificationService.get_user_notifications(self.request.user)
 
     @extend_schema(
         responses={
@@ -76,19 +79,23 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         - 200: Notification marked as read
         - 404: Notification not found
         """
-        updated_count = Notification.objects.filter(
-            id=pk, user=request.user
-        ).update(is_read=True)
-
-        if updated_count == 0:
+        try:
+            notification = (
+                NotificationService.get_notification_with_permission_check(
+                    int(pk), request.user
+                )
+            )
+            NotificationService.mark_notification_read(
+                notification, request.user
+            )
+            return Response(
+                {"message": "Notification marked as read", "is_read": True}
+            )
+        except Exception:
             return Response(
                 {"detail": "Notification not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
-        return Response(
-            {"message": "Notification marked as read", "is_read": True}
-        )
 
     @extend_schema(
         responses={
@@ -112,9 +119,9 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         **Response:**
         - 200: All notifications marked as read
         """
-        updated_count = Notification.objects.filter(
-            user=request.user, is_read=False
-        ).update(is_read=True)
+        updated_count = NotificationService.mark_all_notifications_read(
+            request.user
+        )
 
         return Response(
             {"message": f"{updated_count} notifications marked as read"}

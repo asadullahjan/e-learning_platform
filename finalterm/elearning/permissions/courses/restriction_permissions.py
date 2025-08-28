@@ -26,6 +26,12 @@ class StudentRestrictionPermission(permissions.BasePermission):
             self.message = "You must be logged in to access restrictions"
             return False
 
+        # For list action, only teachers can access
+        if view.action == "list":
+            if request.user.role != "teacher":
+                self.message = "Only teachers can view restrictions"
+                return False
+
         # For create action, check if user is authenticated teacher
         if view.action == "create":
             if request.user.role != "teacher":
@@ -44,7 +50,8 @@ class StudentRestrictionPermission(permissions.BasePermission):
             if obj.student == request.user:
                 return True
             self.message = (
-                "You can only view restrictions you created or that apply to you"
+                "You can only view restrictions you created or "
+                "that apply to you"
             )
             return False
 
@@ -68,7 +75,7 @@ class StudentRestrictionPolicy:
     def check_can_create_restriction(
         user: User,
         student: User,
-        course: Course,
+        course: Course = None,
         raise_exception=False,
     ) -> bool:
         """
@@ -107,7 +114,8 @@ class StudentRestrictionPolicy:
 
             return False
 
-        if course.teacher != user:
+        # Check course ownership only if course is provided
+        if course and course.teacher != user:
             error_msg = "You can only create restrictions for your own courses"
             if raise_exception:
                 raise ServiceError.permission_denied(error_msg)
@@ -121,14 +129,39 @@ class StudentRestrictionPolicy:
 
             return False
 
-        # Check if restriction already exists
-        if StudentRestriction.objects.filter(
-            student=student, course=course, is_active=True
-        ).exists():
+        # Check if exact restriction already exists
+        if course:
+            # For course-specific restrictions, check student + course
+            duplicate_exists = StudentRestriction.objects.filter(
+                student=student, course=course
+            ).exists()
             error_msg = "Student is already restricted from this course"
+
+            # Also check if global restriction exists (prevent individual)
+            global_restriction_exists = StudentRestriction.objects.filter(
+                student=student, course__isnull=True, teacher=user
+            ).exists()
+            if global_restriction_exists:
+                error_msg = (
+                    "You already have a global restriction on this student. "
+                    "Please delete the global restriction to create "
+                    "individual course restrictions."
+                )
+                if raise_exception:
+                    raise ServiceError.conflict(error_msg)
+                return False
+        else:
+            # For global restrictions, check student + teacher
+            duplicate_exists = StudentRestriction.objects.filter(
+                student=student, course__isnull=True, teacher=user
+            ).exists()
+            error_msg = (
+                "Student already has a global restriction by this teacher"
+            )
+
+        if duplicate_exists:
             if raise_exception:
                 raise ServiceError.conflict(error_msg)
-
             return False
 
         return True

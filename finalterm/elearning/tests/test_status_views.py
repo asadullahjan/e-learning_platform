@@ -204,10 +204,10 @@ class StatusFilterTest(BaseAPITestCase):
         self.assertStatusCode(response, status.HTTP_200_OK)
         self.assertEqual(len(response.data["results"]), 2)
         self.assertEqual(
-            response.data["results"][0]["user"], self.user.username
+            response.data["results"][0]["user"]["username"], self.user.username
         )
         self.assertEqual(
-            response.data["results"][1]["user"], self.user.username
+            response.data["results"][1]["user"]["username"], self.user.username
         )
 
     @debug_on_failure
@@ -220,7 +220,9 @@ class StatusFilterTest(BaseAPITestCase):
 
         self.assertStatusCode(response, status.HTTP_200_OK)
         self.assertEqual(len(response.data["results"]), 1)
-        self.assertEqual(response.data["results"][0]["user"], "otheruser")
+        self.assertEqual(
+            response.data["results"][0]["user"]["username"], "otheruser"
+        )
 
     @debug_on_failure
     def test_filter_by_content(self):

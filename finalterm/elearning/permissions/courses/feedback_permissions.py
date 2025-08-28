@@ -95,7 +95,7 @@ class CourseFeedbackPolicy:
             error_msg = "You have already left feedback for this course"
             if raise_exception:
                 raise ServiceError.conflict(error_msg)
-
+            
             return False
 
         return True
