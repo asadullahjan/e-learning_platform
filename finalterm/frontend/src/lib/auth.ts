@@ -28,8 +28,3 @@ export async function getServerUser() {
 
   return null;
 }
-
-export async function isAuthenticated() {
-  const user = await getServerUser();
-  return user !== null;
-}

@@ -29,6 +29,11 @@ router.register(
 
 # System endpoints
 router.register(r"statuses", views.StatusViewSet, basename="status")
+router.register(
+    r"restrictions", 
+    courses.CourseStudentRestrictionViewSet, 
+    basename="restriction"
+)
 
 # =============================================================================
 # NESTED ROUTERS - Course-specific endpoints
@@ -45,11 +50,6 @@ courses_router.register(
     r"enrollments",
     courses.CourseEnrollmentViewSet,
     basename="course-enrollments",
-)
-courses_router.register(
-    r"restrictions",
-    courses.CourseStudentRestrictionViewSet,
-    basename="course-restrictions",
 )
 
 # =============================================================================

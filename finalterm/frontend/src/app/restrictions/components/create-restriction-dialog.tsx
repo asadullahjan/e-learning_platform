@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,13 +13,13 @@ import {
 import Typography from "@/components/ui/Typography";
 import { restrictionService, CreateRestrictionData } from "@/services/restrictionService";
 import { useToast } from "@/components/hooks/use-toast";
+import { enrollmentService, TeacherEnrollment } from "@/services/enrollmentService";
 
 interface CreateRestrictionDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   courses: any[];
-  users: any[];
 }
 
 export default function CreateRestrictionDialog({
@@ -27,13 +27,29 @@ export default function CreateRestrictionDialog({
   onClose,
   onSuccess,
   courses,
-  users,
 }: CreateRestrictionDialogProps) {
   const [courseId, setCourseId] = useState<string>("");
   const [studentId, setStudentId] = useState<string>("");
   const [reason, setReason] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [enrolledStudents, setEnrolledStudents] = useState<TeacherEnrollment[]>([]);
   const { toast } = useToast();
+
+  const loadUsers = async () => {
+    try {
+      // Load all users (you might want to add pagination here)
+      const data = await enrollmentService.getCourseEnrollments(courseId);
+      setEnrolledStudents(data);
+    } catch (error: any) {
+      console.error("Failed to load users:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (courseId) {
+      loadUsers();
+    }
+  }, [courseId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,19 +108,6 @@ export default function CreateRestrictionDialog({
     onClose();
   };
 
-  // Filter students to only show those who are not already restricted in the selected course
-  const getAvailableStudents = () => {
-    if (!courseId) return users;
-
-    // Get students who are not already restricted in this course
-    const restrictedStudentIds = new Set();
-    // You might want to add logic here to check existing restrictions
-
-    return users.filter((user) => user.role === "student" && !restrictedStudentIds.has(user.id));
-  };
-
-  const availableStudents = getAvailableStudents();
-
   return (
     <Dialog
       open={isOpen}
@@ -152,12 +155,12 @@ export default function CreateRestrictionDialog({
                 />
               </SelectTrigger>
               <SelectContent>
-                {availableStudents.map((student) => (
+                {enrolledStudents.map((enrollment) => (
                   <SelectItem
-                    key={student.id}
-                    value={student.id.toString()}
+                    key={enrollment.id}
+                    value={enrollment.user.id.toString()}
                   >
-                    {student.username} ({student.email})
+                    {enrollment.user.username} ({enrollment.user.email})
                   </SelectItem>
                 ))}
               </SelectContent>

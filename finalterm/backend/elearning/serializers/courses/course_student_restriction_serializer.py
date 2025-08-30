@@ -19,18 +19,17 @@ class CourseStudentRestrictionReadOnlySerializer(serializers.ModelSerializer):
     Used for both list and detail views.
     """
 
-    user = UserReadOnlySerializer()
+    student = UserReadOnlySerializer()
     course = CourseReadOnlySerializer()
 
     class Meta:
         model = StudentRestriction
         fields = [
             "id",
-            "user",
+            "student",
             "course",
             "reason",
             "created_at",
-            "updated_at",
         ]
         read_only_fields = fields
 
@@ -49,8 +48,6 @@ class CourseStudentRestrictionWriteSerializer(serializers.ModelSerializer):
 
     def validate_reason(self, value: str) -> str:
         value = value.strip()
-        if not value:
-            raise serializers.ValidationError("Reason cannot be empty")
         if len(value) > 500:
             raise serializers.ValidationError(
                 "Reason cannot exceed 500 characters"

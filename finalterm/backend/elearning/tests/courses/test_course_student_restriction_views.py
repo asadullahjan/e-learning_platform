@@ -94,12 +94,7 @@ class CourseStudentRestrictionViewsTestCase(BaseAPITestCase):
         )
 
         # URLs
-        self.restrictions_url_course1 = (
-            f"/api/courses/{self.course1.id}/restrictions/"
-        )
-        self.restrictions_url_course2 = (
-            f"/api/courses/{self.course2.id}/restrictions/"
-        )
+        self.restrictions_url = "/api/restrictions/"
         self.enrollments_url_course1 = (
             f"/api/courses/{self.course1.id}/enrollments/"
         )
@@ -119,9 +114,7 @@ class CourseStudentRestrictionViewsTestCase(BaseAPITestCase):
             "reason": "Restricted",
         }
 
-        resp = self.log_response(
-            self.client.post(self.restrictions_url_course1, data)
-        )
+        resp = self.log_response(self.client.post(self.restrictions_url, data))
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
 
         # Enrollment inactive
@@ -149,9 +142,7 @@ class CourseStudentRestrictionViewsTestCase(BaseAPITestCase):
             "course": self.course1.id,
             "reason": "Restricted",
         }
-        resp = self.log_response(
-            self.client.post(self.restrictions_url_course1, data)
-        )
+        resp = self.log_response(self.client.post(self.restrictions_url, data))
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
     @debug_on_failure
@@ -167,9 +158,7 @@ class CourseStudentRestrictionViewsTestCase(BaseAPITestCase):
             "course": self.course1.id,
             "reason": "Restricted",
         }
-        resp = self.log_response(
-            self.client.post(self.restrictions_url_course1, data)
-        )
+        resp = self.log_response(self.client.post(self.restrictions_url, data))
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
     @debug_on_failure
@@ -214,9 +203,7 @@ class CourseStudentRestrictionViewsTestCase(BaseAPITestCase):
 
         # Non-owner teacher cannot delete
         self.client.force_authenticate(user=self.teacher2)
-        delete_url = (
-            f"/api/courses/{self.course1.id}/restrictions/{restriction.pk}/"
-        )
+        delete_url = f"/api/restrictions/{restriction.pk}/"
         resp = self.log_response(self.client.delete(delete_url))
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 

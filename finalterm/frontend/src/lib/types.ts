@@ -8,7 +8,7 @@ export type ListResponse<T> = {
 };
 
 export type Course = {
-  id: string;
+  id: number;
   title: string;
   description: string;
   teacher: User;
@@ -23,7 +23,7 @@ export type Course = {
 };
 
 export type File = {
-  id: string;
+  id: number;
   original_name: string;
   is_previewable: boolean;
   download_url?: string;
@@ -31,7 +31,7 @@ export type File = {
 };
 
 export type CourseLesson = {
-  id: string;
+  id: number;
   title: string;
   description: string;
   content?: string;
@@ -42,7 +42,7 @@ export type CourseLesson = {
 };
 
 export type Enrollment = {
-  id: string;
+  id: number;
   course: Course;
   user: User;
   is_active: boolean;

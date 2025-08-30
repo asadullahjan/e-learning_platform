@@ -14,7 +14,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      "fixed top-4 right-4 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:max-w-[420px]",
       className
     )}
     {...props}
@@ -23,14 +23,14 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName;
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between overflow-hidden rounded-lg border-l-4 border bg-white p-4 shadow-lg transition-all duration-300 ease-in-out transform",
+  "group pointer-events-auto relative flex w-full items-center justify-between overflow-hidden rounded-lg border-l-4 border p-4 shadow-xl transition-all duration-500 ease-out transform backdrop-blur-sm toast-enhanced",
   {
     variants: {
       variant: {
-        default: "border-l-gray-400 border-gray-200 text-gray-900",
-        destructive: "border-l-red-500 border-red-100 text-red-900",
-        success: "border-l-green-500 border-green-100 text-green-900",
-        warning: "border-l-yellow-500 border-yellow-100 text-yellow-900",
+        default: "border-l-gray-400 border-gray-200 text-gray-900 bg-gray-50/95",
+        destructive: "border-l-red-500 border-red-200 text-red-900 bg-red-50/95",
+        success: "border-l-green-500 border-green-200 text-green-900 bg-green-50/95",
+        warning: "border-l-yellow-500 border-yellow-200 text-yellow-900 bg-yellow-50/95",
       },
     },
     defaultVariants: {
@@ -46,7 +46,11 @@ const Toast = React.forwardRef<
   return (
     <ToastPrimitives.Root
       ref={ref}
-      className={cn(toastVariants({ variant }), className)}
+      className={cn(
+        toastVariants({ variant }),
+        "animate-in slide-in-from-top-2 fade-in duration-500 data-[swipe=move]:transition-none data-[swipe=cancel]:transition-none data-[swipe=end]:animate-out data-[swipe=end]:slide-out-to-right-full data-[swipe=end]:fade-out",
+        className
+      )}
       {...props}
     />
   );

@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -11,10 +12,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import inline_serializer
 from rest_framework import serializers
 from elearning.exceptions import ServiceError
-from elearning.models import StudentRestriction, User, Course
-from elearning.permissions.courses.course_restriction_permissions import (
-    CourseStudentRestrictionPolicy,
-)
+from elearning.models import StudentRestriction, Course
 from elearning.serializers.courses import (
     CourseStudentRestrictionReadOnlySerializer,
     CourseStudentRestrictionWriteSerializer,
@@ -23,6 +21,15 @@ from elearning.services.courses import CourseStudentRestrictionService
 from elearning.permissions.courses import (
     CourseStudentRestrictionPermission,
 )
+from django_filters import rest_framework as filters
+
+
+class CourseStudentRestrictionFilter(filters.FilterSet):
+    course = filters.NumberFilter(field_name="course", lookup_expr="exact")
+
+    class Meta:
+        model = StudentRestriction
+        fields = ["course"]
 
 
 @extend_schema(
@@ -44,6 +51,8 @@ class CourseStudentRestrictionViewSet(viewsets.ModelViewSet):
 
     http_method_names = ["get", "post", "patch", "delete"]
     permission_classes = [CourseStudentRestrictionPermission]
+    filterset_class = CourseStudentRestrictionFilter
+
 
     def get_serializer_class(self):
         """Return appropriate serializer class based on action."""
@@ -62,7 +71,7 @@ class CourseStudentRestrictionViewSet(viewsets.ModelViewSet):
                 self.request.user
             )
 
-        # For detail actions, return all (service handles 403 vs 404)
+        # For detail actions, return all (service handles )
         return StudentRestriction.objects.all()
 
     def retrieve(self, request, *args, **kwargs):
@@ -126,30 +135,21 @@ class CourseStudentRestrictionViewSet(viewsets.ModelViewSet):
     @extend_schema(
         parameters=[
             OpenApiParameter(
-                name="student_id",
-                type=OpenApiTypes.INT,
-                location=OpenApiParameter.QUERY,
-                description="Student ID to check",
-            ),
-            OpenApiParameter(
                 name="course_id",
                 type=OpenApiTypes.INT,
                 location=OpenApiParameter.QUERY,
-                description="Course ID (optional)",
+                description="Course ID",
             ),
         ],
         responses={
             200: inline_serializer(
                 name="RestrictionCheckResultResponse",
                 fields={
-                    "student_id": serializers.IntegerField(
-                        help_text="Student ID"
-                    ),
-                    "course_id": serializers.IntegerField(
-                        help_text="Course ID (optional)"
-                    ),
                     "is_restricted": serializers.BooleanField(
                         help_text="Restriction status"
+                    ),
+                    "reason": serializers.CharField(
+                        help_text="Restriction reason"
                     ),
                 },
             ),
@@ -171,31 +171,30 @@ class CourseStudentRestrictionViewSet(viewsets.ModelViewSet):
     def check_student(self, request):
         """
         Check if a specific student is restricted.
-        Query params: student_id, course_id (optional)
+        Query params: course_id
         """
-        student_id = request.query_params.get("student_id")
         course_id = request.query_params.get("course_id")
 
-        if not student_id:
+        if not request.user.id or not course_id:
             return Response(
-                {"detail": "student_id is required"},
+                {"detail": "course_id is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        student = get_object_or_404(User, id=int(student_id))
+        course = get_object_or_404(Course, id=int(course_id))
 
-        course = (
-            get_object_or_404(Course, id=int(course_id)) if course_id else None
-        )
-
-        is_restricted = CourseStudentRestrictionPolicy.is_restricted(
-            student, course, raise_exception=True
-        )
+        restriction = StudentRestriction.objects.filter(
+            Q(student=request.user, course=course)
+            | Q(
+                student=request.user,
+                teacher=course.teacher,
+                course__isnull=True,
+            )
+        ).first()
 
         return Response(
             {
-                "student_id": student_id,
-                "course_id": course_id,
-                "is_restricted": is_restricted,
+                "is_restricted": restriction is not None,
+                "reason": restriction.reason if restriction else None,
             }
         )

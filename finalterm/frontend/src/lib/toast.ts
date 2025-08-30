@@ -7,6 +7,7 @@ export const showToast = {
       description: message,
       variant: "success",
       action: action,
+      duration: 4000,
     });
   },
 
@@ -15,6 +16,7 @@ export const showToast = {
       description: message,
       variant: "destructive",
       action: action,
+      duration: 6000,
     });
   },
 
@@ -23,6 +25,7 @@ export const showToast = {
       description: message,
       variant: "warning",
       action: action,
+      duration: 5000,
     });
   },
 
@@ -31,6 +34,7 @@ export const showToast = {
       description: message,
       variant: "default",
       action: action,
+      duration: 3500,
     });
   },
 };

@@ -1,5 +1,5 @@
 import { Course, ListResponse } from "@/lib/types";
-import api from "./api";
+import api, { createServerApi } from "./api";
 import { User } from "./userService";
 
 export interface StudentRestriction {
@@ -18,15 +18,22 @@ export interface CreateRestrictionData {
 }
 
 export interface RestrictionCheckResponse {
-  student_id: number;
-  course_id?: number;
   is_restricted: boolean;
+  reason?: string;
 }
 
 export const restrictionService = {
-  getRestrictions: async (): Promise<StudentRestriction[]> => {
-    const response = await api.get<ListResponse<StudentRestriction>>("/restrictions/");
-    return response.data.results;
+  getRestrictions: async ({
+    courseId,
+  }: {
+    courseId?: string;
+  }): Promise<ListResponse<StudentRestriction>> => {
+    const response = await api.get<ListResponse<StudentRestriction>>("/restrictions/", {
+      params: {
+        course: courseId,
+      },
+    });
+    return response.data;
   },
 
   createRestriction: async (data: CreateRestrictionData): Promise<StudentRestriction> => {
@@ -38,18 +45,18 @@ export const restrictionService = {
     await api.delete(`/restrictions/${restrictionId}/`);
   },
 
-  checkStudentRestriction: async (
-    studentId: number,
-    courseId?: number
-  ): Promise<RestrictionCheckResponse> => {
-    const params: any = { student_id: studentId };
-    if (courseId) {
-      params.course_id = courseId;
-    }
-
-    const response = await api.get<RestrictionCheckResponse>("/restrictions/check_student/", {
-      params,
-    });
-    return response.data;
+  server: {
+    checkStudentRestriction: async (courseId: number): Promise<RestrictionCheckResponse> => {
+      const serverApi = await createServerApi();
+      const response = await serverApi.get<RestrictionCheckResponse>(
+        "/restrictions/check_student/",
+        {
+          params: {
+            course_id: courseId,
+          },
+        }
+      );
+      return response.data;
+    },
   },
 };

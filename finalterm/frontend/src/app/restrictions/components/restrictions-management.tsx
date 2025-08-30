@@ -3,32 +3,44 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Typography from "@/components/ui/Typography";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Trash2, UserX, Calendar, BookOpen, Filter, Plus } from "lucide-react";
 import { restrictionService, StudentRestriction } from "@/services/restrictionService";
 import { courseService } from "@/services/courseService";
-import { userService } from "@/services/userService";
+import { userService, User } from "@/services/userService";
 import { useToast } from "@/components/hooks/use-toast";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import CreateRestrictionDialog from "@/app/restrictions/components/create-restriction-dialog";
+import { Course, ListResponse } from "@/lib/types";
+import { useAuthStore } from "@/store/authStore";
 
 export default function RestrictionsManagement() {
-  const [restrictions, setRestrictions] = useState<StudentRestriction[]>([]);
+  const [restrictions, setRestrictions] = useState<ListResponse<StudentRestriction>>({
+    results: [],
+    count: 0,
+    next: null,
+    previous: null,
+  });
   const [filteredRestrictions, setFilteredRestrictions] = useState<StudentRestriction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [restrictionToDelete, setRestrictionToDelete] = useState<StudentRestriction | null>(null);
-  const [courses, setCourses] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const { toast } = useToast();
+  const { user } = useAuthStore();
 
   useEffect(() => {
     loadRestrictions();
     loadCourses();
-    loadUsers();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     filterRestrictions();
@@ -36,7 +48,7 @@ export default function RestrictionsManagement() {
 
   const loadRestrictions = async () => {
     try {
-      const data = await restrictionService.getRestrictions();
+      const data = await restrictionService.getRestrictions({});
       setRestrictions(data);
     } catch (error: any) {
       toast({
@@ -51,30 +63,19 @@ export default function RestrictionsManagement() {
 
   const loadCourses = async () => {
     try {
-      const data = await courseService.getCourses();
-      setCourses(data.results);
+      if (!user) return;
+      const data = await courseService.getTeacherCourses(user.id);
+      setCourses(data);
     } catch (error: any) {
       console.error("Failed to load courses:", error);
     }
   };
 
-  const loadUsers = async () => {
-    try {
-      // Load all users (you might want to add pagination here)
-      const data = await userService.searchUsers("");
-      setUsers(data);
-    } catch (error: any) {
-      console.error("Failed to load users:", error);
-    }
-  };
-
   const filterRestrictions = () => {
     if (courseFilter === "all") {
-      setFilteredRestrictions(restrictions);
+      setFilteredRestrictions(restrictions.results);
     } else {
-      const filtered = restrictions.filter(
-        (r) => r.course?.id === courseFilter
-      );
+      const filtered = restrictions.results.filter((r) => r.course?.id === parseInt(courseFilter));
       setFilteredRestrictions(filtered);
     }
   };
@@ -117,13 +118,9 @@ export default function RestrictionsManagement() {
   };
 
   const getUniqueCourses = () => {
-    const courses = restrictions
-      .filter((r) => r.course)
-      .map((r) => r.course!);
-    
-    return Array.from(
-      new Map(courses.map((c) => [c.id, c])).values()
-    );
+    const courses = restrictions.results.filter((r) => r.course).map((r) => r.course!);
+
+    return Array.from(new Map(courses.map((c) => [c.id, c])).values());
   };
 
   if (isLoading) {
@@ -133,7 +130,11 @@ export default function RestrictionsManagement() {
           <CardTitle className="text-sm font-medium">Loading Restrictions</CardTitle>
         </CardHeader>
         <CardContent>
-          <Typography variant="p" size="sm" className="text-gray-500">
+          <Typography
+            variant="p"
+            size="sm"
+            className="text-gray-500"
+          >
             Loading restrictions...
           </Typography>
         </CardContent>
@@ -145,25 +146,6 @@ export default function RestrictionsManagement() {
 
   return (
     <>
-      {/* Create Restriction Button */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Create New Restriction
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Button
-            onClick={handleCreateRestriction}
-            className="bg-red-600 hover:bg-red-700"
-          >
-            <UserX className="w-4 h-4 mr-2" />
-            Restrict User
-          </Button>
-        </CardContent>
-      </Card>
-
       {/* Filter Section */}
       <Card className="mb-6">
         <CardHeader>
@@ -175,24 +157,40 @@ export default function RestrictionsManagement() {
         <CardContent>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Typography variant="p" size="sm">Course:</Typography>
-              <Select value={courseFilter} onValueChange={setCourseFilter}>
+              <Typography
+                variant="p"
+                size="sm"
+              >
+                Course:
+              </Typography>
+              <Select
+                value={courseFilter}
+                onValueChange={setCourseFilter}
+              >
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="All courses" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All courses</SelectItem>
                   {uniqueCourses.map((course) => (
-                    <SelectItem key={course.id} value={course.id}>
+                    <SelectItem
+                      key={course.id}
+                      value={course.id.toString()}
+                    >
                       {course.title}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            
-            <Typography variant="p" size="sm" className="text-gray-600">
-              {filteredRestrictions.length} restriction{filteredRestrictions.length !== 1 ? 's' : ''} found
+
+            <Typography
+              variant="p"
+              size="sm"
+              className="text-gray-600"
+            >
+              {filteredRestrictions.length} restriction
+              {filteredRestrictions.length !== 1 ? "s" : ""} found
             </Typography>
           </div>
         </CardContent>
@@ -200,19 +198,29 @@ export default function RestrictionsManagement() {
 
       {/* Restrictions List */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-sm font-medium">All Restrictions</CardTitle>
+          <Button
+            onClick={handleCreateRestriction}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            <UserX className="w-4 h-4 mr-2" />
+            Restrict User
+          </Button>
         </CardHeader>
 
         <CardContent className="space-y-4">
           {filteredRestrictions.length === 0 ? (
             <div className="text-center py-12">
               <UserX className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <Typography variant="p" size="sm" className="text-gray-500 mb-2">
-                {courseFilter === "all" 
-                  ? "No restrictions found" 
-                  : "No restrictions found for this course"
-                }
+              <Typography
+                variant="p"
+                size="sm"
+                className="text-gray-500 mb-2"
+              >
+                {courseFilter === "all"
+                  ? "No restrictions found"
+                  : "No restrictions found for this course"}
               </Typography>
             </div>
           ) : (
@@ -226,14 +234,18 @@ export default function RestrictionsManagement() {
                     <div className="flex-1">
                       <div className="flex items-center gap-4 mb-3">
                         <div className="flex items-center gap-2">
-                          <Typography variant="p" size="sm" className="font-medium">
+                          <Typography
+                            variant="p"
+                            size="sm"
+                            className="font-medium"
+                          >
                             {restriction.student?.username || "Unknown Student"}
                           </Typography>
                           <span className="text-xs text-gray-500">
                             ({restriction.student?.email || "No email"})
                           </span>
                         </div>
-                        
+
                         {restriction.course && (
                           <div className="flex items-center gap-1 text-xs text-gray-600">
                             <BookOpen className="w-3 h-3" />
@@ -241,13 +253,17 @@ export default function RestrictionsManagement() {
                           </div>
                         )}
                       </div>
-                      
+
                       {restriction.reason && (
-                        <Typography variant="p" size="sm" className="text-gray-700 mb-3">
+                        <Typography
+                          variant="p"
+                          size="sm"
+                          className="text-gray-700 mb-3"
+                        >
                           {restriction.reason}
                         </Typography>
                       )}
-                      
+
                       <div className="flex items-center gap-4 text-xs text-gray-500">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
@@ -278,7 +294,6 @@ export default function RestrictionsManagement() {
         onClose={() => setIsCreateDialogOpen(false)}
         onSuccess={handleRestrictionCreated}
         courses={courses}
-        users={users}
       />
 
       {/* Delete Confirmation Dialog */}
