@@ -70,25 +70,11 @@ const ChatSection = ({
   );
 };
 
-const ChatList = ({ 
-  userChats, 
-  allChats 
-}: { 
-  userChats: Chat[];
-  allChats: Chat[];
-}) => {
+const ChatList = ({ userChats, allChats }: { userChats: Chat[]; allChats: Chat[] }) => {
   // Filter user's chats by type
   const userDirectChats = userChats.filter((chat) => chat.chat_type === "direct");
   const userGroupChats = userChats.filter((chat) => chat.chat_type === "group");
   const userCourseChats = userChats.filter((chat) => chat.chat_type === "course");
-
-  // Filter all chats by type (excluding user's chats to avoid duplicates)
-  const userChatIds = new Set(userChats.map(chat => chat.id));
-  const otherChats = allChats.filter(chat => !userChatIds.has(chat.id));
-  
-  const otherDirectChats = otherChats.filter((chat) => chat.chat_type === "direct");
-  const otherGroupChats = otherChats.filter((chat) => chat.chat_type === "group");
-  const otherCourseChats = otherChats.filter((chat) => chat.chat_type === "course");
 
   return (
     <div className="py-2 space-y-6">
@@ -115,30 +101,6 @@ const ChatList = ({
           />
         </div>
       </div>
-
-      {/* All Available Chats - Discovery
-      <div>
-        <div className="px-3 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700">
-          Discover Chats
-        </div>
-        <div className="space-y-4 mt-2">
-          <ChatSection
-            title="Direct Messages"
-            chats={otherDirectChats}
-            maxHeight={120}
-          />
-          <ChatSection
-            title="Group Chats"
-            chats={otherGroupChats}
-            maxHeight={150}
-          />
-          <ChatSection
-            title="Course Chats"
-            chats={otherCourseChats}
-            maxHeight={200}
-          />
-        </div>
-      </div> */}
     </div>
   );
 };

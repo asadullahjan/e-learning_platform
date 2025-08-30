@@ -1,12 +1,6 @@
 import api, { createServerApi } from "./api";
+import { User } from "./userService";
 
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-  role: string;
-  profile_picture?: string;
-}
 
 export interface Course {
   id: string;

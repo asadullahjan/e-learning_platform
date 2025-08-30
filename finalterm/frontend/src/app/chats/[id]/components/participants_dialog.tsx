@@ -8,19 +8,12 @@ import Typography from "@/components/ui/Typography";
 import { chatService } from "@/services/chatService";
 import UserAvatar from "@/components/user/user-avatar";
 import Link from "next/link";
-
-interface ParticipantUser {
-  id: number;
-  username: string;
-  profile_picture?: string;
-  role: string;
-  created_at: string;
-  email: string;
-}
+import { ListResponse } from "@/lib/types";
+import { User } from "@/services/userService";
 
 interface Participant {
   id: number;
-  user: ParticipantUser;
+  user: User;
   role: string;
   is_active: boolean;
 }
@@ -31,7 +24,12 @@ interface ParticipantsDialogProps {
 }
 
 export function ParticipantsDialog({ chatId, trigger }: ParticipantsDialogProps) {
-  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [participants, setParticipants] = useState<ListResponse<Participant>>({
+    results: [],
+    count: 0,
+    next: null,
+    previous: null,
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -62,8 +60,8 @@ export function ParticipantsDialog({ chatId, trigger }: ParticipantsDialogProps)
     }
   };
 
-  const activeParticipants = participants.filter((p) => p.is_active);
-  const inactiveParticipants = participants.filter((p) => !p.is_active);
+  const activeParticipants = participants.results.filter((p) => p.is_active);
+  const inactiveParticipants = participants.results.filter((p) => !p.is_active);
 
   return (
     <Dialog
@@ -117,10 +115,7 @@ export function ParticipantsDialog({ chatId, trigger }: ParticipantsDialogProps)
                     >
                       <div className="flex items-center gap-3">
                         <UserAvatar
-                          user={{
-                            ...participant.user,
-                            role: participant.user.role as "student" | "teacher",
-                          }}
+                          user={participant.user}
                           size="sm"
                           showName={false}
                           clickable={false}
@@ -171,10 +166,7 @@ export function ParticipantsDialog({ chatId, trigger }: ParticipantsDialogProps)
                       >
                         <div className="flex items-center gap-3">
                           <UserAvatar
-                            user={{
-                              ...participant.user,
-                              role: participant.user.role as "student" | "teacher",
-                            }}
+                            user={participant.user}
                             size="sm"
                             showName={false}
                             clickable={false}
@@ -208,7 +200,7 @@ export function ParticipantsDialog({ chatId, trigger }: ParticipantsDialogProps)
                 </div>
               )}
 
-              {participants.length === 0 && (
+              {participants.results.length === 0 && (
                 <div className="text-center py-4">
                   <Typography
                     variant="span"

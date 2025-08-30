@@ -6,8 +6,8 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
-  role: string;
-  profile_picture?: string | null;
+  role: "student" | "teacher";
+  profile_picture: string | null;
   created_at: string;
   updated_at: string;
   is_active: boolean;

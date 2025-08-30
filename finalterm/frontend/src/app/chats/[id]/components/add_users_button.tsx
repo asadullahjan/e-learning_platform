@@ -16,7 +16,7 @@ export default function AddUsersButton({ chatId, chatName }: AddUsersButtonProps
 
   const handleAddUser = async (user: User) => {
     try {
-      await chatService.addUserToChat(chatId, user.username);
+      await chatService.addUserToChat(chatId, user.id);
       toast({
         title: "Success",
         description: `Added ${user.username} to ${chatName}`,

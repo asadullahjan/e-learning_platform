@@ -24,9 +24,11 @@ export default function LeaveChatButton({ chatId, chatName, chatType }: LeaveCha
       });
       // Redirect to chats list
       router.push("/chats");
+      // Force Next.js to refresh the page data
+      router.refresh();
     } catch (error: any) {
       let errorMessage = "Failed to leave chat";
-      
+
       if (error.response?.data) {
         const data = error.response.data;
         if (data.error) {
@@ -35,7 +37,7 @@ export default function LeaveChatButton({ chatId, chatName, chatType }: LeaveCha
           errorMessage = data.detail;
         }
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,

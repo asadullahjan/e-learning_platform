@@ -6,6 +6,7 @@ import UserAvatar from "@/components/user/user-avatar";
 import { LoadMoreButton } from "@/components/ui/load-more-button";
 import { Chat, Message } from "@/services/chatService";
 import { chatService } from "@/services/chatService";
+import Link from "next/link";
 
 const MessageList = ({
   chat_type,
@@ -34,8 +35,8 @@ const MessageList = ({
   // Ensure initial messages are properly sorted
   useEffect(() => {
     if (initialMessages.length > 0) {
-      const sortedMessages = [...initialMessages].sort((a, b) => 
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      const sortedMessages = [...initialMessages].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       setMessages(sortedMessages);
     }
@@ -60,10 +61,10 @@ const MessageList = ({
       // Add older messages to the beginning (since they're older)
       // Sort the combined messages to maintain proper chronological order
       const combinedMessages = [...response.results, ...messages];
-      const sortedMessages = combinedMessages.sort((a, b) => 
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      const sortedMessages = combinedMessages.sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
-      
+
       setMessages(sortedMessages);
       setNextUrl(response.next);
       setIsHasNextPage(!!response.next);
@@ -116,8 +117,8 @@ const MessageList = ({
           setMessages((prev) => {
             // Ensure the new message is added at the end and maintain chronological order
             const updatedMessages = [...prev, newMessage];
-            return updatedMessages.sort((a, b) => 
-              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            return updatedMessages.sort(
+              (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
             );
           });
           console.log("New message received:", newMessage);
@@ -177,40 +178,6 @@ const MessageList = ({
     };
   }, [chatId]);
 
-  // No need to show loading state for initial load since data comes from server
-  // if (isLoading) {
-  //   return (
-  //     <div className="flex flex-col h-full">
-  //       {/* Connection Status */}
-  //       <div className="px-3 py-2 border-b sticky top-0 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
-  //         <div className="flex items-center space-x-2">
-  //           <div className="w-2 h-2 rounded-full bg-gray-400" />
-  //           <Typography
-  //             variant="span"
-  //             className="text-xs text-gray-500"
-  //           >
-  //             Loading messages...
-  //           </Typography>
-  //         </div>
-  //       </div>
-
-  //       {/* Loading Messages */}
-  //       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-  //         <div className="text-center py-8">
-  //           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-  //           <Typography
-  //             variant="span"
-  //             size="sm"
-  //             className="text-xs text-gray-500 mt-2 block"
-  //           >
-  //             Loading messages...
-  //           </Typography>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   );
-  // }
-
   return (
     <div className="flex flex-col h-full">
       {/* Connection Status */}
@@ -245,7 +212,7 @@ const MessageList = ({
             className="w-full"
           />
         )}
-        
+
         {/* Show loading indicator when loading more messages */}
         {isLoadingMore && (
           <div className="text-center py-4">
@@ -259,7 +226,7 @@ const MessageList = ({
             </Typography>
           </div>
         )}
-        
+
         {messages.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <Typography
@@ -283,12 +250,17 @@ const MessageList = ({
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <Typography
-                    variant="span"
-                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  <Link
+                    href={`/users/${message.sender.username}`}
+                    className="hover:underline"
                   >
-                    {message.sender.username}
-                  </Typography>
+                    <Typography
+                      variant="span"
+                      className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {message.sender.username}
+                    </Typography>
+                  </Link>
                   <Typography
                     variant="span"
                     size="sm"

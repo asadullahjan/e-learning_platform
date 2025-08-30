@@ -9,6 +9,7 @@ import Input from "@/components/ui/Input";
 import Typography from "@/components/ui/Typography";
 import { showToast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/hooks/use-toast";
 
 interface CourseEnrollmentsProps {
   courseId: string;
@@ -16,7 +17,11 @@ interface CourseEnrollmentsProps {
   enrollments: TeacherEnrollment[];
 }
 
-const CourseEnrollments = ({ courseId, isTeacher, enrollments: initialEnrollments }: CourseEnrollmentsProps) => {
+const CourseEnrollments = ({
+  courseId,
+  isTeacher,
+  enrollments: initialEnrollments,
+}: CourseEnrollmentsProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
   const [loadingStates, setLoadingStates] = useState<{ [key: string]: boolean }>({});
@@ -39,13 +44,10 @@ const CourseEnrollments = ({ courseId, isTeacher, enrollments: initialEnrollment
     const fetchFilteredEnrollments = async () => {
       setIsLoading(true);
       try {
-        const filteredEnrollments = await enrollmentService.getCourseEnrollments(
-          courseId,
-          {
-            search: debouncedSearchQuery.trim() || undefined,
-            status: filterStatus,
-          }
-        );
+        const filteredEnrollments = await enrollmentService.getCourseEnrollments(courseId, {
+          search: debouncedSearchQuery.trim() || undefined,
+          status: filterStatus,
+        });
         setEnrollments(filteredEnrollments);
       } catch (error) {
         console.error("Failed to fetch filtered enrollments:", error);
@@ -62,15 +64,12 @@ const CourseEnrollments = ({ courseId, isTeacher, enrollments: initialEnrollment
     try {
       await enrollmentService.deactivateEnrollment(enrollmentId);
       showToast.success("Student removed successfully");
-      
+
       // Refresh the enrollments after removal
-      const updatedEnrollments = await enrollmentService.getCourseEnrollments(
-        courseId,
-        {
-          search: debouncedSearchQuery.trim() || undefined,
-          status: filterStatus,
-        }
-      );
+      const updatedEnrollments = await enrollmentService.getCourseEnrollments(courseId, {
+        search: debouncedSearchQuery.trim() || undefined,
+        status: filterStatus,
+      });
       setEnrollments(updatedEnrollments);
     } catch (error) {
       console.error("Failed to remove student:", error);
@@ -78,16 +77,16 @@ const CourseEnrollments = ({ courseId, isTeacher, enrollments: initialEnrollment
     }
   };
 
-  const handleMessageUser = async (username: string) => {
+  const handleMessageUser = async (username: string, userId: number) => {
     if (loadingStates[username]) return;
 
     setLoadingStates((prev) => ({ ...prev, [username]: true }));
     try {
-      const response = await chatService.findOrCreateDirectChat(username);
-      showToast.success("Opening chat...");
+      const response = await chatService.findOrCreateDirectChat(userId);
+      toast({ title: "Success", description: `Navigating to chat with ${username}` });
 
       // Navigate to the chat
-      router.push(`/chats/${response.chat_room.id}`);
+      router.push(`/chats/${response.id}`);
     } catch (error: any) {
       console.error("Failed to open chat:", error);
       const errorMessage = error.response?.data?.detail || "Failed to open chat";
@@ -312,7 +311,9 @@ const CourseEnrollments = ({ courseId, isTeacher, enrollments: initialEnrollment
                           size="sm"
                           variant="outline"
                           className="transition-all duration-200"
-                          onClick={() => handleMessageUser(enrollment.user.username)}
+                          onClick={() =>
+                            handleMessageUser(enrollment.user.username, enrollment.user.id)
+                          }
                           disabled={loadingStates[enrollment.user.username]}
                         >
                           {loadingStates[enrollment.user.username] ? "Opening..." : "Message"}
@@ -429,7 +430,9 @@ const CourseEnrollments = ({ courseId, isTeacher, enrollments: initialEnrollment
                           size="sm"
                           variant="outline"
                           className="transition-all duration-200"
-                          onClick={() => handleMessageUser(enrollment.user.username)}
+                          onClick={() =>
+                            handleMessageUser(enrollment.user.username, enrollment.user.id)
+                          }
                           disabled={loadingStates[enrollment.user.username]}
                         >
                           {loadingStates[enrollment.user.username] ? "Opening..." : "Message"}
@@ -458,7 +461,11 @@ const CourseEnrollments = ({ courseId, isTeacher, enrollments: initialEnrollment
         <Card>
           <CardContent className="p-6 text-center">
             <div className="w-8 h-8 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-2"></div>
-            <Typography variant="p" size="sm" className="text-gray-500">
+            <Typography
+              variant="p"
+              size="sm"
+              className="text-gray-500"
+            >
               Loading enrollments...
             </Typography>
           </CardContent>

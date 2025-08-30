@@ -264,12 +264,7 @@ export default function UsersPage() {
               >
                 <div className="flex items-start gap-3">
                   <UserAvatar
-                    user={{
-                      id: user.id,
-                      username: user.username,
-                      profile_picture: user.profile_picture,
-                      role: user.role,
-                    }}
+                    user={user}
                     size="lg"
                     clickable={false}
                   />

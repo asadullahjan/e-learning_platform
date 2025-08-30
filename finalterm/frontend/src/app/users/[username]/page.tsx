@@ -63,21 +63,14 @@ export default function UserProfilePage({ params }: UserProfilePageProps) {
 
     try {
       setIsStartingChat(true);
-      const response = await chatService.findOrCreateDirectChat(username);
+      const response = await chatService.findOrCreateDirectChat(user.id);
 
-      if (response.created) {
-        toast({
-          title: "Success",
-          description: `Started a new chat with ${username}`,
-        });
-      } else {
-        toast({
-          title: "Success",
-          description: `Opened existing chat with ${username}`,
-        });
-      }
+      toast({
+        title: "Success",
+        description: `Navigating to chat with ${username}`,
+      });
 
-      router.push(`/chats/${response.chat_room.id}`);
+      router.push(`/chats/${response.id}`);
     } catch (error) {
       console.error("Failed to start chat:", error);
       toast({
@@ -139,12 +132,7 @@ export default function UserProfilePage({ params }: UserProfilePageProps) {
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <UserAvatar
-              user={{
-                id: user.id,
-                username: user.username,
-                profile_picture: user.profile_picture,
-                role: user.role,
-              }}
+              user={user}
               size="4xl"
               clickable={false}
               showName={false}

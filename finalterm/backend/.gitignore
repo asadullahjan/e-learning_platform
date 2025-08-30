@@ -1,6 +1,7 @@
 
 
 staticfiles
+private_media
 venv
 
 __pycache__

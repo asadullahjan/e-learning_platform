@@ -1,4 +1,5 @@
 import api from "./api";
+import { User } from "./userService";
 
 export interface LoginData {
   email: string;
@@ -10,17 +11,6 @@ export interface RegisterData {
   email: string;
   password: string;
   role: "student" | "teacher";
-}
-
-export interface User {
-  id: number;
-  username?: string;
-  email: string;
-  first_name?: string;
-  last_name?: string;
-  role: "student" | "teacher";
-  profile_picture?: string;
-  created_at: string;
 }
 
 export interface AuthResponse {
@@ -41,30 +31,6 @@ class AuthService {
 
   async logout(): Promise<{ message: string }> {
     const response = await api.post<{ message: string }>("/auth/logout/");
-    return response.data;
-  }
-
-  // Additional methods for better auth management
-  async refreshToken(): Promise<{ access: string }> {
-    const response = await api.post<{ access: string }>("/auth/refresh/");
-    return response.data;
-  }
-
-  async changePassword(data: {
-    old_password: string;
-    new_password: string;
-  }): Promise<{ message: string }> {
-    const response = await api.post<{ message: string }>("/auth/change-password/", data);
-    return response.data;
-  }
-
-  async resetPassword(email: string): Promise<{ message: string }> {
-    const response = await api.post<{ message: string }>("/auth/reset-password/", { email });
-    return response.data;
-  }
-
-  async verifyEmail(token: string): Promise<{ message: string }> {
-    const response = await api.post<{ message: string }>("/auth/verify-email/", { token });
     return response.data;
   }
 }

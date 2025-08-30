@@ -13,10 +13,17 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { Chat, chatService } from "@/services/chatService";
 import Typography from "@/components/ui/Typography";
+import { ListResponse } from "@/lib/types";
+import Link from "next/link";
 
 const SearchChats = () => {
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [search, setSearch] = useState("");
+  const [chats, setChats] = useState<ListResponse<Chat>>({
+    count: 0,
+    next: null,
+    previous: null,
+    results: [],
+  });
+  const [search, setSearch] = useState<string>("");
 
   const fetchChats = async () => {
     const chats = await chatService.getChats(search);
@@ -50,16 +57,27 @@ const SearchChats = () => {
           />
           <Button onClick={fetchChats}>Search</Button>
         </div>
-        {chats && chats.length > 0 ? (
-          chats.map((chat) => <div key={chat.id}>{chat.name}</div>)
-        ) : (
-          <Typography
-            className="p-4 text-center"
-            variant={"span"}
-          >
-            No chats found
-          </Typography>
-        )}
+        <div className="space-y-2 py-4">
+          {chats && chats.results.length > 0 ? (
+            chats.results.map((chat) => (
+              <Button
+                asChild
+                variant={"outline"}
+                key={chat.id}
+                className="w-full"
+              >
+                <Link href={`/chats/${chat.id}`}>{chat.name}</Link>
+              </Button>
+            ))
+          ) : (
+            <Typography
+              className="p-4 text-center"
+              variant={"span"}
+            >
+              No chats found
+            </Typography>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

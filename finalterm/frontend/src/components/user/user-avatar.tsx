@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Avatar from "@/components/ui/avatar";
 import Typography from "../ui/Typography";
-import { User } from "@/services/authService";
+import { User } from "@/services/userService";
 
 interface UserAvatarProps {
   user: User;

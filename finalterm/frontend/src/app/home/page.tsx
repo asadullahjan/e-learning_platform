@@ -29,13 +29,9 @@ export default function HomePage() {
 
   const handleStartChat = async (user: User) => {
     try {
-      const response = await chatService.findOrCreateDirectChat(user.username);
-      if (response.created) {
-        toast({ title: "Success", description: `Started a new chat with ${user.username}` });
-      } else {
-        toast({ title: "Success", description: `Opened existing chat with ${user.username}` });
-      }
-      router.push(`/chats/${response.chat_room.id}`);
+      const response = await chatService.findOrCreateDirectChat(user.id);
+      toast({ title: "Success", description: `Navigating to chat with ${user.username}` });
+      router.push(`/chats/${response.id}`);
     } catch (error) {
       console.error("Failed to start chat:", error);
       toast({

@@ -15,32 +15,36 @@ export default function StatusCard({ status }: StatusCardProps) {
     <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start gap-3 mb-3">
         <UserAvatar
-          user={{
-            id: status.user.id,
-            username: status.user.username,
-            profile_picture: status.user.profile_picture,
-            role: status.user.role
-          }}
+          user={status.user}
           size="md"
           clickable={true}
         />
-        
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
-            <Link 
+            <Link
               href={`/users/${status.user.username}`}
               className="hover:underline"
             >
-              <Typography variant="h6" className="text-gray-900 font-medium">
+              <Typography
+                variant="h6"
+                className="text-gray-900 font-medium"
+              >
                 {status.user.username}
               </Typography>
             </Link>
-            <Typography variant="span" className="text-gray-500 text-xs">
+            <Typography
+              variant="span"
+              className="text-gray-500 text-xs"
+            >
               {formatDistanceToNow(new Date(status.created_at), { addSuffix: true })}
             </Typography>
           </div>
-          
-          <Typography variant="p" className="text-gray-700 leading-relaxed">
+
+          <Typography
+            variant="p"
+            className="text-gray-700 leading-relaxed"
+          >
             {status.content}
           </Typography>
         </div>

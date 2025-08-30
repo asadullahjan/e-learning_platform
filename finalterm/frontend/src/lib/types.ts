@@ -1,4 +1,4 @@
-import { User } from "@/services/authService";
+import { User } from "@/services/userService";
 
 export type ListResponse<T> = {
   count: number;

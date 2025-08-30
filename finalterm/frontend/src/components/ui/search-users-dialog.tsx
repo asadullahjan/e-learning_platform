@@ -180,12 +180,7 @@ export default function SearchUsersDialog({
                     className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
                   >
                     <UserAvatar
-                      user={{
-                        id: user.id,
-                        username: user.username,
-                        profile_picture: user.profile_picture,
-                        role: user.role,
-                      }}
+                      user={user}
                       size="md"
                       clickable={false}
                     />
