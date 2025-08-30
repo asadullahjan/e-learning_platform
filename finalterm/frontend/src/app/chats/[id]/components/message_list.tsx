@@ -144,7 +144,7 @@ const MessageList = ({
       setIsConnected(false);
 
       // Only attempt to reconnect if it wasn't a manual close
-      if (event.code !== 1000) {
+      if (event.code !== 1000 && event.code !== 4003) {
         setIsReconnecting(true);
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);

@@ -27,20 +27,112 @@ import {
 import { authService } from "@/services/authService";
 import Avatar from "./ui/avatar";
 import { NotificationBell } from "./notification-bell";
+import { useRouter } from "next/navigation";
 
 export default function Header() {
   const { user, isLoading, setUser } = useAuthStore();
   const pathname = usePathname();
-
+  const router = useRouter();
   const isActive = (path: string) => pathname === path;
 
   return (
     <header className="bg-white border-b border-gray-200 shadow-sm">
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
-          {/* Logo Section */}
-          <div className="flex items-center space-x-3">
-            <div className="bg-blue-600 rounded-lg p-2">
+          {/* Mobile Navigation Dropdown - Center (Mobile Only) */}
+          <div className="lg:hidden  flex ">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-600 hover:bg-gray-100 rounded-full px-3 py-2"
+                >
+                  <MenuIcon className="w-5 h-5" />
+                  <span className="ml-2 text-sm font-medium">Menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="center"
+                className="w-56 mt-2"
+              >
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/home"
+                    className="flex items-center w-full"
+                  >
+                    <HomeIcon className="w-4 h-4 mr-3" />
+                    Home
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/courses"
+                    className="flex items-center w-full"
+                  >
+                    <BookOpenIcon className="w-4 h-4 mr-3" />
+                    Courses
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/chats"
+                    className="flex items-center w-full"
+                  >
+                    <MessageSquareIcon className="w-4 h-4 mr-3" />
+                    Chats
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/users"
+                    className="flex items-center w-full"
+                  >
+                    <UsersIcon className="w-4 h-4 mr-3" />
+                    Browse Users
+                  </Link>
+                </DropdownMenuItem>
+                {user?.role === "teacher" && (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/restrictions"
+                      className="flex items-center w-full"
+                    >
+                      <ShieldIcon className="w-4 h-4 mr-3" />
+                      Manage Restrictions
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {user?.role === "teacher" && (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/courses/my-courses"
+                      className="flex items-center w-full"
+                    >
+                      <BookOpenIcon className="w-4 h-4 mr-3" />
+                      My Created Courses
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {user?.role === "student" && (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/courses/enrolled"
+                      className="flex items-center w-full"
+                    >
+                      <BookOpenIcon className="w-4 h-4 mr-3" />
+                      My Enrolled Courses
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Logo Section - Left Side */}
+          <div className="flex items-center space-x-3 flex-shrink-0">
+            <div className="bg-blue-600 rounded-lg p-2 lg:block hidden">
               <GraduationCapIcon className="w-6 h-6 text-white" />
             </div>
             <Link href="/">
@@ -53,8 +145,8 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Main Navigation Links */}
-          <div className="hidden lg:flex justify-center items-center space-x-6">
+          {/* Main Navigation Links - Center (Desktop Only) */}
+          <div className="hidden lg:flex justify-center items-center space-x-6 flex-1">
             <Link
               href="/home"
               className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -103,116 +195,8 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Mobile Navigation Dropdown */}
-          <div className="lg:hidden">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-600"
-                >
-                  <MenuIcon className="w-5 h-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-48"
-              >
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/home"
-                    className="flex items-center"
-                  >
-                    <HomeIcon className="w-4 h-4 mr-2" />
-                    Home
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/courses"
-                    className="flex items-center"
-                  >
-                    <BookOpenIcon className="w-4 h-4 mr-2" />
-                    Courses
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/chats"
-                    className="flex items-center"
-                  >
-                    <MessageSquareIcon className="w-4 h-4 mr-2" />
-                    Chats
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/users"
-                    className="flex items-center"
-                  >
-                    <UsersIcon className="w-4 h-4 mr-2" />
-                    Browse Users
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/status"
-                    className="flex items-center"
-                  >
-                    <ActivityIcon className="w-4 h-4 mr-2" />
-                    Status Updates
-                  </Link>
-                </DropdownMenuItem>
-                {user?.role === "teacher" && (
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/restrictions"
-                      className="flex items-center"
-                    >
-                      <ShieldIcon className="w-4 h-4 mr-2" />
-                      Manage Restrictions
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                {user?.role === "teacher" && (
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/courses/my-courses"
-                      className="flex items-center"
-                    >
-                      <BookOpenIcon className="w-4 h-4 mr-2" />
-                      My Created Courses
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                {user?.role === "student" && (
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/courses/enrolled"
-                      className="flex items-center"
-                    >
-                      <BookOpenIcon className="w-4 h-4 mr-2" />
-                      My Enrolled Courses
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/profile"
-                    className="flex items-center"
-                  >
-                    <UserIcon className="w-4 h-4 mr-2" />
-                    Profile
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
           {/* Right Side - Notifications & User Menu */}
-          <div className="flex justify-end items-center space-x-4">
+          <div className="flex justify-end items-center space-x-3 flex-shrink-0">
             {user && <NotificationBell />}
 
             <DropdownMenu>
@@ -225,23 +209,27 @@ export default function Header() {
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="mt-2"
+                className="mt-2 w-48"
               >
                 <DropdownMenuItem asChild>
                   <Link
                     href="/profile"
-                    className="flex items-center"
+                    className="flex items-center w-full"
                   >
-                    <UserIcon className="w-4 h-4 mr-2" />
+                    <UserIcon className="w-4 h-4 mr-3" />
                     Profile
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => authService.logout()}
+                  onClick={() => {
+                    authService.logout();
+                    setUser(null);
+                    router.push("/auth/login");
+                  }}
                   className="text-red-600 hover:text-red-700"
                 >
-                  <LogOutIcon className="w-4 h-4 mr-2" />
+                  <LogOutIcon className="w-4 h-4 mr-3" />
                   Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
