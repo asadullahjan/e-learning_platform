@@ -54,7 +54,7 @@ export const courseService = {
   },
 
   // Get courses by teacher
-  getTeacherCourses: async (teacherId: string): Promise<Course[]> => {
+  getTeacherCourses: async (teacherId: number): Promise<Course[]> => {
     const response = await api.get<ListResponse<Course>>("/courses/", {
       params: { teacher: teacherId },
     });

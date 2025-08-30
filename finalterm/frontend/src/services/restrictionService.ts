@@ -1,32 +1,19 @@
-import { ListResponse } from "@/lib/types";
+import { Course, ListResponse } from "@/lib/types";
 import api from "./api";
+import { User } from "./userService";
 
 export interface StudentRestriction {
   id: string;
-  student: {
-    id: string;
-    username: string;
-    email: string;
-    role: string;
-  } | null;
-  course: {
-    id: string;
-    title: string;
-    description: string;
-  } | null;
-  teacher: {
-    id: string;
-    username: string;
-    email: string;
-    role: string;
-  } | null;
+  student: User;
+  course: Course;
+  teacher: User;
   reason: string;
   created_at: string;
 }
 
 export interface CreateRestrictionData {
-  student_id: number;
-  course_id?: number;
+  student: number;
+  course?: number;
   reason: string;
 }
 

@@ -43,7 +43,6 @@ class UserViewSet(ModelViewSet):
     - list: View all users
     - retrieve: View a specific user
     - me: View current user profile
-    - profile: Alias for me
     - profile_update: Update current user profile
     """
 
@@ -52,13 +51,13 @@ class UserViewSet(ModelViewSet):
     search_fields = ["username", "first_name", "last_name"]
 
     def get_serializer_class(self):
-        if self.action == "retrieve":
+        if self.action in ["list", "retrieve", "me"]:
             return UserDetailReadOnlySerializer
         return UserUpdateSerializer
 
     def get_queryset(self):
         """Get queryset based on action"""
-        if self.action == "retrieve":
+        if self.action in ["retrieve", "me"]:
             # For individual user retrieval, use computed fields
             return UserService.get_users_with_computed_fields()
         else:
@@ -84,23 +83,6 @@ class UserViewSet(ModelViewSet):
         user = UserService.populate_user_computed_fields(request.user)
         serializer = self.get_serializer(user)
         return Response(serializer.data)
-
-    @extend_schema(
-        responses={
-            200: UserDetailReadOnlySerializer,
-        },
-    )
-    @action(detail=False, methods=["get"])
-    def profile(self, request):
-        """
-        Get current user profile - alias for me
-
-        Returns the current user's profile information.
-
-        **Response:**
-        - 200: User profile retrieved successfully
-        """
-        return self.me(request)
 
     @extend_schema(
         request=UserUpdateSerializer,

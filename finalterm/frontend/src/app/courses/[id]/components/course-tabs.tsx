@@ -3,7 +3,7 @@ import CourseEnrollments from "./course-enrollments";
 import { Course } from "@/lib/types";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Typography from "@/components/ui/Typography";
-import { LessonList } from "./lesson-list";
+import { LessonList } from "../lessons/components/lesson-list";
 import FeedbackSection from "./feedback-section";
 import RestrictionsSection from "./restrictions-section";
 import { enrollmentService } from "@/services/enrollmentService";

@@ -30,10 +30,11 @@ class CourseFilter(filters.FilterSet):
         ],
         method="filter_by_publication_status",
     )
+    teacher = filters.NumberFilter(field_name="teacher", lookup_expr="exact")
 
     class Meta:
         model = Course
-        fields = ["publication_status"]
+        fields = ["publication_status", "teacher"]
 
     def filter_by_publication_status(self, queryset, name, value):
         if value == "published":

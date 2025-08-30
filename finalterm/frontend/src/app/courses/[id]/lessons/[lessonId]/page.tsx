@@ -1,26 +1,27 @@
 import { notFound } from "next/navigation";
 import { lessonService } from "@/services/lessonService";
 import { courseService } from "@/services/courseService";
-import { LessonDetail } from "../../components/lesson-detail";
-import { LessonSidebar } from "../../components/lesson-sidebar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { getServerUser } from "@/lib/auth";
+import { LessonSidebar } from "../components/lesson-sidebar";
+import { LessonDetail } from "../components/lesson-detail";
 
 interface LessonPageProps {
-  params: {
+  params: Promise<{
     id: string;
     lessonId: string;
-  };
+  }>;
 }
 
 export default async function LessonPage({ params }: LessonPageProps) {
+  const { id, lessonId } = await params;
   const user = await getServerUser();
   const [course, lesson, lessonsResponse] = await Promise.all([
-    courseService.server.getCourse(params.id),
-    lessonService.server.getLesson(params.id, params.lessonId),
-    lessonService.server.getCourseLessons(params.id),
+    courseService.server.getCourse(id),
+    lessonService.server.getLesson(id, lessonId),
+    lessonService.server.getCourseLessons(id),
   ]);
 
   if (!course || !lesson) {
@@ -36,7 +37,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
           size="sm"
           asChild
         >
-          <Link href={`/courses/${params.id}?tab=content`}>
+          <Link href={`/courses/${id}?tab=content`}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Course
           </Link>
@@ -49,8 +50,8 @@ export default async function LessonPage({ params }: LessonPageProps) {
         <div className="lg:col-span-1 order-2 lg:order-1">
           <LessonSidebar
             lessons={lessonsResponse.results}
-            courseId={params.id}
-            currentLessonId={params.lessonId}
+            courseId={id}
+            currentLessonId={lessonId}
           />
         </div>
 
@@ -58,7 +59,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
         <div className="lg:col-span-3 order-1 lg:order-2">
           <LessonDetail
             lesson={lesson}
-            courseId={params.id}
+            courseId={id}
             isTeacher={course.teacher.username === user?.username}
           />
         </div>

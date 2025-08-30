@@ -22,7 +22,7 @@ class UserProfileTest(BaseAPITestCase):
         )
         self.client.force_authenticate(user=self.user)
 
-        self.profile_url = "/api/users/profile/"
+        self.profile_url = "/api/users/me/"
         self.update_url = "/api/users/profile_update/"
 
     @debug_on_failure

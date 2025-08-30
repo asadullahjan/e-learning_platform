@@ -23,7 +23,7 @@ export interface StatusListResponse {
 export const statusService = {
   // Get all statuses (for home page)
   getStatuses: async (searchParams?: {
-    [key: string]: string | string[] | undefined;
+    [key: string]: string | number | string[] | undefined;
   }): Promise<StatusListResponse> => {
     const response = await api.get<StatusListResponse>("/statuses/", { params: searchParams });
     return response.data;
@@ -60,7 +60,9 @@ export const statusService = {
       [key: string]: string | string[] | undefined;
     }): Promise<StatusListResponse> => {
       const serverApi = await createServerApi();
-      const response = await serverApi.get<StatusListResponse>("/statuses/", { params: searchParams });
+      const response = await serverApi.get<StatusListResponse>("/statuses/", {
+        params: searchParams,
+      });
       return response.data;
     },
 

@@ -13,15 +13,16 @@ import { useRouter } from "next/navigation";
 import { userService, User } from "@/services/userService";
 import { chatService } from "@/services/chatService";
 import { useToast } from "@/components/hooks/use-toast";
+import React from "react";
 
 interface UserProfilePageProps {
-  params: {
+  params: Promise<{
     username: string;
-  };
+  }>;
 }
 
 export default function UserProfilePage({ params }: UserProfilePageProps) {
-  const { username } = params;
+  const { username } = React.use(params);
   const statusListRef = useRef<UserStatusListRef>(null);
   const { user: currentUser } = useAuthStore();
   const router = useRouter();
@@ -194,7 +195,7 @@ export default function UserProfilePage({ params }: UserProfilePageProps) {
       <CreateStatusButton onStatusCreated={handleStatusCreated} />
       <UserStatusList
         ref={statusListRef}
-        username={username}
+        user={user}
       />
     </div>
   );

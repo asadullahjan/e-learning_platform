@@ -28,7 +28,7 @@ export default function MyCourses() {
 
         if (user?.role === "teacher") {
           // For teachers, fetch their created courses
-          const courses = await courseService.getTeacherCourses(user.id.toString());
+          const courses = await courseService.getTeacherCourses(user.id);
           setTeacherCourses(courses);
         } else {
           // For students, fetch their enrollments
