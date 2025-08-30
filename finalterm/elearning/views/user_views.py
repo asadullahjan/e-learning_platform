@@ -11,11 +11,14 @@ from drf_spectacular.utils import (
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
 
-from elearning.permissions.users.user_permissions import IsUserOwner
+from elearning.permissions import IsUserAuthenticatedAndOwner
 
-from ..models import User
-from ..serializers.user_serializers import UserSerializer, UserDetailSerializer
-from ..services.user_service import UserService
+from elearning.models import User
+from elearning.serializers import (
+    UserDetailReadOnlySerializer,
+    UserUpdateSerializer,
+)
+from elearning.services.user_service import UserService
 
 
 @extend_schema(
@@ -44,15 +47,14 @@ class UserViewSet(ModelViewSet):
     - profile_update: Update current user profile
     """
 
-    queryset = User.objects.filter(is_active=True).order_by("username")
-    permission_classes = [IsUserOwner]
+    permission_classes = [IsUserAuthenticatedAndOwner]
     filter_backends = [SearchFilter]
     search_fields = ["username", "first_name", "last_name"]
 
     def get_serializer_class(self):
         if self.action == "retrieve":
-            return UserDetailSerializer
-        return UserSerializer
+            return UserDetailReadOnlySerializer
+        return UserUpdateSerializer
 
     def get_queryset(self):
         """Get queryset based on action"""
@@ -65,7 +67,7 @@ class UserViewSet(ModelViewSet):
 
     @extend_schema(
         responses={
-            200: UserDetailSerializer,
+            200: UserDetailReadOnlySerializer,
         },
     )
     @action(detail=False, methods=["get"])
@@ -85,7 +87,7 @@ class UserViewSet(ModelViewSet):
 
     @extend_schema(
         responses={
-            200: UserDetailSerializer,
+            200: UserDetailReadOnlySerializer,
         },
     )
     @action(detail=False, methods=["get"])
@@ -101,9 +103,9 @@ class UserViewSet(ModelViewSet):
         return self.me(request)
 
     @extend_schema(
-        request=UserSerializer,
+        request=UserUpdateSerializer,
         responses={
-            200: UserDetailSerializer,
+            200: UserUpdateSerializer,
             400: inline_serializer(
                 name="UserProfileUpdateBadRequestResponse",
                 fields={
@@ -149,7 +151,7 @@ class UserViewSet(ModelViewSet):
 
     @extend_schema(
         responses={
-            200: UserDetailSerializer,
+            200: UserDetailReadOnlySerializer,
             404: inline_serializer(
                 name="UserNotFoundResponse",
                 fields={

@@ -1,8 +1,10 @@
 from django.db import transaction
 from elearning.models import CourseLesson, Course, File, User
 from elearning.exceptions import ServiceError
-from elearning.permissions.courses.lesson_permissions import LessonPolicy
-from elearning.permissions.courses.file_permissions import FilePolicy
+from elearning.permissions.courses import (
+    CourseLessonPolicy,
+    CourseFilePolicy,
+)
 from elearning.services.courses.course_service import CourseService
 
 
@@ -16,12 +18,14 @@ class CourseLessonService:
     ):
         """Create a lesson with an attached file"""
         # Check if teacher can create lessons for this course
-        LessonPolicy.check_can_create_lesson(
+        CourseLessonPolicy.check_can_create_lesson(
             teacher, course, raise_exception=True
         )
 
         # Check if teacher can upload files
-        FilePolicy.check_can_upload_file(teacher, course, raise_exception=True)
+        CourseFilePolicy.check_can_upload_file(
+            teacher, course, raise_exception=True
+        )
 
         # Create the lesson
         lesson = CourseLesson.objects.create(
@@ -54,20 +58,20 @@ class CourseLessonService:
     ):
         """Update a lesson and optionally its file"""
         # Check if teacher can modify this lesson
-        LessonPolicy.check_can_modify_lesson(
+        CourseLessonPolicy.check_can_modify_lesson(
             teacher, lesson, raise_exception=True
         )
 
         # Update lesson fields (exclude file field, handle separately)
         for field, value in lesson_data.items():
-            if hasattr(lesson, field) and field != 'file':
+            if hasattr(lesson, field) and field != "file":
                 setattr(lesson, field, value)
         lesson.save()
 
         # Update file if provided
         if file_data:
             # Check if teacher can upload files
-            FilePolicy.check_can_upload_file(
+            CourseFilePolicy.check_can_upload_file(
                 teacher, lesson.course, raise_exception=True
             )
 
@@ -103,7 +107,7 @@ class CourseLessonService:
     def delete_lesson_with_file(lesson: CourseLesson, teacher: User):
         """Delete a lesson and its associated file"""
         # Check if teacher can delete this lesson
-        LessonPolicy.check_can_delete_lesson(
+        CourseLessonPolicy.check_can_delete_lesson(
             teacher, lesson, raise_exception=True
         )
 
@@ -127,17 +131,19 @@ class CourseLessonService:
 
     @staticmethod
     def get_lesson_with_permission_check(lesson_id: int, user: User):
-        """Get lesson with permission check including course access validation"""
+        """
+        Get lesson with permission check including course access validation
+        """
         try:
             lesson = CourseLesson.objects.get(id=lesson_id)
-            
+
             # First check if user can access the course this lesson belongs to
             CourseService.get_course_with_permission_check(
                 lesson.course.id, user
             )
-            
+
             # Then check if user can view this specific lesson
-            LessonPolicy.check_can_view_lesson(
+            CourseLessonPolicy.check_can_view_lesson(
                 user, lesson, raise_exception=True
             )
             return lesson
@@ -150,7 +156,7 @@ class CourseLessonService:
         try:
             lesson = CourseLesson.objects.get(id=lesson_id)
             # Check if user can view this lesson
-            LessonPolicy.check_can_view_lesson(
+            CourseLessonPolicy.check_can_view_lesson(
                 user, lesson, raise_exception=True
             )
 
@@ -159,7 +165,7 @@ class CourseLessonService:
                 raise ServiceError.not_found("No file available for download")
 
             # Check if user can download the file
-            FilePolicy.check_can_download_file(
+            CourseFilePolicy.check_can_download_file(
                 user, lesson.file, raise_exception=True
             )
 
@@ -180,10 +186,12 @@ class CourseLessonService:
 
         # Students see only published lessons in published courses if enrolled
         if user.is_authenticated and user.role == "student":
-            if (course.published_at and
-                    user.enrollments.filter(
-                        course=course, is_active=True
-                    ).exists()):
+            if (
+                course.published_at
+                and user.enrollments.filter(
+                    course=course, is_active=True
+                ).exists()
+            ):
                 return CourseLesson.objects.filter(
                     course=course,
                     published_at__isnull=False,

@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import (
@@ -9,14 +9,14 @@ from drf_spectacular.utils import (
 )
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
-from elearning.permissions import ChatRoomPermission
+from elearning.permissions.chats import ChatRoomPermission
 from elearning.models import ChatRoom
-from ...serializers.chats.chat_room_serializers import (
-    ChatRoomListSerializer,
-    ChatRoomSerializer,
-    ChatRoomCreateUpdateSerializer,
+from elearning.serializers.chats import (
+    ChatRoomReadOnlySerializer,
+    ChatRoomWriteSerializer,
+    ChatRoomDetailReadOnlySerializer,
 )
-from ...services.chats.chat_service import ChatService
+from elearning.services.chats.chat_service import ChatService
 
 
 @extend_schema(
@@ -30,19 +30,17 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # For list actions, filter by permissions
         if self.action == "list":
-            return ChatService.get_chats_with_computed_fields(
-                self.request.user
-            )
+            return ChatService.get_chat_rooms(self.request.user)
         # For detail actions (retrieve, update, delete), get all chat rooms
         # Permission checks will be done in service layer to return proper 403
         return ChatRoom.objects.all()
 
     def get_serializer_class(self):
         if self.action == "list":
-            return ChatRoomListSerializer
+            return ChatRoomReadOnlySerializer
         elif self.action in ["create", "update", "partial_update"]:
-            return ChatRoomCreateUpdateSerializer
-        return ChatRoomSerializer
+            return ChatRoomWriteSerializer
+        return ChatRoomDetailReadOnlySerializer
 
     @extend_schema(
         parameters=[
@@ -54,7 +52,7 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
             ),
         ],
         responses={
-            200: ChatRoomSerializer,
+            200: ChatRoomReadOnlySerializer,
             404: inline_serializer(
                 name="ChatRoomNotFoundResponse",
                 fields={
@@ -78,7 +76,7 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         responses={
-            200: ChatRoomListSerializer(many=True),
+            200: ChatRoomReadOnlySerializer(many=True),
         },
     )
     @action(detail=False, methods=["get"])
@@ -87,86 +85,14 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
         # Get user chats and populate computed fields
         user_chats = ChatService.get_user_chats(request.user)
 
-        # Populate computed fields for each chat
-        chats_with_fields = []
-        for chat in user_chats:
-            chat_with_fields = ChatService.populate_chat_computed_fields(
-                chat, request.user
-            )
-            chats_with_fields.append(chat_with_fields)
-
         # Let Django handle serializer creation and context automatically
-        serializer = self.get_serializer(chats_with_fields, many=True)
+        serializer = self.get_serializer(user_chats, many=True)
         return Response(serializer.data)
 
     @extend_schema(
-        request=inline_serializer(
-            name="FindOrCreateDirectRequest",
-            fields={
-                "username": serializers.CharField(
-                    help_text="Username to find or create direct chat with"
-                ),
-            },
-        ),
+        request=ChatRoomWriteSerializer,
         responses={
-            200: inline_serializer(
-                name="FindOrCreateDirectResponse",
-                fields={
-                    "chat_room": ChatRoomSerializer,
-                    "created": serializers.BooleanField(
-                        help_text="Whether a new chat was created"
-                    ),
-                },
-            ),
-            400: inline_serializer(
-                name="FindOrCreateDirectBadRequestResponse",
-                fields={
-                    "detail": serializers.CharField(help_text="Error message"),
-                },
-            ),
-        },
-        examples=[
-            OpenApiExample(
-                "Find or Create Direct Chat",
-                value={"username": "john_doe"},
-                request_only=True,
-                status_codes=["200"],
-            ),
-        ],
-    )
-    @action(detail=False, methods=["post"])
-    def find_or_create_direct(self, request):
-        """Find existing direct chat or create new one with another user"""
-
-        username = request.data.get("username")
-        if not username:
-            return Response(
-                {"detail": "Username is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            chat_room, created = ChatService.find_or_create_direct_chat(
-                request.user, username
-            )
-            # Populate computed fields before serialization
-            chat_room = ChatService.populate_chat_computed_fields(
-                chat_room, request.user
-            )
-            serializer = self.get_serializer(chat_room)
-            return Response(
-                {"chat_room": serializer.data, "created": created},
-                status=status.HTTP_200_OK,
-            )
-        except Exception as e:
-            return Response(
-                {"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-    @extend_schema(
-        request=ChatRoomCreateUpdateSerializer,
-        responses={
-            201: ChatRoomSerializer,
+            201: ChatRoomReadOnlySerializer,
             400: inline_serializer(
                 name="ChatRoomCreateBadRequestResponse",
                 fields={
@@ -195,10 +121,6 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
             serializer.validated_data, self.request.user
         )
 
-        # Populate computed fields before setting instance
-        chat_room = ChatService.populate_chat_computed_fields(
-            chat_room, self.request.user
-        )
         serializer.instance = chat_room
 
     def perform_update(self, serializer):
@@ -207,10 +129,7 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
         ChatService.update_chat_room(
             instance, self.request.user, **serializer.validated_data
         )
-        # Populate computed fields before saving
-        instance = ChatService.populate_chat_computed_fields(
-            instance, self.request.user
-        )
+
         serializer.instance = instance
 
     def perform_destroy(self, instance):

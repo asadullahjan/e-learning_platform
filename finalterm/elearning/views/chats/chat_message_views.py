@@ -2,19 +2,22 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import (
-    extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
+    extend_schema,
+    OpenApiParameter,
+    OpenApiExample,
+    inline_serializer,
 )
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
 
-from elearning.serializers.chats.chat_message_serializers import (
-    ChatMessageCreateUpdateSerializer,
-    ChatMessageSerializer,
+from elearning.serializers.chats import (
+    ChatMessageReadOnlySerializer,
+    ChatMessageWriteSerializer,
 )
 from elearning.services.chats.chat_messages_service import ChatMessagesService
-from elearning.permissions import ChatMessagePermission
+from elearning.permissions.chats import ChatMessagePermission
 from elearning.models import ChatMessage
-from elearning.services.chats.chat_websocket_service import (
+from elearning.services.chats import (
     ChatWebSocketService,
 )
 
@@ -26,24 +29,23 @@ from elearning.services.chats.chat_websocket_service import (
             name="chat_room_pk",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.PATH,
-            description="Chat room ID"
+            description="Chat room ID",
         ),
         OpenApiParameter(
             name="id",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.PATH,
-            description="Message ID"
+            description="Message ID",
         ),
     ],
 )
 class ChatMessageViewSet(viewsets.ModelViewSet):
     """
     ViewSet for chat messages with automatic pagination and filtering.
-    Inherits from ModelViewSet to get all CRUD operations and pagination 
+    Inherits from ModelViewSet to get all CRUD operations and pagination
     for free.
     """
 
-    serializer_class = ChatMessageSerializer
     permission_classes = [ChatMessagePermission]
     http_method_names = ["get", "post", "patch", "delete"]  # No PUT method
 
@@ -53,13 +55,13 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         DRF handles pagination automatically.
         """
         # Handle swagger schema generation
-        if getattr(self, 'swagger_fake_view', False):
+        if getattr(self, "swagger_fake_view", False):
             return ChatMessage.objects.none()
-            
+
         chat_room_id = self.kwargs["chat_room_pk"]
-        
+
         # Check permissions and get messages via service
-        # Service will raise ServiceError if permission denied, 
+        # Service will raise ServiceError if permission denied,
         # which DRF handles
         messages = ChatMessagesService(chat_room_id).get_chat_messages(
             self.request.user
@@ -71,19 +73,17 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         Use different serializers for different actions.
         """
         if self.action in ["create", "partial_update"]:
-            return ChatMessageCreateUpdateSerializer
-        return ChatMessageSerializer
+            return ChatMessageWriteSerializer
+        return ChatMessageReadOnlySerializer
 
     @extend_schema(
-        request=ChatMessageCreateUpdateSerializer,
+        request=ChatMessageWriteSerializer,
         responses={
-            201: ChatMessageSerializer,
+            201: ChatMessageReadOnlySerializer,
             400: inline_serializer(
                 name="ChatMessageBadRequestResponse",
                 fields={
-                    "error": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "error": serializers.CharField(help_text="Error message"),
                 },
             ),
         },
@@ -107,7 +107,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
             request.user, serializer.validated_data["content"]
         )
 
-        response_data = ChatMessageSerializer(created_message).data
+        response_data = ChatMessageReadOnlySerializer(created_message).data
 
         # Broadcast complete message data with event type
         ChatWebSocketService.broadcast_message(
@@ -116,15 +116,13 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         return Response(response_data, status=status.HTTP_201_CREATED)
 
     @extend_schema(
-        request=ChatMessageCreateUpdateSerializer,
+        request=ChatMessageWriteSerializer,
         responses={
-            200: ChatMessageSerializer,
+            200: ChatMessageReadOnlySerializer,
             400: inline_serializer(
                 name="ChatMessageUpdateBadRequestResponse",
                 fields={
-                    "error": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "error": serializers.CharField(help_text="Error message"),
                 },
             ),
         },
@@ -148,7 +146,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
             serializer.validated_data["content"], request.user, pk
         )
 
-        response_data = ChatMessageSerializer(updated_message).data
+        response_data = ChatMessageReadOnlySerializer(updated_message).data
 
         # Broadcast complete updated message data
         ChatWebSocketService.broadcast_message(
@@ -162,9 +160,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
             404: inline_serializer(
                 name="ChatMessageNotFoundResponse",
                 fields={
-                    "detail": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "detail": serializers.CharField(help_text="Error message"),
                 },
             ),
         },
@@ -175,7 +171,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         """
         # Get complete message data before deleting
         message = self.get_object()
-        message_data = ChatMessageSerializer(message).data
+        message_data = ChatMessageReadOnlySerializer(message).data
 
         ChatMessagesService(chat_room_pk).delete_message(pk, request.user)
 

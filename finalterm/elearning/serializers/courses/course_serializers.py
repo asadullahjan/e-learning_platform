@@ -1,12 +1,113 @@
-from elearning.models import Course
 from rest_framework import serializers
+from elearning.models import Course
+from elearning.serializers.user_serializers import UserReadOnlySerializer
 from django.utils import timezone
 from typing import Optional
-from elearning.serializers.user_serializers import UserSerializer
 
 
-class CourseSerializer(serializers.ModelSerializer):
-    """Basic course serializer for create/update operations"""
+class CourseValidationConstants:
+    """Constants for course validation rules."""
+
+    MIN_TITLE_LENGTH = 5
+    MIN_DESCRIPTION_LENGTH = 20
+    PUBLISH_TOLERANCE_SECONDS = 10
+
+
+class CourseWriteSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating/updating courses.
+    Accepts title, description, and published_at.
+    Teacher and created_at are handled automatically.
+    """
+
+    class Meta:
+        model = Course
+        fields = ["id", "title", "description", "published_at"]
+        read_only_fields = ["id"]
+
+    def validate_title(self, value: str) -> str:
+        if len(value.strip()) < CourseValidationConstants.MIN_TITLE_LENGTH:
+            raise serializers.ValidationError(
+                "Title must be at least"
+                f"{CourseValidationConstants.MIN_TITLE_LENGTH} characters long"
+            )
+        return value.strip()
+
+    def validate_description(self, value: str) -> str:
+        if (
+            len(value.strip())
+            < CourseValidationConstants.MIN_DESCRIPTION_LENGTH
+        ):
+            raise serializers.ValidationError(
+                "Description must be at least"
+                f"{CourseValidationConstants.MIN_DESCRIPTION_LENGTH}"
+                "characters long"
+            )
+        return value.strip()
+
+    def validate_published_at(
+        self, value: Optional[timezone.datetime]
+    ) -> Optional[timezone.datetime]:
+        if value:
+            tolerance = timezone.now() - timezone.timedelta(
+                seconds=CourseValidationConstants.PUBLISH_TOLERANCE_SECONDS
+            )
+            if value < tolerance:
+                raise serializers.ValidationError(
+                    "Published date cannot be in the past"
+                )
+        return value
+
+
+class CourseReadOnlySerializer(serializers.ModelSerializer):
+    """
+    Full read-only serializer for detailed course views.
+    Includes teacher info, enrollment stats, and chat ID.
+    """
+
+    teacher = UserReadOnlySerializer()
+    enrollment_count = serializers.SerializerMethodField()
+    total_enrollments = serializers.SerializerMethodField()
+    is_enrolled = serializers.SerializerMethodField()
+    course_chat_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Course
+        fields = [
+            "id",
+            "title",
+            "description",
+            "teacher",
+            "created_at",
+            "updated_at",
+            "published_at",
+            "enrollment_count",
+            "total_enrollments",
+            "is_enrolled",
+            "course_chat_id",
+        ]
+        read_only_fields = fields
+
+    def get_enrollment_count(self, obj: Course) -> int:
+        return getattr(obj, "_enrollment_count", 0)
+
+    def get_total_enrollments(self, obj: Course) -> int:
+        return getattr(obj, "_total_enrollments", 0)
+
+    def get_is_enrolled(self, obj: Course) -> bool:
+        return getattr(obj, "_is_enrolled", False)
+
+    def get_course_chat_id(self, obj: Course) -> Optional[int]:
+        return getattr(obj, "_course_chat_id", None)
+
+
+class CourseListReadOnlySerializer(serializers.ModelSerializer):
+    """
+    Simplified read-only serializer for course lists.
+    Includes nested teacher info.
+    """
+
+    teacher = UserReadOnlySerializer()
 
     class Meta:
         model = Course
@@ -18,107 +119,4 @@ class CourseSerializer(serializers.ModelSerializer):
             "published_at",
             "created_at",
         ]
-        read_only_fields = [
-            "id",
-            "teacher",
-            "created_at",
-        ]
-        extra_kwargs = {
-            "published_at": {"required": False, "allow_null": True}
-        }
-
-    def validate_title(self, value):
-        if len(value) < 5:
-            raise serializers.ValidationError(
-                "Title must be at least 5 characters long"
-            )
-        return value
-
-    def validate_description(self, value):
-        if len(value) < 20:
-            raise serializers.ValidationError(
-                "Description must be at least 20 characters long"
-            )
-        return value
-
-    def validate_published_at(self, value):
-        if value:
-            # Allow 10 second tolerance for network delays
-            tolerance = timezone.now() - timezone.timedelta(seconds=10)
-            if value < tolerance:
-                raise serializers.ValidationError(
-                    "Published date cannot be in the past"
-                )
-        return value
-
-
-class CourseListSerializer(CourseSerializer):
-    """Course serializer for list with basic info and teacher name"""
-
-    teacher_name = serializers.CharField(
-        source="teacher.username", read_only=True
-    )
-
-    class Meta(CourseSerializer.Meta):
-        fields = CourseSerializer.Meta.fields + ["teacher_name"]
-        read_only_fields = CourseSerializer.Meta.read_only_fields + [
-            "teacher_name"
-        ]
-
-
-class CourseDetailSerializer(CourseSerializer):
-    """Detailed course serializer with enrollment data and nested teacher"""
-
-    # These fields will be populated by the service layer
-    enrollment_count = serializers.SerializerMethodField()
-    total_enrollments = serializers.SerializerMethodField()
-    is_enrolled = serializers.SerializerMethodField()
-    course_chat_id = serializers.SerializerMethodField()
-
-    class Meta(CourseSerializer.Meta):
-        fields = CourseSerializer.Meta.fields + [
-            "updated_at",
-            "enrollment_count",
-            "total_enrollments",
-            "is_enrolled",
-            "course_chat_id",
-        ]
-        read_only_fields = CourseSerializer.Meta.read_only_fields + [
-            "updated_at",
-            "enrollment_count",
-            "total_enrollments",
-            "is_enrolled",
-            "course_chat_id",
-        ]
-
-    def get_enrollment_count(self, obj) -> int:
-        """Get enrollment count from service-populated field"""
-        if hasattr(obj, "_enrollment_count"):
-            return obj._enrollment_count
-        return 0
-
-    def get_total_enrollments(self, obj) -> int:
-        """Get total enrollments from service-populated field"""
-        if hasattr(obj, "_total_enrollments"):
-            return obj._total_enrollments
-        return 0
-
-    def get_is_enrolled(self, obj) -> bool:
-        """Get enrollment status from service-populated field"""
-        if hasattr(obj, "_is_enrolled"):
-            return obj._is_enrolled
-        return False
-
-    def get_course_chat_id(self, obj) -> Optional[int]:
-        """Get course chat ID from service-populated field"""
-        if hasattr(obj, "_course_chat_id"):
-            return obj._course_chat_id
-        return None
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-
-        # Add nested teacher data
-        data["teacher"] = UserSerializer(instance.teacher).data
-
-        return data
+        read_only_fields = fields

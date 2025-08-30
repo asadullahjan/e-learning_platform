@@ -1,10 +1,8 @@
 from django.db import transaction
+from django.db.models import Q
 from elearning.models import Course, ChatRoom, ChatParticipant, User
 from elearning.exceptions import ServiceError
-from elearning.permissions.courses.course_permissions import CoursePolicy
-from elearning.services.courses.student_restriction_service import (
-    StudentRestrictionService,
-)
+from elearning.permissions.courses import CoursePolicy
 
 
 class CourseService:
@@ -90,35 +88,21 @@ class CourseService:
             >>> for course in courses:
             ...     print(f"Available course: {course.title}")
         """
-        if not user.is_authenticated:
-            # Return only published courses for anonymous users
-            return Course.objects.filter(published_at__isnull=False)
+        base_qs = Course.objects.select_related("teacher")
 
+        # Handle anonymous/unauthenticated users
+        if user is None or not user.is_authenticated:
+            # Anonymous users can only see published courses
+            return base_qs.filter(published_at__isnull=False)
+
+        # For teachers: published courses plus their own courses
         if user.role == "teacher":
-            # Teachers see published courses + their own courses
-            published_courses = Course.objects.filter(
-                published_at__isnull=False
-            )
-            user_courses = Course.objects.filter(teacher=user)
-            return (published_courses | user_courses).distinct()
+            return base_qs.filter(
+                Q(published_at__isnull=False) | Q(teacher=user)
+            ).distinct()
 
-        # Students see only published courses they're not restricted from
-        published_courses = Course.objects.filter(published_at__isnull=False)
-
-        # Filter courses using optimized restriction checking
-        if user.role == "student":
-            # Get all restricted course IDs using optimized method
-            restricted_course_ids = (
-                StudentRestrictionService.get_restricted_courses_for_student(
-                    user
-                )
-            )
-            if restricted_course_ids:
-                return published_courses.exclude(id__in=restricted_course_ids)
-            else:
-                return published_courses
-
-        return published_courses
+        # For students and other roles: only published courses
+        return base_qs.filter(published_at__isnull=False)
 
     @staticmethod
     def update_course(course: Course, course_data: dict, user: User):

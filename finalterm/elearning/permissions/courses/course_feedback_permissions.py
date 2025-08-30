@@ -42,6 +42,10 @@ class CourseFeedbackPolicy:
 
     This class encapsulates all business rules for feedback operations
     and can be used by both permissions and services.
+    
+    Note: This policy does NOT check student restrictions directly. Access
+    is determined by enrollment status (enrollment.is_active), which is
+    automatically managed by the restriction service.
     """
 
     @staticmethod
@@ -58,7 +62,6 @@ class CourseFeedbackPolicy:
         Args:
             user: User attempting to leave feedback
             course: Course to leave feedback for
-            permission_obj: Permission object to set custom messages (optional)
             raise_exception: If True, raises ServiceError instead of
             returning False
 
@@ -76,7 +79,9 @@ class CourseFeedbackPolicy:
 
             return False
 
-        # Check if user is enrolled in the course
+        # Check if user is enrolled in the course and enrollment is active
+        # This automatically handles restrictions since restricted students
+        # have inactive enrollments
         enrollments_exist = course.enrollments.filter(
             user=user, is_active=True
         ).exists()
@@ -116,12 +121,11 @@ class CourseFeedbackPolicy:
         Args:
             user: User attempting to modify feedback
             feedback: Feedback instance to modify
-            permission_obj: Permission object to set custom messages (optional)
             raise_exception: If True, raises ServiceError instead of
             returning False
 
         Returns:
-            bool: True if user can modify feedback, False otherwise
+            bool: True if user can modify, False otherwise
 
         Raises:
             ServiceError: If raise_exception=True and validation fails

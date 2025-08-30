@@ -1,14 +1,25 @@
+"""
+Chat message permissions.
+
+This module contains permission classes that control access to chat
+message operations including creation, modification, and deletion.
+"""
+
 from rest_framework.permissions import BasePermission
 from elearning.models import ChatParticipant
 from elearning.exceptions import ServiceError
 
 
 class ChatMessagePermission(BasePermission):
-    """DRF permission class for chat message operations - basic checks only"""
+    """
+    DRF permission class for chat message operations.
+
+    Provides basic permission checks for chat message operations.
+    Detailed business logic is handled by the ChatMessagePolicy class.
+    """
 
     def has_permission(self, request, view):
         """Basic permission checks without database queries"""
-
         # For list action, allow all users
         # (public chats can be viewed by anyone, private chats require auth)
         if view.action == "list":
@@ -32,11 +43,32 @@ class ChatMessagePermission(BasePermission):
 
 
 class ChatMessagePolicy:
-    """Policy class for chat message operations"""
+    """
+    Policy class for chat message operations.
+
+    This class encapsulates all business rules for chat message operations
+    and can be used by both permissions and services.
+    """
 
     @staticmethod
-    def check_can_create_message(user, chat_room, raise_exception=False):
-        """Check if user can create a message in the chat room"""
+    def check_can_create_message(
+        user, chat_room, raise_exception=False
+    ):
+        """
+        Check if user can create a message in the chat room.
+
+        Args:
+            user: User attempting to create message
+            chat_room: Chat room where message will be created
+            raise_exception: If True, raises ServiceError instead of
+            returning False
+
+        Returns:
+            bool: True if user can create message, False otherwise
+
+        Raises:
+            ServiceError: If raise_exception=True and validation fails
+        """
         if not user.is_authenticated:
             error_msg = "You must be logged in to send messages"
             if raise_exception:
@@ -58,8 +90,24 @@ class ChatMessagePolicy:
             return False
 
     @staticmethod
-    def check_can_modify_message(user, message, raise_exception=False):
-        """Check if user can modify (edit/delete) a message"""
+    def check_can_modify_message(
+        user, message, raise_exception=False
+    ):
+        """
+        Check if user can modify (edit/delete) a message.
+
+        Args:
+            user: User attempting to modify message
+            message: Message object to be modified
+            raise_exception: If True, raises ServiceError instead of
+            returning False
+
+        Returns:
+            bool: True if user can modify message, False otherwise
+
+        Raises:
+            ServiceError: If raise_exception=True and validation fails
+        """
         if not user.is_authenticated:
             error_msg = "You must be logged in to modify messages"
             if raise_exception:

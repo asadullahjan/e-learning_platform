@@ -1,7 +1,6 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework import status
 from drf_spectacular.utils import (
     extend_schema,
     OpenApiParameter,
@@ -11,12 +10,8 @@ from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
 
 from elearning.models import Notification
-from elearning.permissions.users.notification_permissions import (
-    NotificationPermission
-)
-from elearning.serializers.notification_serializers import (
-    NotificationSerializer,
-)
+from elearning.permissions import NotificationPermission
+from elearning.serializers import NotificationReadOnlySerializer
 from elearning.services.notification_service import NotificationService
 
 
@@ -37,7 +32,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     Users can only view their own notifications.
     """
 
-    serializer_class = NotificationSerializer
+    serializer_class = NotificationReadOnlySerializer
     permission_classes = [NotificationPermission]
     http_method_names = ["get", "patch"]  # Only allow GET and PATCH
 
@@ -79,23 +74,16 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         - 200: Notification marked as read
         - 404: Notification not found
         """
-        try:
-            notification = (
-                NotificationService.get_notification_with_permission_check(
-                    int(pk), request.user
-                )
+
+        notification = (
+            NotificationService.get_notification_with_permission_check(
+                int(pk), request.user
             )
-            NotificationService.mark_notification_read(
-                notification, request.user
-            )
-            return Response(
-                {"message": "Notification marked as read", "is_read": True}
-            )
-        except Exception:
-            return Response(
-                {"detail": "Notification not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        )
+        NotificationService.mark_notification_read(notification, request.user)
+        return Response(
+            {"message": "Notification marked as read", "is_read": True}
+        )
 
     @extend_schema(
         responses={

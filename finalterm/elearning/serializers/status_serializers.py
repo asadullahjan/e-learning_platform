@@ -1,47 +1,46 @@
+"""
+Status serializers for user status updates and activity tracking.
+
+This module contains serializers for creating, updating, and displaying
+user status updates with proper validation and representation.
+"""
+
 from rest_framework import serializers
 from elearning.models import Status
-from .user_serializers import UserSerializer
+from .user_serializers import UserReadOnlySerializer
 
 
-class StatusListSerializer(serializers.ModelSerializer):
-    """Status serializer for list views - returns full user object"""
+class StatusReadOnlySerializer(serializers.ModelSerializer):
+    """
+    Read-only serializer for status updates.
+    Includes nested user details using UserReadonlySerializer.
+    """
 
-    user = UserSerializer()
-
-    class Meta:
-        model = Status
-        fields = ["id", "user", "content", "created_at", "updated_at"]
-        read_only_fields = ["id", "user", "created_at", "updated_at"]
-
-
-class StatusSerializer(serializers.ModelSerializer):
-    """Detailed status serializer for retrieve operations"""
-
-    user = UserSerializer()
+    user = UserReadOnlySerializer()
 
     class Meta:
         model = Status
         fields = ["id", "user", "content", "created_at", "updated_at"]
-        read_only_fields = ["id", "user", "created_at", "updated_at"]
+        read_only_fields = fields
 
 
-class StatusCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for creating and updating status updates"""
+class StatusWriteSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating/updating status updates.
+    Only `content` is writable. `user` is injected from request.user.
+    """
 
     class Meta:
         model = Status
-        fields = ["content"]
+        fields = ["id", "content"]
+        read_only_fields = ["id"]
 
-    def validate_content(self, value):
-        """Validate status content"""
-        if not value or not value.strip():
+    def validate_content(self, value: str) -> str:
+        value = value.strip()
+        if not value:
             raise serializers.ValidationError("Status content cannot be empty")
         if len(value) > 500:
             raise serializers.ValidationError(
                 "Status content cannot exceed 500 characters"
             )
-        return value.strip()
-
-    def to_representation(self, instance):
-        """Use read serializer for response representation"""
-        return StatusSerializer(instance, context=self.context).data
+        return value

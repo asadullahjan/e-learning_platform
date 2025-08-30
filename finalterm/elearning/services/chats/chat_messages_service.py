@@ -1,8 +1,6 @@
 from elearning.models import ChatMessage, User, ChatRoom
 from elearning.exceptions import ServiceError
-from elearning.permissions.chats.chat_message_permissions import (
-    ChatMessagePolicy,
-)
+from elearning.permissions.chats import ChatMessagePolicy, ChatPolicy
 
 
 class ChatMessagesService:
@@ -66,30 +64,12 @@ class ChatMessagesService:
         except ChatRoom.DoesNotExist:
             raise ServiceError.not_found("Chat room not found")
 
-        # For public chats, anyone can view messages
-        if chat_room.is_public:
-            return ChatMessage.objects.filter(
-                chat_room_id=self.chat_room_id
-            ).order_by("-created_at")
+        ChatPolicy.check_can_access_chat_room(
+            user, chat_room, raise_exception=True
+        )
 
-        # For private chats, only authenticated participants can view
-        if not user.is_authenticated:
-            raise ServiceError.permission_denied(
-                "You must be logged in as a participant to view messages in private chats"
-            )
-
-        # Check if user is an active participant
-        from elearning.models import ChatParticipant
-
-        try:
-            ChatParticipant.objects.get(
-                chat_room=chat_room, user=user, is_active=True
-            )
-        except ChatParticipant.DoesNotExist:
-            raise ServiceError.permission_denied(
-                "You must be a participant to view messages in this chat"
-            )
-
-        return ChatMessage.objects.filter(
-            chat_room_id=self.chat_room_id
-        ).order_by("-created_at")
+        return (
+            ChatMessage.objects.filter(chat_room_id=self.chat_room_id)
+            .select_related("sender")
+            .order_by("-created_at")
+        )

@@ -1,10 +1,8 @@
 from django.db import transaction, models
 from elearning.models import ChatParticipant, ChatRoom, User
-from elearning.services.chats.chat_participants_service import (
-    ChatParticipantsService,
-)
+from elearning.services.chats import ChatParticipantsService
 from elearning.exceptions import ServiceError
-from elearning.permissions.chats.chat_room_permissions import ChatPolicy
+from elearning.permissions.chats import ChatPolicy
 
 
 class ChatService:
@@ -31,39 +29,35 @@ class ChatService:
         """
         # Extract data
         chat_type = validated_data.get("chat_type")
-        course = validated_data.get("course")
+        course = validated_data.get("course", None)
         participants = validated_data.get("participants", [])
 
         # Check if user can create this type of chat room
         ChatPolicy.check_can_create_chat_room(
             creator, chat_type, course, raise_exception=True
         )
-        
+
         # For direct chats, check if one already exists
         if chat_type == "direct" and len(participants) == 1:
-            other_user_id = participants[0]
-            try:
-                other_user = User.objects.get(id=other_user_id, is_active=True)
-                existing_chat = ChatService._find_existing_direct_chat(
-                    creator, other_user
+            # participants[0] is now a User instance
+            other_user = participants[0]
+            existing_chat = ChatService._find_existing_direct_chat(
+                creator, other_user
+            )
+            if existing_chat:
+                # Reactivate if needed and return existing chat
+                ChatParticipantsService.reactivate_participant(
+                    existing_chat, creator, creator
                 )
-                if existing_chat:
-                    # Reactivate if needed and return existing chat
-                    ChatParticipantsService.reactivate_chat_for_user(
-                        existing_chat, creator
-                    )
-                    existing_chat.save()
-                    return existing_chat
-            except User.DoesNotExist:
-                raise ServiceError.not_found(
-                    f"User with ID {other_user_id} not found"
-                )
+                existing_chat.save()
+                return existing_chat
 
         # Create the chat room
         chat_room = ChatRoom.objects.create(
             name=validated_data["name"],
             chat_type=chat_type,
             course=course,
+            description=validated_data.get("description", ""),
             is_public=validated_data.get("is_public", False),
             created_by=creator,
         )
@@ -76,7 +70,8 @@ class ChatService:
 
         # Add other participants if specified
         if participants:
-            participants = User.objects.filter(id__in=participants)
+            # participants is now a list of User instances
+            # no need to query again
             ChatParticipantsService.add_participants_to_chat(
                 chat_room, list(participants), creator
             )
@@ -99,52 +94,6 @@ class ChatService:
                 return chat
 
         return None
-
-    @staticmethod
-    def find_or_create_direct_chat(creator: User, other_username: str):
-        """Find existing direct chat or create new one with another user"""
-        try:
-            other_user = User.objects.get(
-                username=other_username, is_active=True
-            )
-        except User.DoesNotExist:
-            raise ServiceError.not_found(f"User '{other_username}' not found")
-
-        if creator == other_user:
-            raise ServiceError.bad_request("Cannot create chat with yourself")
-
-        # Check if direct chat already exists
-        existing_chat = ChatService._find_existing_direct_chat(
-            creator, other_user
-        )
-
-        if existing_chat:
-            # Reactivate if needed
-            ChatParticipantsService.reactivate_chat_for_user(
-                existing_chat, creator
-            )
-            existing_chat.save()
-            return existing_chat, False
-
-        # Create new direct chat
-        chat_name = f"Direct chat: {creator.username} & {other_user.username}"
-        chat_room = ChatRoom.objects.create(
-            name=chat_name,
-            chat_type="direct",
-            created_by=creator,
-            is_public=False,
-        )
-
-        # Add both users as participants
-        ChatParticipant.objects.create(
-            chat_room=chat_room, user=creator, role="participant"
-        )
-
-        ChatParticipant.objects.create(
-            chat_room=chat_room, user=other_user, role="participant"
-        )
-
-        return chat_room, True
 
     @staticmethod
     def get_active_chats_for_user(user):
@@ -257,14 +206,3 @@ class ChatService:
             | models.Q(participants__user=user, participants__is_active=True)
             | models.Q(course__teacher=user)
         ).distinct()
-
-    @staticmethod
-    def get_chats_with_computed_fields(user: User = None):
-        """Get chat rooms with computed fields populated"""
-        chat_rooms = ChatService.get_chat_rooms(user)
-
-        # Populate computed fields for each chat room
-        for chat_room in chat_rooms:
-            ChatService.populate_chat_computed_fields(chat_room, user)
-
-        return chat_rooms

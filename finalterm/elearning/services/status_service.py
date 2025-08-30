@@ -2,7 +2,7 @@ from django.db import transaction
 from elearning.models import Status, User
 from elearning.exceptions import ServiceError
 from elearning.services.notification_service import NotificationService
-from elearning.permissions.users.status_permissions import StatusPolicy
+from elearning.permissions import StatusPolicy
 
 
 class StatusService:
@@ -46,7 +46,7 @@ class StatusService:
         """
         # Use the permission policy for validation
         StatusPolicy.check_can_create_status(user, raise_exception=True)
-        
+
         status = Status.objects.create(user=user, content=content)
 
         # Notify followers about new status
@@ -117,7 +117,7 @@ class StatusService:
         StatusPolicy.check_can_modify_status(
             user, status, raise_exception=True
         )
-        
+
         status.content = content
         status.save()
         return status
@@ -142,5 +142,5 @@ class StatusService:
         StatusPolicy.check_can_delete_status(
             user, status, raise_exception=True
         )
-        
+
         status.delete()

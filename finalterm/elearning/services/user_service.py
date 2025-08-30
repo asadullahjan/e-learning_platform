@@ -1,6 +1,6 @@
 from elearning.models import User
 from elearning.exceptions import ServiceError
-from elearning.permissions.users.user_permissions import UserPolicy
+from elearning.permissions import UserPolicy
 
 
 class UserService:

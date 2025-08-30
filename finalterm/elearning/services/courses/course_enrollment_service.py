@@ -1,32 +1,24 @@
 from elearning.models import Enrollment, Course, User
 from elearning.services.notification_service import NotificationService
 from elearning.exceptions import ServiceError
-from elearning.permissions.courses.enrollment_permissions import (
-    EnrollmentPolicy,
+from elearning.permissions.courses import (
+    CourseEnrollmentPolicy,
 )
+from django.utils import timezone
 
 
-class EnrollmentService:
+class CourseEnrollmentService:
     """
     Service for managing course enrollments.
+
+    This service handles all business logic related to course enrollments:
+    - Creating and managing enrollments
+    - Checking restrictions before enrollment operations
+    - Managing enrollment lifecycle
+
+    Note: This is the ONLY service that should check student restrictions.
+    All other services should check enrollment.is_active status instead.
     """
-
-    @staticmethod
-    def check_can_enroll(student: User, course: Course) -> bool:
-        """
-        Check if a student can enroll in a course.
-
-        This method provides early permission checking that can be used by
-        both permissions classes and the service itself.
-
-        Args:
-            student: User attempting to enroll
-            course: Course to enroll in
-
-        Returns:
-            bool: True if student can enroll, False otherwise
-        """
-        return EnrollmentPolicy.check_can_enroll(student, course)
 
     @staticmethod
     def enroll_student(course: Course, student: User):
@@ -41,7 +33,7 @@ class EnrollmentService:
             Enrollment instance
         """
         # Use the permission policy for validation
-        EnrollmentPolicy.check_can_enroll(
+        CourseEnrollmentPolicy.check_can_enroll(
             student, course, raise_exception=True
         )
 
@@ -60,61 +52,11 @@ class EnrollmentService:
                     "Student is already enrolled in this course"
                 )
             else:
-                # Check if student is restricted before reactivating
-                from elearning.services.courses.student_restriction_service import (
-                    StudentRestrictionService,
-                )
-
-                restriction_info = (
-                    StudentRestrictionService.get_restriction_info(
-                        student, course
-                    )
-                )
-
-                if restriction_info["is_restricted"]:
-                    if (
-                        restriction_info["restriction_type"]
-                        == "teacher_all_courses"
-                    ):
-                        error_msg = (
-                            f"You are restricted from accessing all courses by "
-                            f"{restriction_info['teacher']}. "
-                            f"Reason: {restriction_info['reason']}"
-                        )
-                    else:  # course-specific
-                        error_msg = (
-                            f"You are restricted from accessing this course. "
-                            f"Reason: {restriction_info['reason']}"
-                        )
-                    raise ServiceError.permission_denied(error_msg)
-
                 # Reactivate existing enrollment
                 existing_enrollment.is_active = True
+                existing_enrollment.unenrolled_at = None
                 existing_enrollment.save()
                 return existing_enrollment
-
-        # Check if student is restricted before creating new enrollment
-        from elearning.services.courses.student_restriction_service import (
-            StudentRestrictionService,
-        )
-
-        restriction_info = StudentRestrictionService.get_restriction_info(
-            student, course
-        )
-
-        if restriction_info["is_restricted"]:
-            if restriction_info["restriction_type"] == "teacher_all_courses":
-                error_msg = (
-                    f"You are restricted from accessing all courses by "
-                    f"{restriction_info['teacher']}. "
-                    f"Reason: {restriction_info['reason']}"
-                )
-            else:  # course-specific
-                error_msg = (
-                    f"You are restricted from accessing this course. "
-                    f"Reason: {restriction_info['reason']}"
-                )
-            raise ServiceError.permission_denied(error_msg)
 
         # Create new enrollment
         enrollment = Enrollment.objects.create(
@@ -149,11 +91,12 @@ class EnrollmentService:
             ).get(course=course, user=student, is_active=True)
 
             # Check if user can unenroll
-            EnrollmentPolicy.check_can_unenroll(
+            CourseEnrollmentPolicy.check_can_unenroll(
                 student, enrollment, raise_exception=True
             )
 
             enrollment.is_active = False
+            enrollment.unenrolled_at = timezone.now()
             enrollment.save()
 
             # Notify teacher about unenrollment
@@ -178,7 +121,7 @@ class EnrollmentService:
                 "course", "course__teacher", "user"
             ).get(id=enrollment_id)
             # Check if user can view this enrollment
-            EnrollmentPolicy.check_can_view_enrollment(
+            CourseEnrollmentPolicy.check_can_view_enrollment(
                 user, enrollment, raise_exception=True
             )
             return enrollment
@@ -187,20 +130,24 @@ class EnrollmentService:
 
     @staticmethod
     def modify_enrollment(enrollment: Enrollment, user: User, **kwargs):
-        """Modify enrollment with permission check and restriction validation"""
+        """
+        Modify enrollment with permission check and restriction validation
+        """
         # Check if user can modify this enrollment
-        EnrollmentPolicy.check_can_modify_enrollment(
+        CourseEnrollmentPolicy.check_can_modify_enrollment(
             user, enrollment, raise_exception=True
         )
 
         # If activating enrollment, check for restrictions
         if kwargs.get("is_active") is True:
-            from elearning.services.courses.student_restriction_service import (
-                StudentRestrictionService,
+            from elearning.services.courses import (
+                CourseStudentRestrictionService,
             )
 
-            restriction_info = StudentRestrictionService.get_restriction_info(
-                enrollment.user, enrollment.course
+            restriction_info = (
+                CourseStudentRestrictionService.get_restriction_info(
+                    enrollment.user, enrollment.course
+                )
             )
 
             if restriction_info["is_restricted"]:
@@ -245,3 +192,35 @@ class EnrollmentService:
 
         # Unauthenticated users see nothing
         return Enrollment.objects.none()
+
+    @staticmethod
+    def is_student_enrolled_and_active(student: User, course: Course) -> bool:
+        """
+        Check if a student is enrolled and has active enrollment for a course.
+        This is the single source of truth for course access.
+
+        Args:
+            student: Student user to check
+            course: Course to check enrollment for
+
+        Returns:
+            bool: True if student has active enrollment, False otherwise
+        """
+        return course.enrollments.filter(user=student, is_active=True).exists()
+
+    @staticmethod
+    def get_active_enrollment(student: User, course: Course):
+        """
+        Get the active enrollment for a student in a course.
+
+        Args:
+            student: Student user
+            course: Course to get enrollment for
+
+        Returns:
+            Enrollment instance if exists and active, None otherwise
+        """
+        try:
+            return course.enrollments.get(user=student, is_active=True)
+        except Enrollment.DoesNotExist:
+            return None

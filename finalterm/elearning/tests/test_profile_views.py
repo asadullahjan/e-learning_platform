@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient
-
 from elearning.tests.test_base import BaseAPITestCase, debug_on_failure
 
 
@@ -57,4 +56,4 @@ class UserProfileTest(BaseAPITestCase):
         self.client.force_authenticate(user=None)
 
         response = self.log_response(self.client.get(self.profile_url))
-        self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)
+        self.assertStatusCode(response, status.HTTP_401_UNAUTHORIZED)

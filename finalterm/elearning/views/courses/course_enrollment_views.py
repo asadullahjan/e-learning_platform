@@ -1,46 +1,36 @@
 from rest_framework import viewsets
-from rest_framework.filters import OrderingFilter
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import (
-    extend_schema, OpenApiParameter, inline_serializer
+    extend_schema,
+    OpenApiParameter,
+    inline_serializer,
 )
 from drf_spectacular.types import OpenApiTypes
+from rest_framework.permissions import IsAuthenticated
 from elearning.models import Course, Enrollment
-from elearning.permissions.courses.enrollment_permissions import (
-    EnrollmentPermission,
+from elearning.permissions.courses import (
+    CourseEnrollmentPermission,
+    CourseEnrollmentPolicy,
 )
-from elearning.serializers import (
-    EnrollmentSerializer,
-    StudentEnrollmentSerializer,
-    TeacherEnrollmentSerializer,
+from elearning.serializers.courses import (
+    CourseEnrollmentReadOnlyForStudentSerializer,
+    CourseEnrollmentReadOnlyForTeacherSerializer,
+    CourseEnrollmentWriteSerializer,
 )
 from rest_framework import serializers
-from elearning.services.courses.enrollment_service import EnrollmentService
+from elearning.services.courses import CourseEnrollmentService
+from elearning.exceptions import ServiceError
 
 
-class EnrollmentFilter(filters.FilterSet):
+class CourseEnrollmentFilter(filters.FilterSet):
     """Custom filter for enrollments"""
 
-    # Search filter for username and email
-    search = filters.CharFilter(method="filter_search")
-
-    # Status filter for active/inactive enrollments
     is_active = filters.BooleanFilter()
-
-    # User filter
     user = filters.NumberFilter()
 
     class Meta:
         model = Enrollment
-        fields = ["search", "is_active", "user"]
-
-    def filter_search(self, queryset, name, value):
-        """Search in user username and email fields"""
-        if value:
-            return queryset.filter(
-                user__username__icontains=value
-            ) | queryset.filter(user__email__icontains=value)
-        return queryset
+        fields = ["is_active", "user"]
 
 
 @extend_schema(
@@ -50,13 +40,13 @@ class EnrollmentFilter(filters.FilterSet):
             name="course_pk",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.PATH,
-            description="Course ID"
+            description="Course ID",
         ),
         OpenApiParameter(
             name="id",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.PATH,
-            description="Enrollment ID"
+            description="Enrollment ID",
         ),
     ],
 )
@@ -69,24 +59,32 @@ class CourseEnrollmentViewSet(viewsets.ModelViewSet):
     - All operations are scoped to the specific course
     """
 
-    http_method_names = ["get", "post", "patch", "put"]
-    permission_classes = [EnrollmentPermission]
+    http_method_names = ["get", "post", "patch"]
+    permission_classes = [CourseEnrollmentPermission]
+    filterset_class = CourseEnrollmentFilter
+    ordering = ["-enrolled_at"]
+    ordering_fields = ["enrolled_at", "unenrolled_at"]
+    search_fields = ["user__username", "user__email"]
+
+    def get_course(self):
+        """Get course once and cache it for the request"""
+        if not hasattr(self, "_course"):
+            course_id = self.kwargs.get("course_pk")
+            try:
+                self._course = Course.objects.get(id=course_id)
+            except Course.DoesNotExist:
+                raise ServiceError.not_found("Course not found")
+        return self._course
 
     def get_queryset(self):
         """Return enrollments with permission filtering"""
         # Handle swagger schema generation
-        if getattr(self, 'swagger_fake_view', False):
+        if getattr(self, "swagger_fake_view", False):
             return Enrollment.objects.none()
 
-        course_id = self.kwargs.get("course_pk")
-        if not course_id:
-            return Enrollment.objects.none()
-
-        try:
-            course = Course.objects.get(id=course_id)
-            qs = EnrollmentService.get_enrollments_for_course(course, self.request.user)
-        except Course.DoesNotExist:
-            return Enrollment.objects.none()
+        qs = CourseEnrollmentService.get_enrollments_for_course(
+            self.get_course(), self.request.user
+        )
 
         # Optimize based on user role
         if self.request.user.role == "teacher":
@@ -98,47 +96,42 @@ class CourseEnrollmentViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         """Return appropriate serializer based on user role"""
-        if self.action == "list":
-            course_id = self.kwargs.get("course_pk")
-            try:
-                course = Course.objects.get(id=course_id)
-                if course.teacher == self.request.user:
-                    return TeacherEnrollmentSerializer
-            except Course.DoesNotExist:
-                pass
-        return EnrollmentSerializer
+        if self.action in ["list", "retrieve"]:
+            return CourseEnrollmentReadOnlyForTeacherSerializer
+        return CourseEnrollmentWriteSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        """Check if student is restricted before retrieving enrollment"""
+        enrollment = super().retrieve(request, *args, **kwargs)
+        if request.user.role == "student":
+            CourseEnrollmentPolicy.check_can_view_enrollment(
+                request.user, enrollment, raise_exception=True
+            )
+        return enrollment
 
     @extend_schema(
         responses={
-            201: EnrollmentSerializer,
+            201: CourseEnrollmentWriteSerializer,
             400: inline_serializer(
                 name="EnrollmentCreateBadRequestResponse",
                 fields={
-                    "error": serializers.CharField(
-                        help_text="Error message"
-                    ),
+                    "error": serializers.CharField(help_text="Error message"),
                 },
             ),
         },
     )
     def perform_create(self, serializer):
         """Create enrollment for the specific course"""
-
-        course_id = self.kwargs.get("course_pk")
-        course = Course.objects.get(id=course_id)
-
         # Use service layer to create enrollment
-        enrollment = EnrollmentService.enroll_student(
-            course, self.request.user
+        enrollment = CourseEnrollmentService.enroll_student(
+            self.get_course(), self.request.user
         )
-
         serializer.instance = enrollment
 
     def perform_update(self, serializer):
         """Update enrollment (activate/deactivate) using service layer"""
-        
         # Use service layer to modify enrollment
-        enrollment = EnrollmentService.modify_enrollment(
+        enrollment = CourseEnrollmentService.modify_enrollment(
             serializer.instance, self.request.user, **serializer.validated_data
         )
         serializer.instance = enrollment
@@ -151,7 +144,7 @@ class CourseEnrollmentViewSet(viewsets.ModelViewSet):
             name="id",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.PATH,
-            description="Enrollment ID"
+            description="Enrollment ID",
         ),
     ],
 )
@@ -162,14 +155,12 @@ class EnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
     - No course-specific filtering needed
     """
 
-    serializer_class = StudentEnrollmentSerializer
-    permission_classes = [EnrollmentPermission]
-    filter_backends = [OrderingFilter]
-    ordering_fields = ["enrolled_at", "unenrolled_at"]
+    serializer_class = CourseEnrollmentReadOnlyForStudentSerializer
+    permission_classes = [IsAuthenticated]
     ordering = ["-enrolled_at"]
 
     def get_queryset(self):
         """Return user's own enrollments"""
         return Enrollment.objects.select_related(
-            'course', 'course__teacher'
+            "course", "course__teacher"
         ).filter(user=self.request.user)

@@ -343,7 +343,7 @@ class StudentRestriction(models.Model):
         if self.course:
             return (
                 f"{self.teacher.username} restricted "
-                f"{self.student.username} from {self.course.name}"
+                f"{self.student.username} from {self.course.title}"
             )
         return (
             f"{self.teacher.username} restricted "

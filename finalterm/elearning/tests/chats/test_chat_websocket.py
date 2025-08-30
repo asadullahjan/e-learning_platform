@@ -5,63 +5,84 @@ from elearning_project.asgi import test_application
 from elearning.tests.test_base import BaseTestCase, debug_on_failure
 
 
-class WebSocketIntegrationTest(BaseTestCase):
+class ChatWebSocketTestCase(BaseTestCase):
     def setUp(self):
         super().setUp()
-        # Create test data
-        self.user = User.objects.create_user(
-            username="testuser",
-            email="testuser@example.com",
+        self.participant = User.objects.create_user(
+            username="participant",
+            email="participant@example.com",
             password="testpass",
             role="student",
         )
-        self.chat_room = ChatRoom.objects.create(
-            name="Test Chat Room",
-            created_by=self.user,
+        self.other_user = User.objects.create_user(
+            username="other",
+            email="other@example.com",
+            password="testpass",
+            role="student",
+        )
+
+        # Public chat
+        self.public_chat = ChatRoom.objects.create(
+            name="Public Chat",
+            created_by=self.participant,
             chat_type="group",
+            is_public=True,
         )
         ChatParticipant.objects.create(
-            user=self.user,
-            chat_room=self.chat_room,
+            user=self.participant, chat_room=self.public_chat
+        )
+
+        # Private chat
+        self.private_chat = ChatRoom.objects.create(
+            name="Private Chat",
+            created_by=self.participant,
+            chat_type="group",
+            is_public=False,
+        )
+        ChatParticipant.objects.create(
+            user=self.participant, chat_room=self.private_chat
         )
 
     @debug_on_failure
     @async_to_sync
-    async def test_websocket_connection(self):
-        """Test basic WebSocket connection"""
-
-        communicator = WebsocketCommunicator(
-            test_application, f"/ws/chat/{self.chat_room.id}/"
+    async def test_public_chat_access(self):
+        """Both participant and non-participant can join public chat"""
+        # participant
+        comm1 = WebsocketCommunicator(
+            test_application, f"/ws/chat/{self.public_chat.id}/"
         )
+        comm1.scope["user"] = self.participant
+        connected1, _ = await comm1.connect()
+        self.assertTrue(connected1)
+        await comm1.disconnect()
 
-        connected, _ = await communicator.connect()
-        self.assertTrue(connected)
-
-        # Clean up
-        await communicator.disconnect()
+        # non-participant
+        comm2 = WebsocketCommunicator(
+            test_application, f"/ws/chat/{self.public_chat.id}/"
+        )
+        comm2.scope["user"] = self.other_user
+        connected2, _ = await comm2.connect()
+        self.assertTrue(connected2)  # allowed in public chat
+        await comm2.disconnect()
 
     @debug_on_failure
     @async_to_sync
-    async def test_multiple_connections(self):
-        """Test multiple clients can connect to the same chat room"""
-
-        # Connect first client
-        client1 = WebsocketCommunicator(
-            test_application, f"/ws/chat/{self.chat_room.id}/"
+    async def test_private_chat_access(self):
+        """Only participants can join private chat"""
+        # participant
+        comm1 = WebsocketCommunicator(
+            test_application, f"/ws/chat/{self.private_chat.id}/"
         )
+        comm1.scope["user"] = self.participant
+        connected1, _ = await comm1.connect()
+        self.assertTrue(connected1)
+        await comm1.disconnect()
 
-        # Connect second client
-        client2 = WebsocketCommunicator(
-            test_application, f"/ws/chat/{self.chat_room.id}/"
+        # non-participant
+        comm2 = WebsocketCommunicator(
+            test_application, f"/ws/chat/{self.private_chat.id}/"
         )
-
-        try:
-            connected1, _ = await client1.connect()
-            connected2, _ = await client2.connect()
-
-            self.assertTrue(connected1)
-            self.assertTrue(connected2)
-
-        finally:
-            await client1.disconnect()
-            await client2.disconnect()
+        comm2.scope["user"] = self.other_user
+        connected2, _ = await comm2.connect()
+        self.assertFalse(connected2)  # should be rejected (4003)
+        await comm2.disconnect()

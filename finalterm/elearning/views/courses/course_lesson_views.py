@@ -14,13 +14,12 @@ from rest_framework import serializers
 
 from django.http import FileResponse
 
-from elearning.serializers import (
-    CourseLessonListSerializer,
-    CourseLessonDetailSerializer,
-    CourseLessonCreateSerializer,
-    CourseLessonUpdateSerializer,
+from elearning.serializers.courses import (
+    CourseLessonReadOnlySerializer,
+    CourseLessonListReadOnlySerializer,
+    CourseLessonWriteSerializer,
 )
-from elearning.permissions.courses.lesson_permissions import LessonPermission
+from elearning.permissions.courses import CourseLessonPermission
 from elearning.services.courses.course_lesson_service import (
     CourseLessonService,
 )
@@ -51,7 +50,8 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
     Students can view lessons for courses they're enrolled in.
     """
 
-    permission_classes = [LessonPermission]
+    http_method_names = ["get", "post", "patch", "delete"]
+    permission_classes = [CourseLessonPermission]
 
     def get_queryset(self):
         """Return lessons with permission filtering"""
@@ -62,44 +62,37 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
         # For list actions, use service layer filtering
         if self.action == "list":
             course_id = self.kwargs.get("course_pk")
-            if course_id:
-                try:
-                    # Use CourseService for consistent course access validation
-                    course = CourseService.get_course_with_permission_check(
-                        int(course_id), self.request.user
-                    )
-                    return CourseLessonService.get_lessons_for_course(
-                        course, self.request.user
-                    )
-                except Exception:
-                    return CourseLesson.objects.none()
-            return CourseLesson.objects.none()
+            # Use CourseService for consistent course access validation
+            course = CourseService.get_course_with_permission_check(
+                course_id, self.request.user
+            )
+            return CourseLessonService.get_lessons_for_course(
+                course, self.request.user
+            )
 
         # For detail actions, return all (service handles 403 vs 404)
         return CourseLesson.objects.all()
+
+    def get_serializer_class(self):
+        if self.action in ["list"]:
+            return CourseLessonListReadOnlySerializer
+        if self.action in ["create", "update", "partial_update"]:
+            return CourseLessonWriteSerializer
+        return CourseLessonReadOnlySerializer
 
     def retrieve(self, request, *args, **kwargs):
         """Override retrieve to use service for permission checking"""
         lesson_id = kwargs.get("pk")
         instance = CourseLessonService.get_lesson_with_permission_check(
-            int(lesson_id), request.user
+            lesson_id, request.user
         )
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
-    def get_serializer_class(self):
-        if self.action == "list":
-            return CourseLessonListSerializer
-        if self.action == "create":
-            return CourseLessonCreateSerializer
-        if self.action == "update" or self.action == "partial_update":
-            return CourseLessonUpdateSerializer
-        return CourseLessonDetailSerializer
-
     @extend_schema(
-        request=CourseLessonCreateSerializer,
+        request=CourseLessonWriteSerializer,
         responses={
-            201: CourseLessonDetailSerializer,
+            201: CourseLessonWriteSerializer,
             400: inline_serializer(
                 name="CourseLessonCreateBadRequestResponse",
                 fields={
@@ -123,7 +116,7 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
     )
     def perform_create(self, serializer):
         course_id = self.kwargs.get("course_pk")
-        # Get course object - no need for permission check here since 
+        # Get course object - no need for permission check here since
         # lesson creation is controlled by user role (teacher only)
         course = get_object_or_404(Course, id=course_id)
         user = self.request.user
@@ -136,9 +129,9 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
         serializer.instance = lesson
 
     @extend_schema(
-        request=CourseLessonUpdateSerializer,
+        request=CourseLessonWriteSerializer,
         responses={
-            200: CourseLessonDetailSerializer,
+            200: CourseLessonWriteSerializer,
             400: inline_serializer(
                 name="CourseLessonUpdateBadRequestResponse",
                 fields={
@@ -162,19 +155,20 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
     )
     def perform_update(self, serializer):
         user = self.request.user
-
-        # Check if this is a publish/unpublish operation
-        if "published_at" in serializer.validated_data:
-            lesson = CourseLessonService.toggle_lesson_publish_status(
-                serializer.instance, serializer.validated_data["published_at"]
-            )
-            serializer.instance = lesson
-            return
-
-        # Regular update
+        lesson_data = serializer.validated_data.copy()
         file_data = self.request.FILES.get("file")
+
+        # Handle publish/unpublish
+        published_at = lesson_data.pop("published_at", None)
+        lesson = serializer.instance
+        if published_at is not None:
+            lesson = CourseLessonService.toggle_lesson_publish_status(
+                lesson, published_at
+            )
+
+        # Handle normal update with remaining fields
         lesson = CourseLessonService.update_lesson_with_file(
-            serializer.instance, serializer.validated_data, user, file_data
+            lesson, lesson_data, user, file_data
         )
 
         serializer.instance = lesson
@@ -220,8 +214,9 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
         file_path = file_obj.file.path
         filename = file_obj.original_name
 
-        response = FileResponse(
-            open(file_path, "rb"), content_type="application/octet-stream"
-        )
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-        return response
+        with open(file_path, "rb") as f:
+            response = FileResponse(f, content_type="application/octet-stream")
+            response["Content-Disposition"] = (
+                f'attachment; filename="{filename}"'
+            )
+            return response

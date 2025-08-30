@@ -10,10 +10,11 @@ from drf_spectacular.utils import (
 )
 from rest_framework import serializers
 
-from ..serializers import (
+from elearning.serializers.user_serializers import UserReadOnlySerializer
+
+from elearning.serializers import (
     UserRegistrationSerializer,
     UserLoginSerializer,
-    UserSerializer,
 )
 
 
@@ -32,9 +33,7 @@ class AuthViewSet(viewsets.GenericViewSet):
             return UserRegistrationSerializer
         elif self.action == "login":
             return UserLoginSerializer
-        elif self.action == "logout":
-            return None  # No serializer needed for logout
-        return UserSerializer
+        return UserReadOnlySerializer
 
     def get_serializer(self, *args, **kwargs):
         """Override to handle logout action without serializer"""
@@ -51,7 +50,7 @@ class AuthViewSet(viewsets.GenericViewSet):
                     "message": serializers.CharField(
                         help_text="Success message"
                     ),
-                    "user": UserSerializer,
+                    "user": UserReadOnlySerializer,
                 },
             ),
             400: inline_serializer(
@@ -96,17 +95,16 @@ class AuthViewSet(viewsets.GenericViewSet):
         - 400: Invalid data
         """
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            login(request, user)
-            return Response(
-                {
-                    "message": "User registered successfully",
-                    "user": UserSerializer(user).data,
-                },
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        login(request, user)
+        return Response(
+            {
+                "message": "User registered successfully",
+                "user": UserReadOnlySerializer(user).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
     @extend_schema(
         request=UserLoginSerializer,
@@ -117,7 +115,7 @@ class AuthViewSet(viewsets.GenericViewSet):
                     "message": serializers.CharField(
                         help_text="Success message"
                     ),
-                    "user": UserSerializer,
+                    "user": UserReadOnlySerializer,
                 },
             ),
             400: inline_serializer(
@@ -160,17 +158,16 @@ class AuthViewSet(viewsets.GenericViewSet):
         - 400: Invalid credentials
         """
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.validated_data["user"]
-            login(request, user)
-            return Response(
-                {
-                    "message": "Login successful",
-                    "user": UserSerializer(user).data,
-                },
-                status=status.HTTP_200_OK,
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data["user"]
+        login(request, user)
+        return Response(
+            {
+                "message": "Login successful",
+                "user": UserReadOnlySerializer(user).data,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @extend_schema(
         responses={

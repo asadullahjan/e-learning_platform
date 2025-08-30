@@ -9,7 +9,7 @@ from rest_framework.permissions import BasePermission
 from elearning.exceptions import ServiceError
 
 
-class LessonPermission(BasePermission):
+class CourseLessonPermission(BasePermission):
     """
     Single permission class for all lesson operations.
 
@@ -96,12 +96,16 @@ class LessonPermission(BasePermission):
         return False
 
 
-class LessonPolicy:
+class CourseLessonPolicy:
     """
     Policy class for course lesson operations.
 
     This class encapsulates all business rules for lesson operations
     and can be used by both permissions and services.
+    
+    Note: This policy does NOT check student restrictions directly. Access
+    is determined by enrollment status (enrollment.is_active), which is
+    automatically managed by the restriction service.
     """
 
     @staticmethod
@@ -132,6 +136,8 @@ class LessonPolicy:
             return True
 
         # Enrolled students can view published lessons in published courses
+        # This automatically handles restrictions since restricted students
+        # have inactive enrollments
         if (
             lesson.published_at
             and lesson.course.published_at

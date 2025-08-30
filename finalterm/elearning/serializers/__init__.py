@@ -1,58 +1,29 @@
-# Import all serializers for easy access
 from .user_serializers import (
+    UserReadOnlySerializer,
+    UserDetailReadOnlySerializer,
     UserRegistrationSerializer,
     UserLoginSerializer,
-    UserSerializer,
-    UserDetailSerializer,
+    UserUpdateSerializer,
 )
-from .courses.course_serializers import (
-    CourseSerializer,
-    CourseDetailSerializer,
-    CourseListSerializer,
+from .status_serializers import (
+    StatusReadOnlySerializer,
+    StatusWriteSerializer,
 )
-from .courses.enrollment_serializers import (
-    EnrollmentSerializer,
-    StudentEnrollmentSerializer,
-    TeacherEnrollmentSerializer,
-)
-from .courses.course_lesson_serializers import (
-    CourseLessonListSerializer,
-    CourseLessonDetailSerializer,
-    CourseLessonCreateSerializer,
-    CourseLessonUpdateSerializer,
-)
-from .courses.course_feedback_serializer import (
-    CourseFeedbackCreateUpdateSerializer,
-    CourseFeedbackListSerializerForCourse,
-    CourseFeedbackListSerializerForUser,
-)
-from .courses.student_restriction_serializer import (
-    StudentRestrictionCreateUpdateSerializer,
-    StudentRestrictionListSerializer,
-)
+
 from .notification_serializers import (
-    NotificationSerializer,
+    NotificationReadOnlySerializer,
 )
 
 __all__ = [
+    # Status
+    "StatusReadOnlySerializer",
+    "StatusWriteSerializer",
+    # Notification
+    "NotificationReadOnlySerializer",
+    # User
+    "UserReadOnlySerializer",
+    "UserDetailReadOnlySerializer",
     "UserRegistrationSerializer",
     "UserLoginSerializer",
-    "UserSerializer",
-    "UserDetailSerializer",
-    "CourseSerializer",
-    "CourseListSerializer",
-    "CourseDetailSerializer",
-    "EnrollmentSerializer",
-    "StudentEnrollmentSerializer",
-    "TeacherEnrollmentSerializer",
-    "CourseLessonListSerializer",
-    "CourseLessonDetailSerializer",
-    "CourseLessonCreateSerializer",
-    "CourseLessonUpdateSerializer",
-    "CourseFeedbackCreateUpdateSerializer",
-    "CourseFeedbackListSerializerForCourse",
-    "CourseFeedbackListSerializerForUser",
-    "StudentRestrictionCreateUpdateSerializer",
-    "StudentRestrictionListSerializer",
-    "NotificationSerializer",
+    "UserUpdateSerializer",
 ]

@@ -10,17 +10,18 @@ from drf_spectacular.utils import (
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import inline_serializer
 from rest_framework import serializers
-from elearning.models import StudentRestriction
-from elearning.serializers.courses.student_restriction_serializer import (
-    StudentRestrictionCreateUpdateSerializer,
-    StudentRestrictionDetailSerializer,
-    StudentRestrictionListSerializer,
+from elearning.exceptions import ServiceError
+from elearning.models import StudentRestriction, User, Course
+from elearning.permissions.courses.course_restriction_permissions import (
+    CourseStudentRestrictionPolicy,
 )
-from elearning.services.courses.student_restriction_service import (
-    StudentRestrictionService,
+from elearning.serializers.courses import (
+    CourseStudentRestrictionReadOnlySerializer,
+    CourseStudentRestrictionWriteSerializer,
 )
-from elearning.permissions.courses.restriction_permissions import (
-    StudentRestrictionPermission,
+from elearning.services.courses import CourseStudentRestrictionService
+from elearning.permissions.courses import (
+    CourseStudentRestrictionPermission,
 )
 
 
@@ -35,22 +36,20 @@ from elearning.permissions.courses.restriction_permissions import (
         ),
     ],
 )
-class StudentRestrictionViewSet(viewsets.ModelViewSet):
+class CourseStudentRestrictionViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing student restrictions.
     Only allows list, create, and delete operations.
     """
 
-    permission_classes = [StudentRestrictionPermission]
+    http_method_names = ["get", "post", "patch", "delete"]
+    permission_classes = [CourseStudentRestrictionPermission]
 
     def get_serializer_class(self):
         """Return appropriate serializer class based on action."""
         if self.action in ["create", "update", "partial_update"]:
-            return StudentRestrictionCreateUpdateSerializer
-        elif self.action == "retrieve":
-            return StudentRestrictionDetailSerializer
-        else:
-            return StudentRestrictionListSerializer
+            return CourseStudentRestrictionWriteSerializer
+        return CourseStudentRestrictionReadOnlySerializer
 
     def get_queryset(self):
         """Return restrictions with permission filtering"""
@@ -59,7 +58,7 @@ class StudentRestrictionViewSet(viewsets.ModelViewSet):
 
         # For list actions, use service layer filtering
         if self.action == "list":
-            return StudentRestrictionService.get_teacher_restrictions(
+            return CourseStudentRestrictionService.get_teacher_restrictions(
                 self.request.user
             )
 
@@ -69,18 +68,18 @@ class StudentRestrictionViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         """Override retrieve to use service for permission checking"""
         restriction_id = kwargs.get("pk")
-        instance = (
-            StudentRestrictionService.get_restriction_with_permission_check(
-                int(restriction_id), request.user
-            )
+        instance = CourseStudentRestrictionService.get_restriction_with_permission_check(
+            int(restriction_id), request.user
         )
+        if not instance:
+            raise ServiceError.not_found("Student restriction not found")
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
     @extend_schema(
-        request=StudentRestrictionCreateUpdateSerializer,
+        request=CourseStudentRestrictionWriteSerializer,
         responses={
-            201: StudentRestrictionDetailSerializer,
+            201: CourseStudentRestrictionWriteSerializer,
             400: inline_serializer(
                 name="StudentRestrictionCreateBadRequestResponse",
                 fields={
@@ -103,12 +102,11 @@ class StudentRestrictionViewSet(viewsets.ModelViewSet):
     )
     def perform_create(self, serializer):
         """Create restriction using the service."""
-        # ✅ CORRECT: ServiceError handled automatically by custom
-        # exception handler
-        restriction = StudentRestrictionService.create_restriction(
+
+        restriction = CourseStudentRestrictionService.create_restriction(
             teacher=self.request.user,
-            student_id=serializer.validated_data["student_id"],
-            course_id=serializer.validated_data.get("course_id"),
+            student=serializer.validated_data.get("student"),
+            course=serializer.validated_data.get("course"),
             reason=serializer.validated_data.get("reason", ""),
         )
         # Update serializer instance for response
@@ -121,7 +119,9 @@ class StudentRestrictionViewSet(viewsets.ModelViewSet):
     )
     def perform_destroy(self, instance):
         """Delete restriction using the service."""
-        StudentRestrictionService.delete_restriction(instance, self.request.user)
+        CourseStudentRestrictionService.delete_restriction(
+            instance, self.request.user
+        )
 
     @extend_schema(
         parameters=[
@@ -182,29 +182,20 @@ class StudentRestrictionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            from elearning.models import User, Course
+        student = get_object_or_404(User, id=int(student_id))
 
-            student = get_object_or_404(User, id=student_id)
-            course = None
+        course = (
+            get_object_or_404(Course, id=int(course_id)) if course_id else None
+        )
 
-            if course_id:
-                course = get_object_or_404(Course, id=course_id)
+        is_restricted = CourseStudentRestrictionPolicy.is_restricted(
+            student, course, raise_exception=True
+        )
 
-            is_restricted = StudentRestrictionService.is_student_restricted(
-                student, request.user, course
-            )
-
-            return Response(
-                {
-                    "student_id": student_id,
-                    "course_id": course_id,
-                    "is_restricted": is_restricted,
-                }
-            )
-
-        except (User.DoesNotExist, Course.DoesNotExist):
-            return Response(
-                {"detail": "Student or course not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        return Response(
+            {
+                "student_id": student_id,
+                "course_id": course_id,
+                "is_restricted": is_restricted,
+            }
+        )

@@ -1,10 +1,22 @@
+"""
+Chat participant permissions.
+
+This module contains permission classes that control access to chat
+participant operations including adding, removing, and role management.
+"""
+
 from rest_framework.permissions import BasePermission
 from elearning.models import ChatParticipant
 from elearning.exceptions import ServiceError
 
 
 class ChatParticipantPermission(BasePermission):
-    """DRF permission class for chat participant operations - basic checks only"""
+    """
+    DRF permission class for chat participant operations.
+
+    Provides basic permission checks for chat participant operations.
+    Detailed business logic is handled by the ChatParticipantPolicy class.
+    """
 
     def has_permission(self, request, view):
         """Basic permission checks without database queries"""
@@ -30,7 +42,13 @@ class ChatParticipantPermission(BasePermission):
 
 
 class ChatParticipantPolicy:
-    """Policy class for chat participant operations"""
+    """
+    Policy class for chat participant operations.
+
+    Note: This policy does NOT check student restrictions directly. For course
+    chats, access is determined by enrollment status (enrollment.is_active),
+    which is automatically managed by the restriction service.
+    """
 
     @staticmethod
     def check_can_add_participant(user, chat_room, raise_exception=False):
@@ -101,17 +119,13 @@ class ChatParticipantPolicy:
         if user == target_user:
             raise ServiceError.permission_denied("Cannot change your own role")
 
-        # Direct chat creators can update roles
-        if chat_room.chat_type == "direct" and chat_room.created_by == user:
+        if (
+            not chat_room.chat_type == "direct"
+            and chat_room.created_by == user
+        ):
             return True
 
-        # Admins can update roles
-        if ChatParticipant.objects.filter(
-            chat_room=chat_room, user=user, role="admin"
-        ).exists():
-            return True
-
-        error_msg = "Only admins can update participant roles"
+        error_msg = "Only chat creator can update participant roles"
         if raise_exception:
             raise ServiceError.permission_denied(error_msg)
         return False

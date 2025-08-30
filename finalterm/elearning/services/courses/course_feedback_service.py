@@ -1,7 +1,7 @@
 from django.db import transaction
 from elearning.models import CourseFeedback, Course, User
 from elearning.exceptions import ServiceError
-from elearning.permissions.courses.feedback_permissions import (
+from elearning.permissions.courses import (
     CourseFeedbackPolicy,
 )
 from elearning.services.courses.course_service import CourseService
@@ -20,6 +20,10 @@ class CourseFeedbackService:
     The service follows the single responsibility principle and provides
     a clean interface for views to interact with feedback-related operations.
     All business rules are centralized here to ensure consistency.
+    
+    Note: This service does NOT check student restrictions directly. Access
+    is determined by enrollment status (enrollment.is_active), which is
+    automatically managed by the restriction service.
     """
 
     @staticmethod
@@ -153,11 +157,14 @@ class CourseFeedbackService:
 
     @staticmethod
     def get_feedback_with_permission_check(feedback_id: int, user: User):
-        """Get feedback with permission check including course access validation"""
+        """
+        Get feedback with permission check including course access validation
+        """
         try:
             feedback = CourseFeedback.objects.get(id=feedback_id)
 
-            # First check if user can access the course this feedback belongs to
+            # First check if user can access the course this feedback
+            # belongs to
             CourseService.get_course_with_permission_check(
                 feedback.course.id, user
             )

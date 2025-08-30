@@ -5,12 +5,13 @@ This module contains permission classes that control access to user profiles
 and user management operations.
 """
 
+from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import BasePermission
 from elearning.models import User
 from elearning.exceptions import ServiceError
 
 
-class IsUserOwner(BasePermission):
+class IsUserAuthenticatedAndOwner(BasePermission):
     """
     Permission class for user profile operations.
 
@@ -18,11 +19,18 @@ class IsUserOwner(BasePermission):
     This ensures privacy and data security.
     """
 
+    def has_permission(self, request, view):
+        """Check if user is authenticated"""
+        if not request.user.is_authenticated:
+            self.message = "You must be logged in to access user profiles"
+            raise NotAuthenticated(self.message)
+        return True
+
     def has_object_permission(self, request, view, obj):
         """Check if user is the owner of the profile"""
         if not request.user.is_authenticated:
             self.message = "You must be logged in to access user profiles"
-            return False
+            raise NotAuthenticated(self.message)
 
         if obj != request.user:
             self.message = "You can only view and modify your own profile"
@@ -105,7 +113,8 @@ class UserPolicy:
 
         This method can be used by both permissions and services:
         - For permissions: returns boolean and sets custom message
-        - For services: raises ServiceError with detailed message
+        - For services: raises ServiceError instead of
+        returning False
 
         Args:
             user: User attempting to modify profile
@@ -151,7 +160,8 @@ class UserPolicy:
 
         This method can be used by both permissions and services:
         - For permissions: returns boolean and sets custom message
-        - For services: raises ServiceError with detailed message
+        - For services: raises ServiceError instead of
+        returning False
 
         Args:
             user: User attempting to delete

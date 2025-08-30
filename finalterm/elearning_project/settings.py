@@ -166,13 +166,23 @@ ASGI_APPLICATION = "elearning_project.asgi.application"
 # Channel Layers for WebSockets
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")],
-            "prefix": ENVIRONMENT_PREFIX,
-            "capacity": 1500,
-            "expiry": 3600,
-        },
+        "BACKEND": (
+            "channels.layers.InMemoryChannelLayer"
+            if "test" in sys.argv
+            else ("channels_redis.core.RedisChannelLayer")
+        ),
+        "CONFIG": (
+            {
+                "hosts": [
+                    os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")
+                ],
+                "prefix": ENVIRONMENT_PREFIX,
+                "capacity": 1500,
+                "expiry": 3600,
+            }
+            if "test" not in sys.argv
+            else {}
+        ),
     },
 }
 
@@ -180,12 +190,12 @@ CHANNEL_LAYERS = {
 # Django REST Framework Configuration
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ],
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
-    ],
+    # "DEFAULT_PERMISSION_CLASSES": [
+    #     "rest_framework.permissions.IsAuthenticated",
+    # ],
     "DEFAULT_PAGINATION_CLASS": (
         "rest_framework.pagination.PageNumberPagination"
     ),

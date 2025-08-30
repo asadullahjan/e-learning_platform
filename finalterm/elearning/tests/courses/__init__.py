@@ -1,13 +1,15 @@
-from .test_course_views import CourseViewsTest
+from .test_course_views import CourseViewsTestCase
 from .test_course_lesson_views import CourseLessonViewSetTestCase
 from .test_course_feedback_views import CourseFeedbackViewsTestCase
-from .test_student_restriction_views import StudentRestrictionViewsTestCase
-from .test_enrollment_views import EnrollmentViewsTest
+from .test_course_student_restriction_views import (
+    CourseStudentRestrictionViewsTestCase,
+)
+from .test_course_enrollment_views import CourseEnrollmentViewsTest
 
 __all__ = [
-    "CourseViewsTest",
+    "CourseViewsTestCase",
     "CourseLessonViewSetTestCase",
     "CourseFeedbackViewsTestCase",
-    "StudentRestrictionViewsTestCase",
-    "EnrollmentViewsTest",
+    "CourseStudentRestrictionViewsTestCase",
+    "CourseEnrollmentViewsTest",
 ]

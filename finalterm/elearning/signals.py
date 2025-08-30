@@ -8,6 +8,7 @@ from .models import (
     File,
     StudentRestriction,
 )
+from elearning.services.courses import CourseStudentRestrictionService
 
 
 @receiver(post_save, sender=Enrollment)
@@ -21,29 +22,19 @@ def sync_user_course_chat(sender, instance, created, **kwargs):
         return
 
     if instance.is_active:
-        # Check if user is restricted before adding to course chat
-        from elearning.services.courses.student_restriction_service import (
-            StudentRestrictionService,
+        # User is enrolled and active - add/activate them in course chat
+        participant, created = ChatParticipant.objects.get_or_create(
+            chat_room=chatroom,
+            user=instance.user,
+            defaults={"role": "participant", "is_active": True},
         )
-
-        restriction_info = StudentRestrictionService.get_restriction_info(
-            instance.user, instance.course
-        )
-
-        # Only add to chat if not restricted
-        if not restriction_info["is_restricted"]:
-            # Use get_or_create with soft deletion handling
-            participant, created = ChatParticipant.objects.get_or_create(
-                chat_room=chatroom,
-                user=instance.user,
-                defaults={"role": "participant", "is_active": True},
-            )
-            # If participant exists but is inactive, reactivate them
-            if not created and not participant.is_active:
-                participant.is_active = True
-                participant.save(update_fields=["is_active"])
+        # If participant exists but is inactive, reactivate them
+        if not created and not participant.is_active:
+            participant.is_active = True
+            participant.save(update_fields=["is_active"])
     else:
-        # Soft delete: set is_active to False instead of hard delete
+        # User is not enrolled or enrollment is inactive - deactivate them in
+        # course chat
         ChatParticipant.objects.filter(
             chat_room=chatroom, user=instance.user, is_active=True
         ).update(is_active=False)
@@ -56,22 +47,14 @@ def apply_restriction_effects(sender, instance, created, **kwargs):
         return
 
     # Apply restriction effects using the service
-    from elearning.services.courses.student_restriction_service import (
-        StudentRestrictionService,
-    )
-
-    StudentRestrictionService._apply_restriction_effects(instance)
+    CourseStudentRestrictionService.apply_restriction_effects(instance)
 
 
 @receiver(post_delete, sender=StudentRestriction)
 def remove_restriction_effects(sender, instance, **kwargs):
     """Remove restriction effects when a restriction is deleted."""
     # Remove restriction effects using the service
-    from elearning.services.courses.student_restriction_service import (
-        StudentRestrictionService,
-    )
-
-    StudentRestrictionService._remove_restriction_effects(instance)
+    CourseStudentRestrictionService.remove_restriction_effects(instance)
 
 
 @receiver(pre_delete, sender=File)

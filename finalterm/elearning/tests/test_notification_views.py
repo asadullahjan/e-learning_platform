@@ -1,17 +1,16 @@
 from django.contrib.auth import get_user_model
 from rest_framework import status
-from rest_framework.test import APIClient
 
 from elearning.models import Notification
-from elearning.tests.test_base import BaseTestCase, debug_on_failure
+from elearning.tests.test_base import BaseAPITestCase, debug_on_failure
 
 User = get_user_model()
 
 
-class NotificationViewSetTest(BaseTestCase):
+class NotificationViewSetTest(BaseAPITestCase):
     def setUp(self):
         """Set up test data"""
-        self.client = APIClient()
+        super().setUp()
 
         # Create test users
         self.user1 = User.objects.create_user(
@@ -140,7 +139,7 @@ class NotificationViewSetTest(BaseTestCase):
         )
         response = self.log_response(self.client.patch(other_user_mark_url))
 
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @debug_on_failure
     def test_mark_nonexistent_notification_read(self):

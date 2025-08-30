@@ -2,9 +2,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from elearning.models import Notification, User
 from elearning.exceptions import ServiceError
-from elearning.permissions.users.notification_permissions import (
-    NotificationPolicy
-)
+from elearning.permissions import NotificationPolicy
 
 
 class NotificationService:
@@ -86,7 +84,7 @@ class NotificationService:
     ) -> Notification:
         """Mark notification as read with policy-based gatekeeping"""
         # Use policy for gatekeeping
-        NotificationPolicy.check_can_mark_notification_read(
+        NotificationPolicy.check_can_mark_as_read(
             user, notification, raise_exception=True
         )
 
@@ -110,7 +108,7 @@ class NotificationService:
         NotificationPolicy.check_can_delete_notification(
             user, notification, raise_exception=True
         )
-        
+
         notification.delete()
 
     @staticmethod

@@ -1,60 +1,47 @@
 from elearning.models import ChatParticipant, ChatRoom, User
 from elearning.exceptions import ServiceError
-from elearning.permissions.chats.chat_participant_permissions import (
-    ChatParticipantPolicy,
-)
+from elearning.permissions.chats import ChatParticipantPolicy
 
 
 class ChatParticipantsService:
-    """Service for managing chat participants"""
+    """
+    Service for managing chat participants.
+
+    Note: This service does NOT check student restrictions directly. For course
+    chats, access is determined by enrollment status (enrollment.is_active),
+    which is automatically managed by the restriction service.
+    """
 
     @staticmethod
-    def add_user_to_chat_by_username(
-        chat_room: ChatRoom, username: str, requesting_user: User
+    def add_participant_to_chat(
+        chat_room: ChatRoom, user: User, requesting_user: User
     ):
-        """Add a user to a chat room by username"""
+        """Add a user to a chat room"""
         # Check permissions using policy
         ChatParticipantPolicy.check_can_add_participant(
             requesting_user, chat_room, raise_exception=True
         )
 
-        try:
-            user = User.objects.select_related().get(
-                username=username, is_active=True
-            )
-        except User.DoesNotExist:
-            raise ServiceError.not_found(f"User '{username}' not found")
-
-        # Check if user is restricted from course chat
+        # For course chats, check if user is enrolled and enrollment is active
         if chat_room.chat_type == "course" and chat_room.course:
-            from elearning.services.courses.student_restriction_service import (
-                StudentRestrictionService,
-            )
+            # Check if user has active enrollment (this handles restrictions
+            # automatically)
+            enrollment_exists = chat_room.course.enrollments.filter(
+                user=user, is_active=True
+            ).exists()
 
-            restriction_info = StudentRestrictionService.get_restriction_info(
-                user, chat_room.course
-            )
-
-            if restriction_info["is_restricted"]:
-                if restriction_info["restriction_type"] == "teacher_all_courses":
-                    error_msg = (
-                        f"User '{username}' is restricted from accessing "
-                        f"all courses by {restriction_info['teacher']}. "
-                        f"Reason: {restriction_info['reason']}"
-                    )
-                else:  # course-specific
-                    error_msg = (
-                        f"User '{username}' is restricted from accessing "
-                        f"this course. Reason: {restriction_info['reason']}"
-                    )
-                raise ServiceError.permission_denied(error_msg)
+            if not enrollment_exists:
+                raise ServiceError.permission_denied(
+                    f"User '{user.username}' must be enrolled in this course "
+                    f"to participate in course chat"
+                )
 
         # Check if user is already a participant
         if ChatParticipant.objects.filter(
             chat_room=chat_room, user=user
         ).exists():
             raise ServiceError.conflict(
-                f"User '{username}' is already a participant in this chat"
+                f"User '{user.username}' is already a participant in this chat"
             )
 
         # Create new participant
@@ -76,20 +63,20 @@ class ChatParticipantsService:
 
         participants = []
         for user in users:
-            # Check if user is restricted from course chat
+            # For course chats, check if user is enrolled and enrollment is
+            # active
             if chat_room.chat_type == "course" and chat_room.course:
-                from elearning.services.courses.student_restriction_service import (
-                    StudentRestrictionService,
-                )
-                
-                restriction_info = StudentRestrictionService.get_restriction_info(
-                    user, chat_room.course
-                )
-                
-                if restriction_info["is_restricted"]:
-                    # Skip restricted users instead of raising error for bulk operations
+                # Check if user has active enrollment (this handles
+                # restrictions automatically)
+                enrollment_exists = chat_room.course.enrollments.filter(
+                    user=user, is_active=True
+                ).exists()
+
+                if not enrollment_exists:
+                    # Skip users without active enrollment instead of raising
+                    # error for bulk operations
                     continue
-            
+
             if not ChatParticipant.objects.filter(
                 chat_room=chat_room, user=user
             ).exists():
@@ -104,67 +91,50 @@ class ChatParticipantsService:
     def remove_participant_from_chat(
         chat_room: ChatRoom, user: User, requesting_user: User
     ):
-        """Remove a participant from a chat room (soft delete)"""
+        """Remove a user from a chat room"""
+
         # Check permissions using policy
         ChatParticipantPolicy.check_can_remove_participant(
             requesting_user, chat_room, user, raise_exception=True
         )
 
-        try:
-            participant = ChatParticipant.objects.select_related(
-                'user', 'chat_room', 'chat_room__course'
-            ).get(
-                chat_room=chat_room, user=user, is_active=True
-            )
-            participant.is_active = False
-            participant.save()
+        # Remove participant
+        participant = ChatParticipant.objects.filter(
+            chat_room=chat_room, user=user
+        ).first()
+
+        if participant:
+            participant.delete()
             return True
-        except ChatParticipant.DoesNotExist:
-            raise ServiceError.not_found(
-                f"User '{user.username}' is not an active participant " f"in this chat"
-            )
+
+        return False
 
     @staticmethod
-    def join_public_chat(chat_room_id: int, user: User):
-        """Join a public chat room"""
-        # Get chat room and check if it exists
-        try:
-            chat_room = ChatRoom.objects.select_related('course').get(id=chat_room_id)
-        except ChatRoom.DoesNotExist:
-            raise ServiceError.not_found("Chat room not found")
-
-        # Check if user can join this chat
+    def join_chat(chat_room: ChatRoom, user: User):
+        """Join a chat room"""
+        # Check permissions using policy
         ChatParticipantPolicy.check_can_join_chat(
             user, chat_room, raise_exception=True
         )
 
-        # Check if user is restricted from course chat
+        # For course chats, check if user is enrolled and enrollment is active
         if chat_room.chat_type == "course" and chat_room.course:
-            from elearning.services.courses.student_restriction_service import (
-                StudentRestrictionService,
-            )
-            
-            restriction_info = StudentRestrictionService.get_restriction_info(
-                user, chat_room.course
-            )
-            
-            if restriction_info["is_restricted"]:
-                if restriction_info["restriction_type"] == "teacher_all_courses":
-                    error_msg = (
-                        f"You are restricted from accessing all courses by "
-                        f"{restriction_info['teacher']}. "
-                        f"Reason: {restriction_info['reason']}"
-                    )
-                else:  # course-specific
-                    error_msg = (
-                        f"You are restricted from accessing this course. "
-                        f"Reason: {restriction_info['reason']}"
-                    )
-                raise ServiceError.permission_denied(error_msg)
+            # Check if user has active enrollment (this handles restrictions
+            # automatically)
+            enrollment_exists = chat_room.course.enrollments.filter(
+                user=user, is_active=True
+            ).exists()
+
+            if not enrollment_exists:
+                raise ServiceError.permission_denied(
+                    "You must be enrolled in this course to join course chat"
+                )
 
         # Check if already a participant
         participant, created = ChatParticipant.objects.get_or_create(
-            chat_room=chat_room, user=user, defaults={"role": "participant", "is_active": True}
+            chat_room=chat_room,
+            user=user,
+            defaults={"role": "participant", "is_active": True},
         )
 
         if not created and not participant.is_active:
@@ -175,170 +145,127 @@ class ChatParticipantsService:
         return participant
 
     @staticmethod
-    def leave_chat(chat_room_id: int, user: User):
-        """Leave a chat room (deactivate participation)"""
-        # Get chat room and check if it exists
-        try:
-            chat_room = ChatRoom.objects.get(id=chat_room_id)
-        except ChatRoom.DoesNotExist:
-            raise ServiceError.not_found("Chat room not found")
+    def leave_chat(chat_room: ChatRoom, user: User):
+        """Leave a chat room"""
+        # Remove participant
+        participant = ChatParticipant.objects.filter(
+            chat_room=chat_room, user=user
+        ).first()
 
-        try:
-            participant = ChatParticipant.objects.select_related(
-                'user', 'chat_room', 'chat_room__course'
-            ).get(
-                chat_room=chat_room, user=user
-            )
-            participant.is_active = False
-            participant.save()
+        if participant:
+            participant.delete()
             return True
-        except ChatParticipant.DoesNotExist:
-            return False
+
+        return False
 
     @staticmethod
     def update_participant_role(
-        chat_room: ChatRoom, admin_user: User, target_user: User, new_role: str
+        chat_room: ChatRoom,
+        requesting_user: User,
+        user: User,
+        new_role: str,
     ):
-        """Update a participant's role (admin only)"""
-        # Check if admin user can update roles
+        """Update participant role"""
+        # user is now a User instance, no need to query
+
+        # Check permissions using policy
         ChatParticipantPolicy.check_can_update_participant_role(
-            admin_user, chat_room, target_user, raise_exception=True
+            requesting_user, chat_room, user, raise_exception=True
         )
 
         try:
-            participant = ChatParticipant.objects.select_related(
-                'user', 'chat_room', 'chat_room__course'
-            ).get(
-                chat_room=chat_room, user=target_user
+            participant = ChatParticipant.objects.get(
+                chat_room=chat_room, user=user
             )
             participant.role = new_role
             participant.save()
             return participant
         except ChatParticipant.DoesNotExist:
             raise ServiceError.not_found(
-                f"User '{target_user.username}' is not a participant "
-                f"in this chat"
-            )
-
-    @staticmethod
-    def deactivate_chat_for_user(
-        chat_room: ChatRoom, user: User, requesting_user: User = None
-    ):
-        """Deactivate a user's participation in a chat"""
-        # If requesting_user is provided, check permissions
-        if requesting_user and requesting_user != user:
-            ChatParticipantPolicy.check_can_deactivate_participant(
-                requesting_user, chat_room, user, raise_exception=True
-            )
-
-        try:
-            participant = ChatParticipant.objects.select_related(
-                'user', 'chat_room', 'chat_room__course'
-            ).get(
-                chat_room=chat_room, user=user
-            )
-            participant.is_active = False
-            participant.save()
-            return True
-        except ChatParticipant.DoesNotExist:
-            raise ServiceError.not_found(
                 f"User '{user.username}' is not a participant " f"in this chat"
             )
 
     @staticmethod
-    def deactivate_participant_by_admin(
-        chat_room: ChatRoom, admin_user: User, target_user: User
+    def deactivate_participant(
+        chat_room: ChatRoom, user: User, requesting_user: User
     ):
-        """Deactivate a participant from a chat (admin only)"""
-        # Check if admin user can deactivate participants
+        """Deactivate a participant"""
+
+        # Check permissions using policy
         ChatParticipantPolicy.check_can_deactivate_participant(
-            admin_user, chat_room, target_user, raise_exception=True
+            requesting_user, chat_room, user, raise_exception=True
         )
 
-        try:
-            participant = ChatParticipant.objects.select_related(
-                'user', 'chat_room', 'chat_room__course'
-            ).get(
-                chat_room=chat_room, user=target_user
-            )
+        # Deactivate participant
+        participant = ChatParticipant.objects.filter(
+            chat_room=chat_room, user=user
+        ).first()
+
+        if participant:
             participant.is_active = False
             participant.save()
-            return True
-        except ChatParticipant.DoesNotExist:
-            raise ServiceError.not_found(
-                f"User '{target_user.username}' is not a participant "
-                f"in this chat"
-            )
+            return participant
+
+        return None
 
     @staticmethod
-    def reactivate_chat_for_user(
-        chat_room: ChatRoom, user: User, requesting_user: User = None
+    def reactivate_participant(
+        chat_room: ChatRoom, user: User, requesting_user: User
     ):
-        """Reactivate a user's participation in a chat"""
-        # If requesting_user is provided, check permissions
-        if requesting_user and requesting_user != user:
-            ChatParticipantPolicy.check_can_reactivate_participant(
-                requesting_user, chat_room, user, raise_exception=True
-            )
+        """Reactivate a participant"""
 
-        # Check if user is restricted from course chat
+        # Check permissions using policy
+        ChatParticipantPolicy.check_can_reactivate_participant(
+            requesting_user, chat_room, user, raise_exception=True
+        )
+
+        # For course chats, check if user is enrolled and enrollment is active
         if chat_room.chat_type == "course" and chat_room.course:
-            from elearning.services.courses.student_restriction_service import (
-                StudentRestrictionService,
-            )
-            
-            restriction_info = StudentRestrictionService.get_restriction_info(
-                user, chat_room.course
-            )
-            
-            if restriction_info["is_restricted"]:
-                if restriction_info["restriction_type"] == "teacher_all_courses":
-                    error_msg = (
-                        f"You are restricted from accessing all courses by "
-                        f"{restriction_info['teacher']}. "
-                        f"Reason: {restriction_info['reason']}"
-                    )
-                else:  # course-specific
-                    error_msg = (
-                        f"You are restricted from accessing this course. "
-                        f"Reason: {restriction_info['reason']}"
-                    )
-                raise ServiceError.permission_denied(error_msg)
+            # Check if user has active enrollment (this handles restrictions
+            # automatically)
+            enrollment_exists = chat_room.course.enrollments.filter(
+                user=user, is_active=True
+            ).exists()
 
-        try:
-            participant = ChatParticipant.objects.select_related(
-                'user', 'chat_room', 'chat_room__course'
-            ).get(
-                chat_room=chat_room, user=user
-            )
+            if not enrollment_exists:
+                raise ServiceError.permission_denied(
+                    "User must be enrolled in this course to participate in "
+                    "course chat"
+                )
+
+        # Reactivate participant
+        participant = ChatParticipant.objects.filter(
+            chat_room=chat_room, user=user
+        ).first()
+
+        if participant:
             participant.is_active = True
             participant.save()
-            return True
-        except ChatParticipant.DoesNotExist:
-            # Create new participant if doesn't exist
-            participant = ChatParticipant.objects.create(
-                chat_room=chat_room, user=user, role="participant", is_active=True
-            )
-            return True
+            return participant
+
+        return None
 
     @staticmethod
-    def get_chat_participants(
-        chat_room_id: int,
-        requesting_user: User,
-        is_active: bool = True,
-    ):
-        """Get all participants for a chat room"""
-        # Get chat room and check if it exists
-        try:
-            chat_room = ChatRoom.objects.get(id=chat_room_id)
-        except ChatRoom.DoesNotExist:
-            raise ServiceError.not_found("Chat room not found")
-
-        # Check if user can get participants of this chat room
+    def get_participants(chat_room: ChatRoom, user: User):
+        """Get participants of a chat room"""
+        # Check permissions using policy
         ChatParticipantPolicy.check_can_get_participants(
-            requesting_user, chat_room, raise_exception=True
+            user, chat_room, raise_exception=True
         )
 
         return ChatParticipant.objects.filter(
-            chat_room=chat_room, is_active=is_active
+            chat_room=chat_room,
+            is_active=True,
+        ).select_related("user")
+
+    @staticmethod
+    def get_active_participants(chat_room: ChatRoom, user: User):
+        """Get active participants of a chat room"""
+        # Check permissions using policy
+        ChatParticipantPolicy.check_can_get_participants(
+            user, chat_room, raise_exception=True
+        )
+
+        return ChatParticipant.objects.filter(
+            chat_room=chat_room, is_active=True
         ).select_related("user")

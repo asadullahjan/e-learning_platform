@@ -12,10 +12,10 @@ from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
 
 from elearning.models import CourseFeedback, Course
-from elearning.permissions import CourseFeedbackPermission
-from elearning.serializers import (
-    CourseFeedbackCreateUpdateSerializer,
-    CourseFeedbackListSerializerForCourse,
+from elearning.permissions.courses import CourseFeedbackPermission
+from elearning.serializers.courses import (
+    CourseFeedbackReadOnlyForTeacherSerializer,
+    CourseFeedbackWriteSerializer,
 )
 from elearning.services.courses.course_feedback_service import (
     CourseFeedbackService,
@@ -40,7 +40,7 @@ from elearning.services.courses.course_service import CourseService
         ),
     ],
 )
-class FeedbackViewSet(viewsets.ModelViewSet):
+class CourseFeedbackViewSet(viewsets.ModelViewSet):
     permission_classes = [CourseFeedbackPermission]
 
     def get_queryset(self):
@@ -49,41 +49,34 @@ class FeedbackViewSet(viewsets.ModelViewSet):
         if getattr(self, "swagger_fake_view", False):
             return CourseFeedback.objects.none()
 
-        # For list actions, use service layer filtering
         if self.action == "list":
             course_id = self.kwargs.get("course_pk")
-            if course_id:
-                try:
-                    # Use CourseService for consistent course access validation
-                    course = CourseService.get_course_with_permission_check(
-                        int(course_id), self.request.user
-                    )
-                    return CourseFeedbackService.get_course_feedback(course)
-                except Exception:
-                    return CourseFeedback.objects.none()
-            return CourseFeedback.objects.none()
+            course = CourseService.get_course_with_permission_check(
+                course_id, self.request.user
+            )
+            return CourseFeedbackService.get_course_feedback(course)
 
-        # For detail actions, return all (service handles 403 vs 404)
+        # For detail actions, return all (service handles)
         return CourseFeedback.objects.all()
 
     def retrieve(self, request, *args, **kwargs):
         """Override retrieve to use service for permission checking"""
         feedback_id = kwargs.get("pk")
         instance = CourseFeedbackService.get_feedback_with_permission_check(
-            int(feedback_id), request.user
+            feedback_id, request.user
         )
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
     def get_serializer_class(self):
-        if self.action == "list":
-            return CourseFeedbackListSerializerForCourse
-        return CourseFeedbackCreateUpdateSerializer
+        if self.action in ["list", "retrieve"]:
+            return CourseFeedbackReadOnlyForTeacherSerializer
+        return CourseFeedbackWriteSerializer
 
     @extend_schema(
-        request=CourseFeedbackCreateUpdateSerializer,
+        request=CourseFeedbackWriteSerializer,
         responses={
-            201: CourseFeedbackCreateUpdateSerializer,
+            201: CourseFeedbackWriteSerializer,
             400: inline_serializer(
                 name="CourseFeedbackCreateBadRequestResponse",
                 fields={
@@ -102,23 +95,22 @@ class FeedbackViewSet(viewsets.ModelViewSet):
     )
     def perform_create(self, serializer):
         course_id = self.kwargs.get("course_pk")
-        # Get course object - no need for permission check here since 
+        # Get course object - no need for permission check here since
         # feedback creation is controlled by chat participation
         course = get_object_or_404(Course, id=course_id)
 
         feedback = CourseFeedbackService.create_feedback(
             user=self.request.user,
             course=course,
-            rating=serializer.validated_data["rating"],
-            text=serializer.validated_data["text"],
+            **serializer.validated_data,
         )
 
         serializer.instance = feedback
 
     @extend_schema(
-        request=CourseFeedbackCreateUpdateSerializer,
+        request=CourseFeedbackWriteSerializer,
         responses={
-            200: CourseFeedbackCreateUpdateSerializer,
+            200: CourseFeedbackWriteSerializer,
             400: inline_serializer(
                 name="CourseFeedbackUpdateBadRequestResponse",
                 fields={

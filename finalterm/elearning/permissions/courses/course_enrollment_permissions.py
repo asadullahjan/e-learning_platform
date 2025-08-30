@@ -7,10 +7,13 @@ enrollment operations such as creating, viewing, and managing enrollments.
 
 from rest_framework import permissions
 from elearning.models import Course, User, Enrollment
+from elearning.permissions.courses.course_restriction_permissions import (
+    CourseStudentRestrictionPolicy,
+)
 from elearning.exceptions import ServiceError
 
 
-class EnrollmentPermission(permissions.BasePermission):
+class CourseEnrollmentPermission(permissions.BasePermission):
     """
     Permission class for course enrollment operations.
 
@@ -67,7 +70,7 @@ class EnrollmentPermission(permissions.BasePermission):
         return False
 
 
-class EnrollmentPolicy:
+class CourseEnrollmentPolicy:
     """
     Policy class for course enrollment operations.
 
@@ -119,6 +122,11 @@ class EnrollmentPolicy:
                 raise ServiceError.bad_request(error_msg)
 
             return False
+
+        # Check if student is restricted
+        CourseStudentRestrictionPolicy.is_restricted(
+            user, course, raise_exception=raise_exception
+        )
 
         # Check if already enrolled
         if Enrollment.objects.filter(
@@ -214,6 +222,11 @@ class EnrollmentPolicy:
         # Course owners can manage enrollments
         if user.role == "teacher" and enrollment.course.teacher == user:
             return True
+
+        # Check if student is restricted
+        CourseStudentRestrictionPolicy.is_restricted(
+            user, enrollment.course, raise_exception=raise_exception
+        )
 
         # Students can only modify their own enrollments
         if enrollment.user != user:

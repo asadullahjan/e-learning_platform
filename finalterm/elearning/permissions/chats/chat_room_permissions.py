@@ -1,10 +1,22 @@
+"""
+Chat room permissions.
+
+This module contains permission classes that control access to chat
+room operations including creation, access, and modification.
+"""
+
 from rest_framework.permissions import BasePermission
 from elearning.models import ChatRoom, ChatParticipant, User, Course
 from elearning.exceptions import ServiceError
 
 
 class ChatRoomPermission(BasePermission):
-    """DRF permission class for chat room operations - basic checks only"""
+    """
+    DRF permission class for chat room operations.
+
+    Provides basic permission checks for chat room operations.
+    Detailed business logic is handled by the ChatPolicy class.
+    """
 
     def has_permission(self, request, view):
         """Basic permission checks without database queries"""
@@ -65,6 +77,7 @@ class ChatPolicy:
         raise_exception=False,
     ) -> bool:
         """Check if a user can access a chat room"""
+
         # Public chats: accessible to everyone
         if chat_room.is_public:
             return True

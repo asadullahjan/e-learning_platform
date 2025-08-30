@@ -52,8 +52,8 @@ export default function CreateRestrictionDialog({
     setIsLoading(true);
     try {
       const data: CreateRestrictionData = {
-        student_id: parseInt(studentId),
-        course_id: parseInt(courseId),
+        student: parseInt(studentId),
+        course: parseInt(courseId),
         reason: reason.trim(),
       };
 

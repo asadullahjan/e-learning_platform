@@ -1,6 +1,4 @@
 from rest_framework import viewsets
-from rest_framework.filters import OrderingFilter
-from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import (
     extend_schema,
@@ -9,14 +7,13 @@ from drf_spectacular.utils import (
 from drf_spectacular.types import OpenApiTypes
 from rest_framework.response import Response
 
-from ..models import Status
-from ..permissions.users.status_permissions import StatusPermission
-from ..serializers.status_serializers import (
-    StatusSerializer,
-    StatusListSerializer,
-    StatusCreateUpdateSerializer,
+from elearning.models import Status
+from elearning.permissions import StatusPermission
+from elearning.serializers import (
+    StatusReadOnlySerializer,
+    StatusWriteSerializer,
 )
-from ..services.status_service import StatusService
+from elearning.services.status_service import StatusService
 
 
 class StatusFilter(filters.FilterSet):
@@ -26,12 +23,7 @@ class StatusFilter(filters.FilterSet):
     Filters status updates by user, username, and content.
     """
 
-    user = filters.NumberFilter(field_name="user__id")
-    username = filters.CharFilter(
-        field_name="user__username", lookup_expr="icontains"
-    )
-    content = filters.CharFilter(lookup_expr="icontains")
-
+    user = filters.NumberFilter(field_name="user", lookup_expr="exact")
     created_after = filters.DateTimeFilter(
         field_name="created_at", lookup_expr="gte"
     )
@@ -43,8 +35,6 @@ class StatusFilter(filters.FilterSet):
         model = Status
         fields = [
             "user",
-            "username",
-            "content",
             "created_after",
             "created_before",
         ]
@@ -76,15 +66,12 @@ class StatusViewSet(viewsets.ModelViewSet):
 
     permission_classes = [StatusPermission]
 
-    # Enable built-in filtering, search, ordering
-    filter_backends = [OrderingFilter, DjangoFilterBackend]
-
-    # Allow ordering by these fields
     ordering_fields = ["created_at", "updated_at"]
     ordering = ["-created_at"]
+    filterset_class = StatusFilter  # For user, created_after / created_before
+    search_fields = ["user__username", "content"]  # Text search
 
-    # Add the custom filter
-    filterset_class = StatusFilter
+    http_method_names = ["get", "post", "patch", "delete"]
 
     def get_queryset(self):
         """Return all statuses with automatic filtering"""
@@ -93,11 +80,8 @@ class StatusViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         """Return appropriate serializer based on action"""
         if self.action in ["create", "update", "partial_update"]:
-            return StatusCreateUpdateSerializer
-        elif self.action == "retrieve":
-            return StatusSerializer
-        else:
-            return StatusListSerializer
+            return StatusWriteSerializer
+        return StatusReadOnlySerializer
 
     def perform_create(self, serializer):
         """Create status using service layer"""

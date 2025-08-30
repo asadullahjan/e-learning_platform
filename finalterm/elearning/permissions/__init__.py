@@ -13,64 +13,20 @@ All permissions follow Django REST Framework best practices and provide
 clear, documented access control for the platform.
 """
 
-from .users.user_permissions import UserPolicy
-from .users.status_permissions import StatusPermission, StatusPolicy
-from .users.notification_permissions import (
+from .user_permissions import UserPolicy, IsUserAuthenticatedAndOwner
+from .status_permissions import StatusPermission, StatusPolicy
+from .notification_permissions import (
     NotificationPermission,
     NotificationPolicy,
 )
 
-# Course-related permissions
-from .courses.course_permissions import CoursePermission, CoursePolicy
-from .courses.enrollment_permissions import EnrollmentPermission
-from .courses.lesson_permissions import LessonPermission
-from .courses.feedback_permissions import (
-    CourseFeedbackPermission,
-    CourseFeedbackPolicy,
-)
-from .courses.restriction_permissions import (
-    StudentRestrictionPermission,
-    StudentRestrictionPolicy,
-)
-from .courses.file_permissions import FilePolicy
-
-# Chat-related permissions
-from .chats.chat_room_permissions import ChatRoomPermission, ChatPolicy
-from .chats.chat_participant_permissions import (
-    ChatParticipantPermission,
-    ChatParticipantPolicy,
-)
-from .chats.chat_message_permissions import (
-    ChatMessagePermission,
-    ChatMessagePolicy,
-)
-
-# Default permission classes for different resource types
+# Sub folders are exported from their respective __init__.py files
 __all__ = [
     # Users
     "UserPolicy",
+    "IsUserAuthenticatedAndOwner",
     "StatusPermission",
     "StatusPolicy",
     "NotificationPermission",
     "NotificationPolicy",
-    # Courses
-    "CoursePermission",
-    "CoursePolicy",
-    "EnrollmentPermission",
-    "LessonPermission",
-    "CourseFeedbackPermission",
-    "CourseFeedbackPolicy",
-    "StudentRestrictionPermission",
-    "StudentRestrictionPolicy",
-    "FilePolicy",
-    # Course Policies
-    "LessonPolicy",
-    "EnrollmentPolicy",
-    # Chats
-    "ChatRoomPermission",
-    "ChatPolicy",
-    "ChatParticipantPermission",
-    "ChatParticipantPolicy",
-    "ChatMessagePermission",
-    "ChatMessagePolicy",
 ]

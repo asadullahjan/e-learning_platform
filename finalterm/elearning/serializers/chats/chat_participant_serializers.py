@@ -1,69 +1,45 @@
 from rest_framework import serializers
 from elearning.models import ChatParticipant, User
-from elearning.serializers.user_serializers import UserSerializer
+from elearning.serializers.user_serializers import UserReadOnlySerializer
 
 
-class ChatParticipantListSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+class ChatParticipantReadOnlySerializer(serializers.ModelSerializer):
+    """
+    Read-only serializer for chat participants.
+    Expands user details for display.
+    """
+
+    user = UserReadOnlySerializer()
 
     class Meta:
         model = ChatParticipant
-        fields = [
-            "id",
-            "user",
-            "role",
-            "joined_at",
-            "is_active",
-            "last_seen_at",
-        ]
+        fields = ["id", "user", "role", "is_active", "joined_at"]
+        read_only_fields = fields
 
 
-class ChatParticipantRoleUpdateSerializer(serializers.ModelSerializer):
-    """Only for admins to change roles - requires user and role fields"""
+class ChatParticipantWriteSerializer(serializers.ModelSerializer):
+    """
+    Write serializer for adding/updating chat participants.
+
+    - `user` is provided in payload as User instance
+    - If no user provided, uses current request.user
+    - `joined_at` is system-managed
+    - Used for: create, update_role, deactivate, reactivate
+    """
 
     user = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(), help_text="User ID to update role for"
+        queryset=User.objects.all(),
+        required=False,
+        allow_null=True,
+        write_only=True,
     )
 
     class Meta:
         model = ChatParticipant
-        fields = ["user", "role"]
+        fields = ["id", "user", "role"]
+        read_only_fields = ["id"]
 
     def validate_role(self, value):
-        """Validate role changes"""
-        if value not in ["admin", "participant"]:
+        if value not in dict(ChatParticipant.ROLE_CHOICES):
             raise serializers.ValidationError("Invalid role")
-        return value
-
-    def validate_user(self, value):
-        """Validate that user field is provided"""
-        if not value:
-            raise serializers.ValidationError("User field is required")
-        return value
-
-
-class ChatParticipantCreateSerializer(serializers.Serializer):
-    """Serializer for creating chat participants"""
-
-    username = serializers.CharField(
-        required=False,
-        help_text=(
-            "Username to add (admin only). Leave empty to join yourself."
-        ),
-    )
-
-    def validate_username(self, value):
-        """Validate username format only"""
-        if value:
-            # ✅ CORRECT: Only format validation, no database queries
-            if len(value.strip()) < 3:
-                raise serializers.ValidationError(
-                    "Username must be at least 3 characters long"
-                )
-
-            if not value.replace("_", "").replace("-", "").isalnum():
-                raise serializers.ValidationError(
-                    "Username can only contain letters, numbers, "
-                    "underscores, and hyphens"
-                )
         return value

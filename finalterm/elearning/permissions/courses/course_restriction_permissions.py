@@ -5,12 +5,13 @@ This module contains permission classes that control access to student
 restriction operations such as creating, viewing, and deleting restrictions.
 """
 
+from django.db import models
 from rest_framework import permissions
 from elearning.models import StudentRestriction, User, Course
 from elearning.exceptions import ServiceError
 
 
-class StudentRestrictionPermission(permissions.BasePermission):
+class CourseStudentRestrictionPermission(permissions.BasePermission):
     """
     Permission class for student restriction operations.
 
@@ -63,13 +64,52 @@ class StudentRestrictionPermission(permissions.BasePermission):
         return True
 
 
-class StudentRestrictionPolicy:
+class CourseStudentRestrictionPolicy:
     """
     Policy class for student restriction operations.
 
     This class encapsulates all business rules for restriction operations
     and can be used by both permissions and services.
     """
+
+    @staticmethod
+    def is_restricted(
+        student: User, course: Course, raise_exception=False
+    ) -> bool:
+        """
+        Check if a student is restricted from a course.
+
+        Args:
+            student: Student user to check
+            course: Course to check restrictions for
+            raise_exception: If True, raise ServiceError when restricted
+
+        Returns:
+            bool: True if restricted (and raise_exception=False), 
+            False otherwise
+        """
+        restriction = StudentRestriction.objects.filter(
+            models.Q(student=student, course=course)
+            | models.Q(
+                student=student, teacher=course.teacher, course__isnull=True
+            )
+        ).first()
+
+        if restriction and raise_exception:
+            if restriction.course is None:  # global restriction
+                error_msg = (
+                    f"You are restricted from accessing all courses "
+                    f"by {restriction.teacher}. Reason: {restriction.reason}"
+                )
+            else:  # course-specific restriction
+                error_msg = (
+                    f"You are restricted from accessing this course. "
+                    f"Reason: {restriction.reason}"
+                )
+            raise ServiceError.permission_denied(error_msg)
+
+        # Simply return True/False if not raising exception
+        return restriction is not None
 
     @staticmethod
     def check_can_create_restriction(
@@ -170,7 +210,6 @@ class StudentRestrictionPolicy:
     def check_can_view_restriction(
         user: User,
         restriction: StudentRestriction,
-
         raise_exception=False,
     ) -> bool:
         """
@@ -220,7 +259,6 @@ class StudentRestrictionPolicy:
     def check_can_modify_restriction(
         user: User,
         restriction: StudentRestriction,
-
         raise_exception=False,
     ) -> bool:
         """
@@ -271,7 +309,6 @@ class StudentRestrictionPolicy:
     def check_can_delete_restriction(
         user: User,
         restriction: StudentRestriction,
-
         raise_exception=False,
     ) -> bool:
         """
