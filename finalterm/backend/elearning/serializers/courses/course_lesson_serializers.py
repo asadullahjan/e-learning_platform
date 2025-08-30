@@ -49,9 +49,11 @@ class FileSerializer(serializers.ModelSerializer):
     def get_file_content(self, obj) -> Optional[str]:
         if obj.file:
             try:
+                # if file is a path, open it and return the content
                 if hasattr(obj.file, "path"):
                     with open(obj.file.path, "rb") as f:
                         return base64.b64encode(f.read()).decode("utf-8")
+                # if file is a file object, read it and return the content
                 elif hasattr(obj.file, "read"):
                     content = obj.file.read()
                     if hasattr(obj.file, "seek"):

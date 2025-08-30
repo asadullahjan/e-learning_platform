@@ -1,7 +1,7 @@
 "use client";
 
 import Typography from "@/components/ui/Typography";
-import EnrolledCourses from "./components/enrolled-courses";
+import MyCourses from "./components/my-courses";
 import StatusList, { StatusListRef } from "./components/status-list";
 import CreateStatusButton from "./components/create-status-button";
 import SearchUsersDialog from "@/components/ui/search-users-dialog";
@@ -80,7 +80,7 @@ export default function HomePage() {
               </div>
             )}
 
-            <EnrolledCourses />
+            <MyCourses />
 
             {/* Browse Courses Button for Students */}
             {user?.role === "student" && (

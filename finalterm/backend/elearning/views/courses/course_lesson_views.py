@@ -214,9 +214,9 @@ class CourseLessonViewSet(viewsets.ModelViewSet):
         file_path = file_obj.file.path
         filename = file_obj.original_name
 
-        with open(file_path, "rb") as f:
-            response = FileResponse(f, content_type="application/octet-stream")
-            response["Content-Disposition"] = (
-                f'attachment; filename="{filename}"'
-            )
-            return response
+        # Let FileResponse handle the file opening/closing
+        response = FileResponse(
+            open(file_path, "rb"), content_type="application/octet-stream"
+        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-export default function EnrolledCourses() {
+export default function MyCourses() {
   const { user } = useAuthStore();
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<StudentEnrollment[]>([]);
@@ -113,7 +113,7 @@ export default function EnrolledCourses() {
             variant="h4"
             className="text-gray-900 "
           >
-            {user?.role === "teacher" ? "My Created Courses" : "My Enrolled Courses"}
+            {user?.role === "teacher" ? "My Courses" : "My Courses"}
           </Typography>
           <div className="flex gap-2">
             {/* View All Button */}

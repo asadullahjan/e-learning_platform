@@ -1,14 +1,13 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CourseEnrollments from "./course-enrollments";
 import { Course } from "@/lib/types";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Typography from "@/components/ui/Typography";
-import ChatContainer from "@/app/chats/[id]/components/chat_container";
 import { LessonList } from "./lesson-list";
 import FeedbackSection from "./feedback-section";
 import RestrictionsSection from "./restrictions-section";
 import { enrollmentService } from "@/services/enrollmentService";
+import CourseChat from "./course-chat";
 
 interface CourseTabsProps {
   course: Course;
@@ -168,30 +167,6 @@ const CourseTabs = async ({
         />
       ),
     },
-    {
-      value: "settings",
-      label: "Settings",
-      content: (
-        <Card>
-          <CardHeader>
-            <Typography
-              variant="h3"
-              size="md"
-            >
-              Course Settings
-            </Typography>
-          </CardHeader>
-          <CardContent>
-            <Typography
-              variant="p"
-              color="muted"
-            >
-              Course management settings will go here.
-            </Typography>
-          </CardContent>
-        </Card>
-      ),
-    },
   ];
 
   const studentTabs: TabConfig[] = [
@@ -203,31 +178,6 @@ const CourseTabs = async ({
           courseId={course.id}
           isTeacher={false}
         />
-      ),
-    },
-
-    {
-      value: "progress",
-      label: "Progress",
-      content: (
-        <Card>
-          <CardHeader>
-            <Typography
-              variant="h3"
-              size="md"
-            >
-              Your Progress
-            </Typography>
-          </CardHeader>
-          <CardContent>
-            <Typography
-              variant="p"
-              color="muted"
-            >
-              Progress tracking will be implemented here.
-            </Typography>
-          </CardContent>
-        </Card>
       ),
     },
     {
@@ -245,7 +195,7 @@ const CourseTabs = async ({
           {
             value: "chat",
             label: "Chat",
-            content: <ChatContainer chatId={course.course_chat_id || ""} />,
+            content: <CourseChat chatId={course.course_chat_id || ""} />,
           },
         ]
       : []),

@@ -1,12 +1,5 @@
-import { Course } from "@/lib/types";
+import { Course, ListResponse } from "@/lib/types";
 import api, { createServerApi } from "./api";
-
-export interface CourseListResponse {
-  count: number;
-  next?: string;
-  previous?: string;
-  results: Course[];
-}
 
 export interface CreateCourseData {
   title: string;
@@ -23,8 +16,8 @@ export interface UpdateCourseData extends Partial<CreateCourseData> {
 export const courseService = {
   getCourses: async (searchParams?: {
     [key: string]: string | string[] | undefined;
-  }): Promise<CourseListResponse> => {
-    const response = await api.get<CourseListResponse>("/courses/", { params: searchParams });
+  }): Promise<ListResponse<Course>> => {
+    const response = await api.get<ListResponse<Course>>("/courses/", { params: searchParams });
     return response.data;
   },
 
@@ -62,25 +55,8 @@ export const courseService = {
 
   // Get courses by teacher
   getTeacherCourses: async (teacherId: string): Promise<Course[]> => {
-    const response = await api.get<CourseListResponse>("/courses/", {
+    const response = await api.get<ListResponse<Course>>("/courses/", {
       params: { teacher: teacherId },
-    });
-    return response.data.results;
-  },
-
-  // Get published courses only
-  getPublishedCourses: async (searchParams?: {
-    [key: string]: string | string[] | undefined;
-  }): Promise<Course[]> => {
-    const params = { ...searchParams, published: true };
-    const response = await api.get<CourseListResponse>("/courses/", { params });
-    return response.data.results;
-  },
-
-  // Search courses by title or description
-  searchCourses: async (query: string): Promise<Course[]> => {
-    const response = await api.get<CourseListResponse>("/courses/", {
-      params: { search: query },
     });
     return response.data.results;
   },
@@ -89,9 +65,9 @@ export const courseService = {
   server: {
     getCourses: async (searchParams?: {
       [key: string]: string | string[] | undefined;
-    }): Promise<CourseListResponse> => {
+    }): Promise<ListResponse<Course>> => {
       const serverApi = await createServerApi();
-      const response = await serverApi.get<CourseListResponse>("/courses/", {
+      const response = await serverApi.get<ListResponse<Course>>("/courses/", {
         params: searchParams,
       });
       return response.data;
