@@ -26,17 +26,29 @@ print_error() {
 
 # Check if Python is installed
 check_python() {
-    if ! command -v python3 &> /dev/null; then
-        if ! command -v python &> /dev/null; then
-            print_error "Python is not installed. Please install Python 3.8+ first."
-            exit 1
-        else
-            PYTHON_CMD="python"
-        fi
-    else
+    # First, try to find python3
+    if command -v python3; then
         PYTHON_CMD="python3"
+        PYTHON_VERSION=$($PYTHON_CMD --version 2>&1)
+        if [[ $? -eq 0 && $PYTHON_VERSION == *"Python"* ]]; then
+            print_success "Using Python: $PYTHON_VERSION"
+            return 0
+        fi
     fi
-    print_success "Using Python: $($PYTHON_CMD --version)"
+    
+    # If python3 doesn't work, try python
+    if command -v python &> /dev/null; then
+        PYTHON_CMD="python"
+        PYTHON_VERSION=$($PYTHON_CMD --version 2>&1)
+        if [[ $? -eq 0 && $PYTHON_VERSION == *"Python"* ]]; then
+            print_success "Using Python: $PYTHON_VERSION"
+            return 0
+        fi
+    fi
+    
+    print_error "Python is not installed or not working properly."
+    print_error "Please install Python 3.8+ and ensure it's in your PATH."
+    exit 1
 }
 
 # Create virtual environment
@@ -48,12 +60,6 @@ create_venv() {
         print_status "Creating virtual environment in $SCRIPT_DIR/venv..."
         $PYTHON_CMD -m venv "$SCRIPT_DIR/venv"
         print_success "Virtual environment created successfully!"
-        
-        # Activate and install requirements immediately after creation
-        print_status "Activating virtual environment and installing requirements..."
-        activate_venv
-        install_requirements
-        print_success "Virtual environment setup completed!"
     else
         print_warning "Virtual environment already exists in $SCRIPT_DIR/venv."
     fi
@@ -132,14 +138,15 @@ setup() {
     print_status "Setting up local development environment..."
     check_python
     create_venv
-    # Note: create_venv now handles activation and requirements installation
+    activate_venv
+    install_requirements
     run_migrations
     collect_static
-    print_success "Setup completed! You can now run: ./dev.sh runserver"
+    print_success "Setup completed! You can now run: ./dev.sh runserver or ./dev.sh daphne"
 }
 
 # Run Django development server
-runserver() {
+run_server() {
     print_status "Starting Django development server..."
     activate_venv
     python manage.py runserver 0.0.0.0:8000
@@ -148,13 +155,6 @@ runserver() {
 # Run with Daphne (ASGI server with WebSocket support)
 run_daphne() {
     print_status "Starting Daphne ASGI server (WebSocket support)..."
-    activate_venv
-    python manage.py runserver 0.0.0.0:8000 --noreload
-}
-
-# Run with Daphne for production-like testing
-run_daphne_prod() {
-    print_status "Starting Daphne ASGI server (production mode)..."
     activate_venv
     daphne -b 0.0.0.0 -p 8000 elearning_project.asgi:application
 }
@@ -199,13 +199,13 @@ clean() {
 
 # Show help
 show_help() {
-    echo "Usage: ./dev.sh {setup|runserver|daphne|daphne-prod|test|migrate|makemigrations|shell|clean|help}"
+    echo "Usage: ./dev.sh {setup|runserver|daphne|test|migrate|makemigrations|shell|clean|help}"
     echo ""
     echo "Commands:"
+    echo "  check_python   - Check Python version"
     echo "  setup          - Create venv, install requirements, run migrations"
     echo "  runserver      - Start Django development server (port 8000)"
     echo "  daphne         - Start with Daphne ASGI server (WebSocket support)"
-    echo "  daphne-prod    - Start Daphne in production mode"
     echo "  test           - Run Django tests"
     echo "  migrate        - Run database migrations"
     echo "  makemigrations - Create new migrations"
@@ -221,17 +221,17 @@ show_help() {
 
 # Main script logic
 case $1 in
+    "check_python")
+        check_python
+        ;;
     "setup")
         setup
         ;;
     "runserver")
-        runserver
+        run_server
         ;;
     "daphne")
         run_daphne
-        ;;
-    "daphne-prod")
-        run_daphne_prod
         ;;
     "test")
         run_tests
