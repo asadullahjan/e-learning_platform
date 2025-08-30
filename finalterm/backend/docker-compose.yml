@@ -1,0 +1,29 @@
+services:
+  # Main Django service (using Daphne for WebSocket support)
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - REDIS_URL=redis://redis:6379
+      - DJANGO_SETTINGS_MODULE=elearning_project.settings
+    volumes:
+      - .:/app
+      - sqlite_data:/app/db
+      - static_files:/app/staticfiles
+    depends_on:
+      - redis
+    command: daphne -b 0.0.0.0 -p 8000 elearning_project.asgi:application # ← Just start the server
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  sqlite_data:
+  redis_data:
+  static_files:

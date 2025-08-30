@@ -3,9 +3,6 @@ from channels.db import database_sync_to_async
 import json
 from django.core.exceptions import ObjectDoesNotExist
 
-from elearning.models import ChatRoom
-from elearning.permissions.chats.chat_room_permissions import ChatPolicy
-
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -50,8 +47,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
     # --- Async DB wrappers ---
     @database_sync_to_async
     def get_chat_room(self, chat_room_id):
+        from elearning.models import (
+            ChatRoom,
+        )  # Import here to avoid app not ready error
+
         return ChatRoom.objects.get(id=chat_room_id)
 
     @database_sync_to_async
     def can_access_chat(self, user, chat_room):
+        from elearning.permissions.chats.chat_room_permissions import (
+            ChatPolicy,
+        )  # Import here to avoid app not ready error
+
         return ChatPolicy.check_can_access_chat_room(user, chat_room)

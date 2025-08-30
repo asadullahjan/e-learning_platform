@@ -1,9 +1,13 @@
 #!/bin/bash
 
 case $1 in
+  "build")
+    echo "Building Docker image for web service..."
+    docker-compose build web
+    ;;
   "start")
     echo "Starting local development environment with Daphne ASGI server (WebSocket support)..."
-    docker-compose up web redis --build
+    docker-compose up web redis
     ;;
   "runserver")
     echo "Starting local development environment with Django runserver (no WebSocket support)..."
@@ -31,15 +35,15 @@ case $1 in
     ;;
   "migrate")
     echo "Running migrations..."
-    docker-compose exec web python manage.py migrate
+    docker-compose run --rm web python manage.py migrate
     ;;
   "makemigrations")
     echo "Creating migrations..."
-    docker-compose exec web python manage.py makemigrations
+    docker-compose run --rm web python manage.py makemigrations
     ;;
   "shell")
     echo "Opening Django shell..."
-    docker-compose exec web python manage.py shell
+    docker-compose run --rm web python manage.py shell
     ;;
   "logs")
     echo "Showing logs..."
