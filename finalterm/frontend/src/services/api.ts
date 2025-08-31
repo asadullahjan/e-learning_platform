@@ -236,6 +236,7 @@
 import axios from "axios";
 
 const API_BASE_URL = "/api/"; // always through Next.js proxy
+const getIsServer = () => typeof window === "undefined";
 
 // Track if CSRF initialized
 let csrfInitialized = false;
@@ -299,3 +300,47 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// Server-side API
+export const createServerApi = async () => {
+  if (!getIsServer()) {
+    return api; // Return client instance if somehow called on client
+  }
+
+  try {
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    const cookieString = cookieStore.toString();
+    const csrfToken = cookieStore.get("csrftoken")?.value;
+
+    // Create server API instance with cookies
+    const serverApi = axios.create({
+      baseURL: API_BASE_URL,
+      withCredentials: false,
+      timeout: 10000,
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    // Add cookies to all requests
+    serverApi.interceptors.request.use((config) => {
+      if (cookieString) {
+        config.headers.Cookie = cookieString;
+      }
+      if (
+        csrfToken &&
+        ["post", "put", "patch", "delete"].includes(config.method?.toLowerCase() || "")
+      ) {
+        config.headers["X-CSRFToken"] = csrfToken;
+      }
+      return config;
+    });
+
+    return serverApi;
+  } catch (error) {
+    console.error("Error creating server API:", error);
+    return api; // Fallback to basic instance
+  }
+};
