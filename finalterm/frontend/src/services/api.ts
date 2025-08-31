@@ -258,6 +258,7 @@ const fetchCSRFToken = async () => {
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
+  withCredentials: !getIsServer(),
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
