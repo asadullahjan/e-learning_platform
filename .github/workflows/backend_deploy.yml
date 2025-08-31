@@ -27,4 +27,4 @@ jobs:
       - name: Deploy to AlwaysData
         run: |
           git remote add deploy asadullah@ssh-asadullah.alwaysdata.net:~/project.git
-          git push deploy main --force
+          git push deploy main
