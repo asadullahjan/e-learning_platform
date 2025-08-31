@@ -3,30 +3,28 @@ import axios from "axios";
 const API_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URL}/api/`;
 
 // Check environment once
-const isServer = typeof window === "undefined";
+const getIsServer = () => typeof window === "undefined";
 
 // Client-side cookie parsing
 const getClientCookie = (name: string) => {
-  if (isServer || !document.cookie) return null;
-
-  try {
+  let cookieValue = null;
+  if (!getIsServer() && document.cookie && document.cookie !== "") {
     const cookies = document.cookie.split(";");
-    for (const cookie of cookies) {
-      const [cookieName, cookieValue] = cookie.trim().split("=");
-      if (cookieName === name) {
-        return decodeURIComponent(cookieValue);
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === name + "=") {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
       }
     }
-  } catch (error) {
-    console.error(`Error parsing cookie ${name}:`, error);
   }
-  return null;
+  return cookieValue;
 };
 
 // Create the API instance
 const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: !isServer, // Only on client-side
+  withCredentials: !getIsServer(), // Only on client-side
   timeout: 10000,
 });
 
@@ -34,7 +32,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     try {
-      if (!isServer) {
+      if (!getIsServer()) {
         // Client-side: Add CSRF token for unsafe methods
         if (["post", "put", "patch", "delete"].includes(config.method?.toLowerCase() || "")) {
           const csrfToken = getClientCookie("csrftoken");
@@ -77,7 +75,7 @@ export default api;
 
 // Server-side helper function
 export const createServerApi = async () => {
-  if (!isServer) {
+  if (!getIsServer()) {
     return api; // Return client instance if somehow called on client
   }
 
