@@ -224,18 +224,43 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = os.environ.get(
     "CSRF_TRUSTED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
 ).split(",")
-CSRF_COOKIE_HTTPONLY = False  # JS can read token
 
 # -----------------------------
-# Session & CSRF cookies
+# Session & CSRF cookies - Optimized for Next.js proxy
 # -----------------------------
-# Toggle secure cookies based on environment
+# CSRF Cookie Settings
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to access the CSRF cookie
-CSRF_COOKIE_SAMESITE = "None"  # Required for cross-site cookies
+# Lax for dev, None for prod
+CSRF_COOKIE_SAMESITE = "Lax" if DEBUG else "None"
 CSRF_COOKIE_SECURE = not DEBUG  # Use secure cookies in production
+CSRF_COOKIE_DOMAIN = None  # Let Django set the domain automatically
+CSRF_COOKIE_PATH = "/"  # Available on all paths
+
+# Session Cookie Settings
 SESSION_COOKIE_HTTPONLY = False  # Allow JS to access session cookie
-SESSION_COOKIE_SAMESITE = "None"  # Required for cross-site cookies
+# Lax for dev, None for prod
+SESSION_COOKIE_SAMESITE = "Lax" if DEBUG else "None"
 SESSION_COOKIE_SECURE = not DEBUG  # Use secure cookies in production
+SESSION_COOKIE_DOMAIN = None  # Let Django set the domain automatically
+SESSION_COOKIE_PATH = "/"  # Available on all paths
+
+# Additional CORS settings for better proxy support
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
+CORS_EXPOSE_HEADERS = [
+    "set-cookie",
+    "x-csrftoken",
+]
 
 # -----------------------------
 # Production security headers
