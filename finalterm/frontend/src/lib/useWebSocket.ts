@@ -38,6 +38,7 @@ export function useWebSocket({
   const isConnectingRef = useRef(false);
   const isReconnectingRef = useRef(false);
   const shouldReconnectRef = useRef(true);
+  const hasInitializedRef = useRef(false);
 
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -50,102 +51,76 @@ export function useWebSocket({
     }
   }, []);
 
-  const connect = useCallback(() => {
-    // Don't connect if user is not authenticated
-    if (!user || !isAuthenticated) {
-      console.log("User not authenticated, skipping WebSocket connection");
-      return;
-    }
+  // --- Core socket initializer ---
+  const initSocket = useCallback(() => {
+    try {
+      wsRef.current = new WebSocket(url);
 
-    // Don't connect if already connected or connecting
-    if (wsRef.current?.readyState === WebSocket.OPEN || isConnectingRef.current) {
-      return;
-    }
-
-    // Don't connect if URL is empty
-    if (!url) {
-      console.log("WebSocket URL is empty, skipping connection");
-      return;
-    }
-
-    console.log("Attempting to connect to WebSocket:", url);
-
-    // Add a small delay to ensure authentication is fully ready
-    setTimeout(() => {
-      if (!user || !isAuthenticated) {
-        console.log("User authentication changed, aborting connection");
-        return;
-      }
-
-      isConnectingRef.current = true;
-      setIsConnecting(true);
-      setIsReconnecting(false);
-
-      try {
-        wsRef.current = new WebSocket(url);
-
-        wsRef.current.onopen = () => {
-          console.log("WebSocket connected successfully");
-          isConnectingRef.current = false;
-          setIsConnecting(false);
-          setIsConnected(true);
-          reconnectAttemptsRef.current = 0;
-          onOpen?.();
-        };
-
-        wsRef.current.onmessage = (event) => {
-          onMessage?.(event);
-        };
-
-        wsRef.current.onclose = (event) => {
-          console.log("WebSocket connection closed:", event.code, event.reason);
-          isConnectingRef.current = false;
-          setIsConnecting(false);
-          setIsConnected(false);
-
-          // Only attempt to reconnect if it wasn't a deliberate close and auto-reconnect is enabled
-          if (
-            shouldReconnectRef.current &&
-            autoReconnect &&
-            event.code !== 1000 &&
-            event.code !== 4001 &&
-            event.code !== 4003
-          ) {
-            if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-              isReconnectingRef.current = true;
-              setIsReconnecting(true);
-              reconnectAttemptsRef.current++;
-
-              clearReconnectTimeout();
-              reconnectTimeoutRef.current = setTimeout(() => {
-                console.log(
-                  `Attempting to reconnect (${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`
-                );
-                connect();
-              }, reconnectInterval);
-            } else {
-              console.log("Max reconnection attempts reached");
-              setIsReconnecting(false);
-            }
-          }
-
-          onClose?.(event);
-        };
-
-        wsRef.current.onerror = (event) => {
-          console.error("WebSocket error:", event);
-          onError?.(event);
-        };
-      } catch (error) {
-        console.error("Failed to create WebSocket connection:", error);
+      wsRef.current.onopen = () => {
+        console.log("WebSocket connected successfully");
         isConnectingRef.current = false;
+        isReconnectingRef.current = false;
         setIsConnecting(false);
-      }
-    }, 4000); // 4 second delay
+        setIsReconnecting(false);
+        setIsConnected(true);
+        reconnectAttemptsRef.current = 0;
+        onOpen?.();
+      };
+
+      wsRef.current.onmessage = (event) => {
+        onMessage?.(event);
+      };
+
+      wsRef.current.onclose = (event) => {
+        console.log("WebSocket connection closed:", event.code, event.reason);
+        isConnectingRef.current = false;
+        isReconnectingRef.current = false;
+        setIsConnecting(false);
+        setIsReconnecting(false);
+        setIsConnected(false);
+
+        const shouldAttemptReconnect =
+          shouldReconnectRef.current &&
+          autoReconnect &&
+          event.code !== 1000 &&
+          event.code !== 4001 &&
+          event.code !== 4003;
+
+        if (shouldAttemptReconnect) {
+          if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+            reconnectAttemptsRef.current++;
+            console.log(
+              `Reconnecting... attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts}`
+            );
+
+            isReconnectingRef.current = true;
+            setIsReconnecting(true);
+
+            clearReconnectTimeout();
+            reconnectTimeoutRef.current = setTimeout(() => {
+              if (shouldReconnectRef.current && user && isAuthenticated) {
+                initSocket();
+              }
+            }, reconnectInterval);
+          } else {
+            console.log("Max reconnection attempts reached");
+          }
+        }
+
+        onClose?.(event);
+      };
+
+      wsRef.current.onerror = (event) => {
+        console.error("WebSocket error:", event);
+        onError?.(event);
+      };
+    } catch (error) {
+      console.error("Failed to create WebSocket:", error);
+      isConnectingRef.current = false;
+      setIsConnecting(false);
+    }
   }, [
     url,
-    user,
-    isAuthenticated,
     autoReconnect,
     reconnectInterval,
     maxReconnectAttempts,
@@ -153,7 +128,31 @@ export function useWebSocket({
     onMessage,
     onClose,
     onError,
+    isAuthenticated,
+    user,
   ]);
+
+  const connect = useCallback(() => {
+    if (!user || !isAuthenticated) {
+      console.log("User not authenticated, skipping WebSocket connection");
+      return;
+    }
+    if (wsRef.current?.readyState === WebSocket.OPEN || isConnectingRef.current) {
+      console.log("WebSocket already connected or connecting, skipping");
+      return;
+    }
+    if (!url) {
+      console.log("WebSocket URL is empty, skipping");
+      return;
+    }
+
+    console.log("Connecting WebSocket:", url);
+    isConnectingRef.current = true;
+    setIsConnecting(true);
+    setIsReconnecting(false);
+
+    initSocket();
+  }, [url, user, isAuthenticated, initSocket]);
 
   const disconnect = useCallback(() => {
     shouldReconnectRef.current = false;
@@ -176,30 +175,25 @@ export function useWebSocket({
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(data);
     } else {
-      console.warn("WebSocket is not connected, cannot send message");
+      console.warn("WebSocket not connected, cannot send message");
     }
   }, []);
 
-  // Effect to handle user authentication changes
+  // Handle auth changes
   useEffect(() => {
-    if (user && isAuthenticated) {
-      // User is authenticated, connect to WebSocket
+    if (user && isAuthenticated && !hasInitializedRef.current) {
+      hasInitializedRef.current = true;
       connect();
-    } else {
-      // User is not authenticated, disconnect and clean up
+    } else if (!user || !isAuthenticated) {
+      hasInitializedRef.current = false;
       disconnect();
     }
-
-    return () => {
-      disconnect();
-    };
+    return () => disconnect();
   }, [user, isAuthenticated, connect, disconnect]);
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      disconnect();
-    };
+    return () => disconnect();
   }, [disconnect]);
 
   return {
