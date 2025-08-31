@@ -163,7 +163,13 @@ run_daphne() {
 run_tests() {
     print_status "Running tests..."
     activate_venv
-    python manage.py test
+    if [ -n "$1" ]; then
+        echo "Running tests for: $1"
+        python manage.py test "$1"
+    else
+        echo "Running all tests..."
+        python manage.py test
+    fi
 }
 
 # Make migrations
@@ -199,14 +205,14 @@ clean() {
 
 # Show help
 show_help() {
-    echo "Usage: ./dev.sh {setup|runserver|daphne|test|migrate|makemigrations|shell|clean|help}"
+    echo "Usage: ./dev.sh {setup|runserver|daphne|test [test_path]|migrate|makemigrations|shell|clean|help}"
     echo ""
     echo "Commands:"
     echo "  check_python   - Check Python version"
     echo "  setup          - Create venv, install requirements, run migrations"
     echo "  runserver      - Start Django development server (port 8000)"
     echo "  daphne         - Start with Daphne ASGI server (WebSocket support)"
-    echo "  test           - Run Django tests"
+    echo "  test [path]    - Run Django tests (optional: specific test path)"
     echo "  migrate        - Run database migrations"
     echo "  makemigrations - Create new migrations"
     echo "  shell          - Open Django shell"
@@ -217,6 +223,7 @@ show_help() {
     echo "      Virtual environment creation automatically installs requirements"
     echo "      Use 'runserver' for normal development"
     echo "      Use 'daphne' for WebSocket support"
+    echo "      Test path format: app_name.test_file.TestClass.test_method"
 }
 
 # Main script logic
@@ -234,7 +241,7 @@ case $1 in
         run_daphne
         ;;
     "test")
-        run_tests
+        run_tests "$2"
         ;;
     "migrate")
         activate_venv

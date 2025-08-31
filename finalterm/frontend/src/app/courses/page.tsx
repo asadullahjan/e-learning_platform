@@ -12,11 +12,13 @@ import { BookOpen, Plus, UserCheck } from "lucide-react";
 export default async function CoursesPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const coursesData = (await courseService.server.getCourses(searchParams)) as ListResponse<Course>;
+  const coursesData = (await courseService.server.getCourses(
+    await searchParams
+  )) as ListResponse<Course>;
   const user = await getServerUser();
-  
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-4 w-full">
@@ -29,7 +31,10 @@ export default async function CoursesPage({
         <div className="flex gap-3 mb-4">
           {user.role === "teacher" && (
             <Link href="/courses/my-courses">
-              <Button variant="outline" className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+              >
                 <Plus className="w-4 h-4" />
                 My Created Courses
               </Button>
@@ -37,7 +42,10 @@ export default async function CoursesPage({
           )}
           {user.role === "student" && (
             <Link href="/courses/enrolled">
-              <Button variant="outline" className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+              >
                 <UserCheck className="w-4 h-4" />
                 My Enrolled Courses
               </Button>

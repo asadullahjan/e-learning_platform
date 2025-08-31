@@ -79,7 +79,7 @@ export default function MyCourses() {
 
   if (user?.role === "teacher" && teacherCourses.length === 0) {
     return (
-      <div className="text-center py-4">
+      <Card className="text-center py-4">
         <Typography
           variant="p"
           color="muted"
@@ -87,7 +87,7 @@ export default function MyCourses() {
         >
           No courses created yet
         </Typography>
-      </div>
+      </Card>
     );
   }
 

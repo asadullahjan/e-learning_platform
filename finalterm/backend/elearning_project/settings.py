@@ -31,13 +31,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is required!")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(
-    ","
+# Production security: Only allow specific hosts
+ALLOWED_HOSTS = (
+    os.environ.get("ALLOWED_HOSTS", "").split(",")
+    if os.environ.get("ALLOWED_HOSTS")
+    else []
 )
+if DEBUG:
+    ALLOWED_HOSTS.extend(["localhost", "127.0.0.1"])
 
 
 # Application definition
@@ -95,7 +102,6 @@ WSGI_APPLICATION = "elearning_project.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Database configuration - use PostgreSQL on Render, SQLite locally
 DATABASES = {
     "default": dj_database_url.config(
         default="sqlite:///" + str(BASE_DIR / "db.sqlite3"),
@@ -253,5 +259,54 @@ CSRF_TRUSTED_ORIGINS = os.environ.get(
 CSRF_COOKIE_HTTPONLY = False  # So JavaScript can read it
 CSRF_COOKIE_SAMESITE = "Lax"
 
+# Production CORS settings
+if not DEBUG:
+    # Only allow specific origins in production
+    if not os.environ.get("CORS_ALLOWED_ORIGINS"):
+        raise ValueError("CORS_ALLOWED_ORIGINS must be set in production!")
+    if not os.environ.get("CSRF_TRUSTED_ORIGINS"):
+        raise ValueError("CSRF_TRUSTED_ORIGINS must be set in production!")
+
 # Session settings
 SESSION_COOKIE_SAMESITE = "Lax"
+
+# Production security settings
+if not DEBUG:
+    # HTTPS settings
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+    # Security headers
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    # Cookie security
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # Additional security
+    X_FRAME_OPTIONS = "DENY"
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+
+    # Production logging
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "handlers": {
+            "file": {
+                "level": "INFO",
+                "class": "logging.FileHandler",
+                "filename": BASE_DIR / "logs" / "django.log",
+            },
+        },
+        "loggers": {
+            "django": {
+                "handlers": ["file"],
+                "level": "INFO",
+                "propagate": True,
+            },
+        },
+    }
