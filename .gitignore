@@ -17,3 +17,18 @@ env
 finalterm_env
 
 output_file.txt
+
+
+
+staticfiles
+private_media
+venv
+
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env
+.env.local
+.env.production

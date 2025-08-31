@@ -6,7 +6,7 @@ on:
     paths:
       - "finalterm/backend/**" # Backend changes
       - ".github/workflows/backend_deploy.yml" # Workflow changes
-      
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
