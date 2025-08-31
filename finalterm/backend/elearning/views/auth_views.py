@@ -16,6 +16,9 @@ from elearning.serializers import (
     UserRegistrationSerializer,
     UserLoginSerializer,
 )
+from django.middleware.csrf import get_token
+from django.views.decorators.cache import never_cache
+from django.utils.decorators import method_decorator
 
 
 class AuthViewSet(viewsets.GenericViewSet):
@@ -23,7 +26,7 @@ class AuthViewSet(viewsets.GenericViewSet):
 
     def get_permissions(self):
         """Set permissions based on action"""
-        if self.action in ["register", "login"]:
+        if self.action in ["register", "login", "csrf_token"]:
             return [AllowAny()]
         return [IsAuthenticated()]
 
@@ -209,4 +212,70 @@ class AuthViewSet(viewsets.GenericViewSet):
         logout(request)
         return Response(
             {"message": "Logout successful"}, status=status.HTTP_200_OK
+        )
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="CSRFTokenResponse",
+                fields={
+                    "csrfToken": serializers.CharField(
+                        help_text="CSRF token for form submissions"
+                    ),
+                    "sessionKey": serializers.CharField(
+                        help_text="Session key"
+                    ),
+                    "message": serializers.CharField(
+                        help_text="Success message"
+                    ),
+                },
+            )
+        },
+        examples=[
+            OpenApiExample(
+                "Success Response",
+                value={
+                    "csrfToken": "abc123def456...",
+                    "sessionKey": "xyz789uvw012...",
+                    "message": "Cookies initialized successfully",
+                },
+                response_only=True,
+                status_codes=["200"],
+            ),
+        ],
+    )
+    @method_decorator(never_cache)
+    @action(detail=False, methods=["get"])
+    def csrf_token(self, request):
+        """
+        CSRF Token endpoint
+
+        Initialize cookies and return CSRF token for frontend applications.
+        This endpoint ensures both CSRF and session cookies are properly set.
+
+        **Response:**
+        - 200: Returns CSRF token and session information
+
+        **Response Body:**
+        ```json
+        {
+            "csrfToken": "string",
+            "sessionKey": "string",
+            "message": "Cookies initialized successfully"
+        }
+        ```
+        """
+        # Force session creation
+        if not request.session.session_key:
+            request.session.create()
+
+        csrf_token = get_token(request)
+
+        return Response(
+            {
+                "csrfToken": csrf_token,
+                "sessionKey": request.session.session_key,
+                "message": "Cookies initialized successfully",
+            },
+            status=status.HTTP_200_OK,
         )
