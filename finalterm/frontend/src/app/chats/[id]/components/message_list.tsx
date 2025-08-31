@@ -7,6 +7,8 @@ import { LoadMoreButton } from "@/components/ui/load-more-button";
 import { Chat, Message } from "@/services/chatService";
 import { chatService } from "@/services/chatService";
 import Link from "next/link";
+import { useWebSocket } from "@/lib/useWebSocket";
+import { useAuthStore } from "@/store/authStore";
 
 const MessageList = ({
   chat_type,
@@ -21,16 +23,13 @@ const MessageList = ({
   initialHasNextPage: boolean;
   initialNextUrl: string | null;
 }) => {
-  const [isConnected, setIsConnected] = useState(false);
-  const [isReconnecting, setIsReconnecting] = useState(false);
+  const { user, isAuthenticated } = useAuthStore();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasNextPage, setIsHasNextPage] = useState(initialHasNextPage);
   const [nextUrl, setNextUrl] = useState<string | null>(initialNextUrl);
   const [initialLoadComplete, setInitialLoadComplete] = useState(true); // Already loaded from server
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Ensure initial messages are properly sorted
   useEffect(() => {
@@ -87,25 +86,10 @@ const MessageList = ({
     }
   }, [initialLoadComplete, messages.length]);
 
-  const connectWebSocket = () => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return; // Already connected
-    }
-
-    console.log("Attempting to connect to WebSocket...");
-    const ws = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_BASE_URL}/ws/chat/${chatId}/`);
-
-    ws.onopen = () => {
-      console.log("WebSocket connected for listening");
-      setIsConnected(true);
-      setIsReconnecting(false);
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-    };
-
-    ws.onmessage = (event) => {
+  // WebSocket connection for real-time chat
+  const { isConnected, isConnecting, isReconnecting } = useWebSocket({
+    url: user && isAuthenticated ? `${process.env.NEXT_PUBLIC_WEBSOCKET_BASE_URL}/ws/chat/${chatId}/` : '',
+    onMessage: (event) => {
       try {
         const data = JSON.parse(event.data);
         console.log("WebSocket message received:", data);
@@ -137,46 +121,17 @@ const MessageList = ({
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
       }
-    };
+    },
+    onOpen: () => console.log("WebSocket connected for listening"),
+    onClose: (event) => console.log("WebSocket disconnected:", event.code, event.reason),
+    onError: (error) => console.error("WebSocket error:", error),
+    autoReconnect: true,
+    reconnectInterval: 3000,
+    maxReconnectAttempts: 5,
+  });
 
-    ws.onclose = (event) => {
-      console.log("WebSocket disconnected:", event.code, event.reason);
-      setIsConnected(false);
-
-      // Only attempt to reconnect if it wasn't a manual close
-      if (event.code !== 1000 && event.code !== 4003) {
-        setIsReconnecting(true);
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-        }
-        reconnectTimeoutRef.current = setTimeout(() => {
-          console.log("Attempting to reconnect...");
-          connectWebSocket();
-        }, 3000);
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      setIsConnected(false);
-    };
-
-    wsRef.current = ws;
-  };
-
-  useEffect(() => {
-    connectWebSocket();
-
-    // Cleanup on unmount
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (wsRef.current) {
-        wsRef.current.close(1000); // Normal closure
-      }
-    };
-  }, [chatId]);
+  // The WebSocket hook automatically handles connection/disconnection based on user authentication
+  // and chatId changes
 
   return (
     <div className="flex flex-col h-full">

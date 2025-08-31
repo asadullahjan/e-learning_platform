@@ -690,6 +690,31 @@ websocket_urlpatterns = [
 - 🚀 **Security Middleware**: Add AllowedHostsOriginValidator and AuthMiddlewareStack
 - 🚀 **Performance Optimization**: Redis connection pooling and message compression
 - 🚀 **Monitoring**: Add logging and performance metrics
+Deployment
+
+For this project, I handled the full deployment process, integrating multiple services and automating server-side operations.
+
+The backend runs on AlwaysData, which was the most challenging part of deployment. Their web platform is minimal, so almost everything had to be done via command-line automation and server-side orchestration using SSH. I wrote shell scripts to:
+
+Activate the virtual environment
+
+Install dependencies with pip
+
+Run Django migrations
+
+Collect static files and configure media directories
+
+Set proper permissions
+
+Start the ASGI server with Daphne
+
+These scripts are triggered automatically via AlwaysData’s Git post-receive hooks, ensuring that every push to the main branch updates the server without manual intervention. Environment variables are managed with a .env file, which is sourced by the deployment scripts to configure secrets, ALLOWED_HOSTS, CORS origins, and other critical settings.
+
+For frontend hosting, I used Vercel, which seamlessly serves the Next.js frontend and communicates with the backend API. For the database, I relied on Supabase for PostgreSQL, and Redis was integrated for caching and WebSocket functionality. Initially, I considered using Render for the backend, but their credit card requirement prevented this, so AlwaysData was chosen as a flexible alternative.
+
+Additionally, I leveraged GitHub Actions to manage automated deployment workflows. Pushes to the backend directory trigger deployment scripts, while the frontend is handled separately by Vercel. This setup ensures that development and production environments stay synchronized without manual intervention.
+
+Overall, the deployment process required careful orchestration of multiple services, command-line automation, and continuous integration through GitHub Actions, resulting in a reliable and maintainable production setup.
 
 ### **Technical Decisions Summary**
 

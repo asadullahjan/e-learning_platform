@@ -10,6 +10,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.chat_group_name = f"chat_{self.chat_room_id}"
         user = self.scope["user"]
 
+        # Check if user is authenticated
+        if not user or not user.is_authenticated:
+            await self.close(code=4001)  # Custom code for auth failure
+            return
+
         # Fetch chat room safely
         try:
             chat_room = await self.get_chat_room(self.chat_room_id)

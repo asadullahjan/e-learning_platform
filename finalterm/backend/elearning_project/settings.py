@@ -257,7 +257,6 @@ CSRF_TRUSTED_ORIGINS = os.environ.get(
     "CSRF_TRUSTED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
 ).split(",")
 CSRF_COOKIE_HTTPONLY = False  # So JavaScript can read it
-CSRF_COOKIE_SAMESITE = "Lax"
 
 # Production CORS settings
 if not DEBUG:
@@ -268,7 +267,10 @@ if not DEBUG:
         raise ValueError("CSRF_TRUSTED_ORIGINS must be set in production!")
 
 # Session settings
-SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SECURE = True  # HTTPS required
+CSRF_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SECURE = True
 
 # Production security settings
 if not DEBUG:

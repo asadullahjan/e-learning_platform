@@ -20,8 +20,8 @@ output_file.txt
 
 
 
-staticfiles
-private_media
+staticfiles/
+private_media/
 venv
 
 __pycache__

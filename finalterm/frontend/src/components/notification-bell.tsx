@@ -9,6 +9,7 @@ import { notificationService, Notification } from "@/services/notificationServic
 import { showToast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
+import { useWebSocket } from "@/lib/useWebSocket";
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
@@ -144,49 +145,17 @@ export function NotificationBell() {
     }
   };
 
-  useEffect(() => {
-    let ws: WebSocket | null = null;
-
-    const connectWebSocket = () => {
-      // Only connect if user is authenticated
-      if (!user) {
-        console.log("User not authenticated, skipping WebSocket connection");
-        return;
-      }
-
-      // Connect to Django backend WebSocket
-      const wsUrl = `${process.env.NEXT_PUBLIC_WEBSOCKET_BASE_URL}/ws/notifications/`;
-
-      console.log("Attempting to connect to WebSocket:", wsUrl);
-      ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        console.log("Connected to notification WebSocket");
-      };
-
-      ws.onmessage = handleWebSocketMessage;
-
-      ws.onclose = (event) => {
-        console.log("WebSocket connection closed", event.code, event.reason);
-        // Only reconnect if it wasn't a deliberate close
-        if (event.code !== 1000) {
-          setTimeout(connectWebSocket, 3000);
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-      };
-    };
-
-    connectWebSocket();
-
-    return () => {
-      if (ws) {
-        ws.close(1000, "Component unmounting");
-      }
-    };
-  }, [user]); // Add user dependency
+  // WebSocket connection for real-time notifications
+  const { isConnected, isConnecting, isReconnecting } = useWebSocket({
+    url: user ? `${process.env.NEXT_PUBLIC_WEBSOCKET_BASE_URL}/ws/notifications/` : '',
+    onMessage: handleWebSocketMessage,
+    onOpen: () => console.log("Connected to notification WebSocket"),
+    onClose: (event) => console.log("WebSocket connection closed", event.code, event.reason),
+    onError: (error) => console.error("WebSocket error:", error),
+    autoReconnect: true,
+    reconnectInterval: 3000,
+    maxReconnectAttempts: 5,
+  });
 
   return (
     <DropdownMenu
