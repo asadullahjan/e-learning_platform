@@ -230,15 +230,12 @@ CSRF_COOKIE_HTTPONLY = False  # JS can read token
 # Session & CSRF cookies
 # -----------------------------
 # Toggle secure cookies based on environment
-if DEBUG:
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
-else:
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-
-SESSION_COOKIE_SAMESITE = "None"
-CSRF_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to access the CSRF cookie
+CSRF_COOKIE_SAMESITE = "None"  # Required for cross-site cookies
+CSRF_COOKIE_SECURE = not DEBUG  # Use secure cookies in production
+SESSION_COOKIE_HTTPONLY = False  # Allow JS to access session cookie
+SESSION_COOKIE_SAMESITE = "None"  # Required for cross-site cookies
+SESSION_COOKIE_SECURE = not DEBUG  # Use secure cookies in production
 
 # -----------------------------
 # Production security headers

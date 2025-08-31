@@ -1,5 +1,5 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
-import { useAuthStore } from '@/store/authStore';
+import { useEffect, useRef, useCallback, useState } from "react";
+import { useAuthStore } from "@/store/authStore";
 
 interface UseWebSocketOptions {
   url: string;
@@ -53,7 +53,7 @@ export function useWebSocket({
   const connect = useCallback(() => {
     // Don't connect if user is not authenticated
     if (!user || !isAuthenticated) {
-      console.log('User not authenticated, skipping WebSocket connection');
+      console.log("User not authenticated, skipping WebSocket connection");
       return;
     }
 
@@ -64,77 +64,103 @@ export function useWebSocket({
 
     // Don't connect if URL is empty
     if (!url) {
-      console.log('WebSocket URL is empty, skipping connection');
+      console.log("WebSocket URL is empty, skipping connection");
       return;
     }
 
-    console.log('Attempting to connect to WebSocket:', url);
-    
-    isConnectingRef.current = true;
-    setIsConnecting(true);
-    setIsReconnecting(false);
+    console.log("Attempting to connect to WebSocket:", url);
 
-    try {
-      wsRef.current = new WebSocket(url);
+    // Add a small delay to ensure authentication is fully ready
+    setTimeout(() => {
+      if (!user || !isAuthenticated) {
+        console.log("User authentication changed, aborting connection");
+        return;
+      }
 
-      wsRef.current.onopen = () => {
-        console.log('WebSocket connected successfully');
-        isConnectingRef.current = false;
-        setIsConnecting(false);
-        setIsConnected(true);
-        reconnectAttemptsRef.current = 0;
-        onOpen?.();
-      };
+      isConnectingRef.current = true;
+      setIsConnecting(true);
+      setIsReconnecting(false);
 
-      wsRef.current.onmessage = (event) => {
-        onMessage?.(event);
-      };
+      try {
+        wsRef.current = new WebSocket(url);
 
-      wsRef.current.onclose = (event) => {
-        console.log('WebSocket connection closed:', event.code, event.reason);
-        isConnectingRef.current = false;
-        setIsConnecting(false);
-        setIsConnected(false);
+        wsRef.current.onopen = () => {
+          console.log("WebSocket connected successfully");
+          isConnectingRef.current = false;
+          setIsConnecting(false);
+          setIsConnected(true);
+          reconnectAttemptsRef.current = 0;
+          onOpen?.();
+        };
 
-        // Only attempt to reconnect if it wasn't a deliberate close and auto-reconnect is enabled
-        if (shouldReconnectRef.current && autoReconnect && event.code !== 1000 && event.code !== 4001 && event.code !== 4003) {
-          if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-            isReconnectingRef.current = true;
-            setIsReconnecting(true);
-            reconnectAttemptsRef.current++;
+        wsRef.current.onmessage = (event) => {
+          onMessage?.(event);
+        };
 
-            clearReconnectTimeout();
-            reconnectTimeoutRef.current = setTimeout(() => {
-              console.log(`Attempting to reconnect (${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`);
-              connect();
-            }, reconnectInterval);
-          } else {
-            console.log('Max reconnection attempts reached');
-            setIsReconnecting(false);
+        wsRef.current.onclose = (event) => {
+          console.log("WebSocket connection closed:", event.code, event.reason);
+          isConnectingRef.current = false;
+          setIsConnecting(false);
+          setIsConnected(false);
+
+          // Only attempt to reconnect if it wasn't a deliberate close and auto-reconnect is enabled
+          if (
+            shouldReconnectRef.current &&
+            autoReconnect &&
+            event.code !== 1000 &&
+            event.code !== 4001 &&
+            event.code !== 4003
+          ) {
+            if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+              isReconnectingRef.current = true;
+              setIsReconnecting(true);
+              reconnectAttemptsRef.current++;
+
+              clearReconnectTimeout();
+              reconnectTimeoutRef.current = setTimeout(() => {
+                console.log(
+                  `Attempting to reconnect (${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`
+                );
+                connect();
+              }, reconnectInterval);
+            } else {
+              console.log("Max reconnection attempts reached");
+              setIsReconnecting(false);
+            }
           }
-        }
 
-        onClose?.(event);
-      };
+          onClose?.(event);
+        };
 
-      wsRef.current.onerror = (event) => {
-        console.error('WebSocket error:', event);
-        onError?.(event);
-      };
-
-    } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
-      isConnectingRef.current = false;
-      setIsConnecting(false);
-    }
-  }, [url, user, isAuthenticated, autoReconnect, reconnectInterval, maxReconnectAttempts, onOpen, onMessage, onClose, onError]);
+        wsRef.current.onerror = (event) => {
+          console.error("WebSocket error:", event);
+          onError?.(event);
+        };
+      } catch (error) {
+        console.error("Failed to create WebSocket connection:", error);
+        isConnectingRef.current = false;
+        setIsConnecting(false);
+      }
+    }, 4000); // 4 second delay
+  }, [
+    url,
+    user,
+    isAuthenticated,
+    autoReconnect,
+    reconnectInterval,
+    maxReconnectAttempts,
+    onOpen,
+    onMessage,
+    onClose,
+    onError,
+  ]);
 
   const disconnect = useCallback(() => {
     shouldReconnectRef.current = false;
     clearReconnectTimeout();
-    
+
     if (wsRef.current) {
-      wsRef.current.close(1000, 'Manual disconnect');
+      wsRef.current.close(1000, "Manual disconnect");
       wsRef.current = null;
     }
 
@@ -150,7 +176,7 @@ export function useWebSocket({
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(data);
     } else {
-      console.warn('WebSocket is not connected, cannot send message');
+      console.warn("WebSocket is not connected, cannot send message");
     }
   }, []);
 
