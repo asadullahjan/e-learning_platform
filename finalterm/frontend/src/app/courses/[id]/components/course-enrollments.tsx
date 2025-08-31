@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/components/hooks/use-toast";
 
 interface CourseEnrollmentsProps {
-  courseId: string;
+  courseId: number;
   isTeacher: boolean;
   enrollments: TeacherEnrollment[];
 }
@@ -60,7 +60,7 @@ const CourseEnrollments = ({
     fetchFilteredEnrollments();
   }, [courseId, debouncedSearchQuery, filterStatus]);
 
-  const handleDeactivateEnrollment = async (enrollmentId: string) => {
+  const handleDeactivateEnrollment = async (enrollmentId: number) => {
     try {
       await enrollmentService.deactivateEnrollment(enrollmentId);
       showToast.success("Student removed successfully");

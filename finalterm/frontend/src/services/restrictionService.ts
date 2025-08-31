@@ -3,7 +3,7 @@ import api, { createServerApi } from "./api";
 import { User } from "./userService";
 
 export interface StudentRestriction {
-  id: string;
+  id: number;
   student: User;
   course: Course;
   teacher: User;
@@ -26,7 +26,7 @@ export const restrictionService = {
   getRestrictions: async ({
     courseId,
   }: {
-    courseId?: string;
+    courseId?: number;
   }): Promise<ListResponse<StudentRestriction>> => {
     const response = await api.get<ListResponse<StudentRestriction>>("/restrictions/", {
       params: {
@@ -41,7 +41,7 @@ export const restrictionService = {
     return response.data;
   },
 
-  deleteRestriction: async (restrictionId: string): Promise<void> => {
+  deleteRestriction: async (restrictionId: number): Promise<void> => {
     await api.delete(`/restrictions/${restrictionId}/`);
   },
 

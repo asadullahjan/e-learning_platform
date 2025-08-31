@@ -16,7 +16,7 @@ export default async function CoursePage({
 }) {
   const { id } = await params;
   const { tab } = await searchParams;
-  const course: Course = await courseService.server.getCourse(id);
+  const course: Course = await courseService.server.getCourse(parseInt(id));
   const user = await getServerUser();
   const isRestricted = await restrictionService.server.checkStudentRestriction(course.id);
   const isTeacher = user?.role === "teacher";

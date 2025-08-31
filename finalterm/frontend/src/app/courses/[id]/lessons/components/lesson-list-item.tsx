@@ -12,7 +12,7 @@ import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 interface LessonListItemProps {
   lesson: CourseLesson;
-  courseId: string;
+  courseId: number;
   isTeacher?: boolean;
 }
 
@@ -64,12 +64,18 @@ export function LessonListItem({ lesson, courseId, isTeacher = false }: LessonLi
       <Card className="p-4 hover:shadow-md transition-shadow">
         <div className="space-y-2">
           <div className="flex items-start justify-between">
-            <Link href={`/courses/${courseId}/lessons/${lesson.id}`} className="flex-1">
-              <Typography variant="h4" className="text-left hover:text-blue-600">
+            <Link
+              href={`/courses/${courseId}/lessons/${lesson.id}`}
+              className="flex-1"
+            >
+              <Typography
+                variant="h4"
+                className="text-left hover:text-blue-600"
+              >
                 {lesson.title}
               </Typography>
             </Link>
-            
+
             <div className="flex items-center gap-2 ml-4">
               {!isPublished && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -107,22 +113,22 @@ export function LessonListItem({ lesson, courseId, isTeacher = false }: LessonLi
               )}
             </div>
           </div>
-          
-          <Typography variant="p" color="muted" className="text-left line-clamp-2">
+
+          <Typography
+            variant="p"
+            color="muted"
+            className="text-left line-clamp-2"
+          >
             {lesson.description}
           </Typography>
-          
+
           <div className="flex items-center justify-between text-sm text-gray-500">
             <div className="flex items-center gap-2">
               <span>Created: {formatDate(lesson.created_at)}</span>
-              {isPublished && (
-                <span>• Published: {formatDate(lesson.published_at!)}</span>
-              )}
+              {isPublished && <span>• Published: {formatDate(lesson.published_at!)}</span>}
             </div>
             {lesson.file && (
-              <span className="flex items-center gap-1">
-                📎 {lesson.file.original_name}
-              </span>
+              <span className="flex items-center gap-1">📎 {lesson.file.original_name}</span>
             )}
           </div>
         </div>

@@ -72,3 +72,6 @@ export default async function CoursesPage({
     </div>
   );
 }
+
+// Force dynamic rendering to avoid build-time issues
+export const dynamic = 'force-dynamic';

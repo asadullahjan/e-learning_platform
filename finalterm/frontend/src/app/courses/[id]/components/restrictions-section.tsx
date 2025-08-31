@@ -14,7 +14,7 @@ import { ListResponse } from "@/lib/types";
 import { User } from "@/services/userService";
 
 interface RestrictionsSectionProps {
-  courseId: string;
+  courseId: number;
   courseTitle: string;
 }
 

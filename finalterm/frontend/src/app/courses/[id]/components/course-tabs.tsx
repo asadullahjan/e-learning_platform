@@ -195,7 +195,11 @@ const CourseTabs = async ({
           {
             value: "chat",
             label: "Chat",
-            content: <CourseChat chatId={course.course_chat_id || ""} />,
+            content: course.course_chat_id ? (
+              <CourseChat chatId={course.course_chat_id} />
+            ) : (
+              <div>Chat not found</div>
+            ),
           },
         ]
       : []),

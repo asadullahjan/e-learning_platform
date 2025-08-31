@@ -17,7 +17,7 @@ export interface UpdateLessonData extends Partial<CreateLessonData> {
 export const lessonService = {
   // Get lessons for a specific course
   getCourseLessons: async (
-    courseId: string,
+    courseId: number,
     searchParams?: {
       [key: string]: string | string[] | undefined;
     }
@@ -29,13 +29,13 @@ export const lessonService = {
   },
 
   // Get a specific lesson
-  getLesson: async (courseId: string, lessonId: string): Promise<CourseLesson> => {
+  getLesson: async (courseId: number, lessonId: number): Promise<CourseLesson> => {
     const response = await api.get<CourseLesson>(`/courses/${courseId}/lessons/${lessonId}/`);
     return response.data;
   },
 
   // Create a new lesson
-  createLesson: async (courseId: string, lesson: CreateLessonData): Promise<CourseLesson> => {
+  createLesson: async (courseId: number, lesson: CreateLessonData): Promise<CourseLesson> => {
     const formData = new FormData();
     formData.append("title", lesson.title);
     formData.append("description", lesson.description);
@@ -54,8 +54,8 @@ export const lessonService = {
 
   // Update a lesson
   updateLesson: async (
-    courseId: string,
-    lessonId: string,
+    courseId: number,
+    lessonId: number,
     lesson: UpdateLessonData
   ): Promise<CourseLesson> => {
     const formData = new FormData();
@@ -74,14 +74,14 @@ export const lessonService = {
   },
 
   // Delete a lesson
-  deleteLesson: async (courseId: string, lessonId: string): Promise<void> => {
+  deleteLesson: async (courseId: number, lessonId: number): Promise<void> => {
     await api.delete(`/courses/${courseId}/lessons/${lessonId}/`);
   },
 
   // Publish/unpublish a lesson
   toggleLessonPublish: async (
-    courseId: string,
-    lessonId: string,
+    courseId: number,
+    lessonId: number,
     published: boolean
   ): Promise<CourseLesson> => {
     const published_at = published ? new Date().toISOString() : undefined;
@@ -90,7 +90,7 @@ export const lessonService = {
 
   // Get published lessons only
   getPublishedLessons: async (
-    courseId: string,
+    courseId: number,
     searchParams?: {
       [key: string]: string | string[] | undefined;
     }
@@ -101,7 +101,7 @@ export const lessonService = {
   },
 
   // Search lessons by title or description
-  searchLessons: async (courseId: string, query: string): Promise<CourseLesson[]> => {
+  searchLessons: async (courseId: number, query: string): Promise<CourseLesson[]> => {
     const response = await api.get<LessonListResponse>(`/courses/${courseId}/lessons/`, {
       params: { search: query },
     });
@@ -111,7 +111,7 @@ export const lessonService = {
   // Server-side methods (GET operations only)
   server: {
     getCourseLessons: async (
-      courseId: string,
+      courseId: number,
       searchParams?: {
         [key: string]: string | string[] | undefined;
       }
@@ -123,7 +123,7 @@ export const lessonService = {
       return response.data;
     },
 
-    getLesson: async (courseId: string, lessonId: string): Promise<CourseLesson> => {
+    getLesson: async (courseId: number, lessonId: number): Promise<CourseLesson> => {
       const serverApi = await createServerApi();
       const response = await serverApi.get<CourseLesson>(
         `/courses/${courseId}/lessons/${lessonId}/`

@@ -87,7 +87,7 @@ class UserViewSet(ModelViewSet):
     @extend_schema(
         request=UserUpdateSerializer,
         responses={
-            200: UserUpdateSerializer,
+            200: UserDetailReadOnlySerializer,
             400: inline_serializer(
                 name="UserProfileUpdateBadRequestResponse",
                 fields={
@@ -128,8 +128,8 @@ class UserViewSet(ModelViewSet):
         user = request.user
         serializer = self.get_serializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+        updated_user = serializer.save()
+        return Response(UserDetailReadOnlySerializer(updated_user).data)
 
     @extend_schema(
         responses={

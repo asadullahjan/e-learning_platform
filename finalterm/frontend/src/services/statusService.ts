@@ -2,7 +2,7 @@ import api, { createServerApi } from "./api";
 import { User } from "./userService";
 
 export interface Status {
-  id: string;
+  id: number;
   user: User;
   content: string;
   created_at: string;
@@ -30,7 +30,7 @@ export const statusService = {
   },
 
   // Get statuses for a specific user
-  getUserStatuses: async (userId: string): Promise<StatusListResponse> => {
+  getUserStatuses: async (userId: number): Promise<StatusListResponse> => {
     const response = await api.get<StatusListResponse>("/statuses/", {
       params: { user: userId },
     });
@@ -44,13 +44,13 @@ export const statusService = {
   },
 
   // Update a status
-  updateStatus: async (statusId: string, status: Partial<CreateStatusData>): Promise<Status> => {
+  updateStatus: async (statusId: number, status: Partial<CreateStatusData>): Promise<Status> => {
     const response = await api.patch<Status>(`/statuses/${statusId}/`, status);
     return response.data;
   },
 
   // Delete a status
-  deleteStatus: async (statusId: string): Promise<void> => {
+  deleteStatus: async (statusId: number): Promise<void> => {
     await api.delete(`/statuses/${statusId}/`);
   },
 
@@ -66,7 +66,7 @@ export const statusService = {
       return response.data;
     },
 
-    getUserStatuses: async (userId: string): Promise<StatusListResponse> => {
+    getUserStatuses: async (userId: number): Promise<StatusListResponse> => {
       const serverApi = await createServerApi();
       const response = await serverApi.get<StatusListResponse>("/statuses/", {
         params: { user: userId },

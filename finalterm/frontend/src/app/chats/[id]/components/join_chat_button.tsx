@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { showToast } from "@/lib/toast";
 
 interface JoinChatButtonProps {
-  chatId: string;
+  chatId: number;
 }
 
 const JoinChatButton = ({ chatId }: JoinChatButtonProps) => {

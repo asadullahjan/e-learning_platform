@@ -7,7 +7,7 @@ import { useToast } from "@/components/hooks/use-toast";
 import { User } from "@/services/userService";
 
 interface AddUsersButtonProps {
-  chatId: string;
+  chatId: number;
   chatName: string;
 }
 

@@ -1,9 +1,8 @@
 import api, { createServerApi } from "./api";
 import { User } from "./userService";
 
-
 export interface Course {
-  id: string;
+  id: number;
   title: string;
   description: string;
   teacher: User;
@@ -11,7 +10,7 @@ export interface Course {
 }
 
 export interface Enrollment {
-  id: string;
+  id: number;
   enrolled_at: string;
   is_active: boolean;
   unenrolled_at?: string;
@@ -37,7 +36,7 @@ export interface EnrollmentListResponse {
 export const enrollmentService = {
   // For teachers viewing enrollments in their course (returns user data)
   getCourseEnrollments: async (
-    courseId: string,
+    courseId: number,
     filters?: {
       search?: string;
       status?: "all" | "active" | "inactive";
@@ -71,7 +70,7 @@ export const enrollmentService = {
 
   // Generic method that automatically determines the right endpoint
   getEnrollments: async (
-    courseId?: string
+    courseId?: number
   ): Promise<TeacherEnrollment[] | StudentEnrollment[] | EnrollmentListResponse> => {
     if (courseId) {
       return enrollmentService.getCourseEnrollments(courseId);
@@ -80,41 +79,41 @@ export const enrollmentService = {
     }
   },
 
-  getEnrollment: async (enrollmentId: string): Promise<Enrollment> => {
+  getEnrollment: async (enrollmentId: number): Promise<Enrollment> => {
     const response = await api.get<Enrollment>(`/enrollments/${enrollmentId}/`);
     return response.data;
   },
 
-  createEnrollment: async (courseId: string): Promise<Enrollment> => {
+  createEnrollment: async (courseId: number): Promise<Enrollment> => {
     const response = await api.post<Enrollment>(`/courses/${courseId}/enrollments/`, {});
     return response.data;
   },
 
   updateEnrollment: async (
-    enrollmentId: string,
+    enrollmentId: number,
     data: Partial<Enrollment>
   ): Promise<Enrollment> => {
     const response = await api.patch<Enrollment>(`/enrollments/${enrollmentId}/`, data);
     return response.data;
   },
 
-  deleteEnrollment: async (enrollmentId: string): Promise<void> => {
+  deleteEnrollment: async (enrollmentId: number): Promise<void> => {
     await api.delete(`/enrollments/${enrollmentId}/`);
   },
 
   // Additional methods for better enrollment management
-  activateEnrollment: async (enrollmentId: string): Promise<Enrollment> => {
+  activateEnrollment: async (enrollmentId: number): Promise<Enrollment> => {
     return enrollmentService.updateEnrollment(enrollmentId, { is_active: true });
   },
 
-  deactivateEnrollment: async (enrollmentId: string): Promise<Enrollment> => {
+  deactivateEnrollment: async (enrollmentId: number): Promise<Enrollment> => {
     return enrollmentService.updateEnrollment(enrollmentId, { is_active: false });
   },
 
   // Server-side methods (GET operations only)
   server: {
     getCourseEnrollments: async (
-      courseId: string,
+      courseId: number,
       filters?: {
         search?: string;
         status?: "all" | "active" | "inactive";

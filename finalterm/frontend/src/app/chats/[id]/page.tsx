@@ -7,13 +7,13 @@ const ChatPage = async ({ params }: { params: Promise<{ id: string }> }) => {
   try {
     // Fetch both chat and messages on the server side
     const [chat, messagesResponse] = await Promise.all([
-      chatService.server.getChat(id),
-      chatService.server.getMessages(id, 1),
+      chatService.server.getChat(parseInt(id)),
+      chatService.server.getMessages(parseInt(id), 1),
     ]);
     console.log(chat);
     return (
       <ChatContainer
-        chatId={id}
+        chatId={parseInt(id)}
         initialChat={chat}
         initialMessages={messagesResponse.results || []}
         hasNextPage={!!messagesResponse.next}
@@ -23,10 +23,11 @@ const ChatPage = async ({ params }: { params: Promise<{ id: string }> }) => {
   } catch (error: any) {
     // Handle errors on server side
     if (error.status === 403 || error.status === 404) {
+      const errorMessage = error.response?.data?.detail || "Chat not found";
       return (
         <div className="w-full flex flex-col">
           <div className="p-6 border rounded-lg">
-            <h1 className="text-xl font-semibold mb-2">Chat Not Found</h1>
+            <h1 className="text-xl font-semibold mb-2">{errorMessage}</h1>
             <p className="text-gray-600 mb-4">
               This chat room doesn't exist or you don't have access to it.
             </p>

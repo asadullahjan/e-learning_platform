@@ -19,7 +19,7 @@ interface Participant {
 }
 
 interface ParticipantsDialogProps {
-  chatId: string;
+  chatId: number;
   trigger?: React.ReactNode;
 }
 

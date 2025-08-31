@@ -4,7 +4,7 @@ import ChatContainer from "@/app/chats/[id]/components/chat_container";
 import { useState, useEffect } from "react";
 import { ListResponse } from "@/lib/types";
 
-const CourseChat = ({ chatId }: { chatId: string }) => {
+const CourseChat = ({ chatId }: { chatId: number }) => {
   const [chat, setChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<ListResponse<Message> | null>(null);
   const [loading, setLoading] = useState(true);

@@ -2,10 +2,10 @@
 import { useAuthStore } from "@/store/authStore";
 import { Pen, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { authService } from "@/services/authService";
 import { cn } from "@/lib/utils";
 import { showToast } from "@/lib/toast";
 import Avatar from "@/components/ui/avatar";
+import { userService } from "@/services/userService";
 
 const ProfileAvatar = ({
   className,
@@ -24,6 +24,7 @@ const ProfileAvatar = ({
   const canUpdate = update && !imageUrl;
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) return;
     const file = e.target.files?.[0];
     if (file) {
       setProfilePicture(URL.createObjectURL(file));
@@ -35,8 +36,8 @@ const ProfileAvatar = ({
         const form = new FormData();
         form.append("profile_picture", file);
 
-        const response = await authService.updateProfile(form);
-        setUser(response.user);
+        const response = await userService.updateProfile(user.id, form);
+        setUser(response);
         showToast.success("Profile picture updated successfully!");
 
         // Clear preview after successful upload

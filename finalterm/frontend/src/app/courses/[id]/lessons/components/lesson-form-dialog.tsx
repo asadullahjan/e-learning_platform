@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { CourseLesson } from "@/lib/types";
 
 interface LessonFormDialogProps {
-  courseId: string;
+  courseId: number;
   lesson?: CourseLesson; // For edit mode
   mode?: "create" | "edit";
 }

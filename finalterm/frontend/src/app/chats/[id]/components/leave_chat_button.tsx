@@ -6,7 +6,7 @@ import { useToast } from "@/components/hooks/use-toast";
 import { useRouter } from "next/navigation";
 
 interface LeaveChatButtonProps {
-  chatId: string;
+  chatId: number;
   chatName: string;
   chatType: string;
 }

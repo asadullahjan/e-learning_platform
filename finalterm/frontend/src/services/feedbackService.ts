@@ -1,13 +1,10 @@
 import { ListResponse } from "@/lib/types";
 import api from "./api";
+import { User } from "./userService";
 
 export interface Feedback {
-  id: string;
-  user: {
-    id: string;
-    username: string;
-    role: string;
-  } | null;
+  id: number;
+  user: User;
   rating: number;
   text: string;
   created_at: string;
@@ -19,19 +16,19 @@ export interface CreateFeedbackData {
 }
 
 export const feedbackService = {
-  getCourseFeedbacks: async (courseId: string): Promise<Feedback[]> => {
+  getCourseFeedbacks: async (courseId: number): Promise<Feedback[]> => {
     const response = await api.get<ListResponse<Feedback>>(`/courses/${courseId}/feedbacks/`);
     return response.data.results;
   },
 
-  createFeedback: async (courseId: string, data: CreateFeedbackData): Promise<Feedback> => {
+  createFeedback: async (courseId: number, data: CreateFeedbackData): Promise<Feedback> => {
     const response = await api.post<Feedback>(`/courses/${courseId}/feedbacks/`, data);
     return response.data;
   },
 
   updateFeedback: async (
-    courseId: string,
-    feedbackId: string,
+    courseId: number,
+    feedbackId: number,
     data: CreateFeedbackData
   ): Promise<Feedback> => {
     const response = await api.patch<Feedback>(
@@ -41,7 +38,7 @@ export const feedbackService = {
     return response.data;
   },
 
-  deleteFeedback: async (courseId: string, feedbackId: string): Promise<void> => {
+  deleteFeedback: async (courseId: number, feedbackId: number): Promise<void> => {
     await api.delete(`/courses/${courseId}/feedbacks/${feedbackId}/`);
   },
 };

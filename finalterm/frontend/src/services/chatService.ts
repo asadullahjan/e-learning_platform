@@ -3,7 +3,7 @@ import { ListResponse } from "@/lib/types";
 import { User } from "./userService";
 
 export interface Chat {
-  id: string;
+  id: number;
   name: string;
   chat_type: "direct" | "group" | "course";
   description: string;
@@ -16,8 +16,16 @@ export interface Chat {
   };
 }
 
+export interface ChatParticipant {
+  id: number;
+  user: User;
+  role: string;
+  is_active: boolean;
+  joined_at: string;
+}
+
 export interface Message {
-  id: string;
+  id: number;
   content: string;
   created_at: string;
   sender: User;
@@ -38,12 +46,12 @@ export const chatService = {
     return response.data;
   },
 
-  getChat: async (id: string): Promise<Chat> => {
+  getChat: async (id: number): Promise<Chat> => {
     const response = await api.get(`/chats/${id}/`);
     return response.data;
   },
 
-  getMessages: async (id: string, page: number = 1): Promise<ListResponse<Message>> => {
+  getMessages: async (id: number, page: number = 1): Promise<ListResponse<Message>> => {
     const response = await api.get<ListResponse<Message>>(`/chats/${id}/messages/`, {
       params: { page },
     });
@@ -62,12 +70,12 @@ export const chatService = {
     return response.data;
   },
 
-  createMessage: async ({ id, content }: { id: string; content: string }): Promise<Message> => {
+  createMessage: async ({ id, content }: { id: number; content: string }): Promise<Message> => {
     const response = await api.post(`/chats/${id}/messages/`, { content });
     return response.data;
   },
 
-  joinChatRoom: async (id: string): Promise<Chat> => {
+  joinChatRoom: async (id: number): Promise<Chat> => {
     const response = await api.post(`/chats/${id}/participants/`);
     return response.data;
   },
@@ -83,19 +91,19 @@ export const chatService = {
     return response.data;
   },
 
-  addUserToChat: async (chatId: string, userId: number): Promise<Chat> => {
+  addUserToChat: async (chatId: number, userId: number): Promise<Chat> => {
     const response = await api.post(`/chats/${chatId}/participants/`, {
       user: userId,
     });
     return response.data;
   },
 
-  getChatParticipants: async (chatId: string): Promise<Chat> => {
+  getChatParticipants: async (chatId: number): Promise<ListResponse<ChatParticipant>> => {
     const response = await api.get(`/chats/${chatId}/participants/`);
     return response.data;
   },
 
-  deactivateChat: async (chatId: string, userId?: number): Promise<Chat> => {
+  deactivateChat: async (chatId: number, userId?: number): Promise<Chat> => {
     const response = await api.post(
       `/chats/${chatId}/participants/deactivate/`,
       userId ? { user: userId } : {}
@@ -103,7 +111,7 @@ export const chatService = {
     return response.data;
   },
 
-  reactivateChat: async (chatId: string, userId?: number): Promise<Chat> => {
+  reactivateChat: async (chatId: number, userId?: number): Promise<Chat> => {
     const response = await api.post(
       `/chats/${chatId}/participants/reactivate/`,
       userId ? { user: userId } : {}
@@ -122,12 +130,12 @@ export const chatService = {
       const response = await serverApi.get<Chat[]>("/chats/my_chats/");
       return response.data;
     },
-    getChat: async (id: string) => {
+    getChat: async (id: number) => {
       const serverApi = await createServerApi();
       const response = await serverApi.get<Chat>(`/chats/${id}/`);
       return response.data;
     },
-    getMessages: async (id: string, page: number = 1) => {
+    getMessages: async (id: number, page: number = 1) => {
       const serverApi = await createServerApi();
       const response = await serverApi.get<ListResponse<Message>>(`/chats/${id}/messages/`, {
         params: { page },

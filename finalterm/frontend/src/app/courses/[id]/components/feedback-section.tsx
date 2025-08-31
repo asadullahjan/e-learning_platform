@@ -11,7 +11,7 @@ import { useToast } from "@/components/hooks/use-toast";
 import { useAuthStore } from "@/store/authStore";
 
 interface FeedbackSectionProps {
-  courseId: string;
+  courseId: number;
   isEnrolled: boolean;
 }
 

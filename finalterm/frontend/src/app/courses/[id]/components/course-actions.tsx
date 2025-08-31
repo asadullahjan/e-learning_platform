@@ -19,7 +19,7 @@ import ConfirmDialog from "@/components/ui/confirm-dialog";
 interface CourseActionsProps {
   isTeacher: boolean;
   isCourseOwner: boolean;
-  courseId: string;
+  courseId: number;
   isEnrolled: boolean;
   course: Course;
 }

@@ -28,8 +28,8 @@ export default function CreateRestrictionDialog({
   onSuccess,
   courses,
 }: CreateRestrictionDialogProps) {
-  const [courseId, setCourseId] = useState<string>("");
-  const [studentId, setStudentId] = useState<string>("");
+  const [courseId, setCourseId] = useState<number | null>(null);
+  const [studentId, setStudentId] = useState<number | null>(null);
   const [reason, setReason] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [enrolledStudents, setEnrolledStudents] = useState<TeacherEnrollment[]>([]);
@@ -38,6 +38,7 @@ export default function CreateRestrictionDialog({
   const loadUsers = async () => {
     try {
       // Load all users (you might want to add pagination here)
+      if (!courseId) return;
       const data = await enrollmentService.getCourseEnrollments(courseId);
       setEnrolledStudents(data);
     } catch (error: any) {
@@ -66,8 +67,8 @@ export default function CreateRestrictionDialog({
     setIsLoading(true);
     try {
       const data: CreateRestrictionData = {
-        student: parseInt(studentId),
-        course: parseInt(courseId),
+        student: studentId,
+        course: courseId,
         reason: reason.trim(),
       };
 
@@ -98,8 +99,8 @@ export default function CreateRestrictionDialog({
   };
 
   const resetForm = () => {
-    setCourseId("");
-    setStudentId("");
+    setCourseId(null);
+    setStudentId(null);
     setReason("");
   };
 
@@ -123,8 +124,8 @@ export default function CreateRestrictionDialog({
           <div>
             <Label htmlFor="course">Course *</Label>
             <Select
-              value={courseId}
-              onValueChange={setCourseId}
+              value={courseId?.toString() || ""}
+              onValueChange={(value) => setCourseId(parseInt(value))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a course" />
@@ -145,8 +146,8 @@ export default function CreateRestrictionDialog({
           <div>
             <Label htmlFor="student">Student *</Label>
             <Select
-              value={studentId}
-              onValueChange={setStudentId}
+              value={studentId?.toString() || ""}
+              onValueChange={(value) => setStudentId(parseInt(value))}
               disabled={!courseId}
             >
               <SelectTrigger>

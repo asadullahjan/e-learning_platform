@@ -38,3 +38,6 @@ async function ChatPage() {
 }
 
 export default ChatPage;
+
+// Force dynamic rendering to avoid build-time issues
+export const dynamic = 'force-dynamic';

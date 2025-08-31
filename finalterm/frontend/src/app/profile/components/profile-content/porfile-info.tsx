@@ -7,6 +7,8 @@ import { useAuthStore } from "@/store/authStore";
 import { useEffect, useState } from "react";
 import Logout from "../logout";
 import { Card, CardContent } from "@/components/ui/card";
+import { userService } from "@/services/userService";
+import { Loader } from "lucide-react";
 
 const ProfileInfo = () => {
   const { user, isLoading, setUser } = useAuthStore();
@@ -34,6 +36,18 @@ const ProfileInfo = () => {
     });
   }, [user]);
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <Loader className="w-6 h-6 text-gray-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <div>User not found</div>;
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
@@ -48,13 +62,13 @@ const ProfileInfo = () => {
           form.append(key, value || "");
         }
 
-        const response = await authService.updateProfile(form);
+        const response = await userService.updateProfile(user.id, form);
         setMessage({
           success: "Profile updated successfully",
           error: "",
         });
         setFieldErrors({});
-        setUser(response.user);
+        setUser(response);
         setIsEditing(false);
       } catch (error: any) {
         console.error("Error updating profile:", error);
@@ -66,8 +80,6 @@ const ProfileInfo = () => {
       }
     }
   };
-
-  if (!user) return;
 
   return (
     <Card className="pt-6">

@@ -19,7 +19,7 @@ import { useEffect, useState } from "react";
 import { ParticipantsDialog } from "./participants_dialog";
 
 interface ChatContainerProps {
-  chatId: string;
+  chatId: number;
   initialChat: Chat;
   initialMessages: Message[];
   hasNextPage: boolean;

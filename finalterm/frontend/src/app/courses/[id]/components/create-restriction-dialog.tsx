@@ -19,7 +19,7 @@ interface CreateRestrictionDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  courseId: string;
+  courseId: number;
   courseTitle: string;
   enrolledStudents: User[];
 }
@@ -32,7 +32,7 @@ export default function CreateRestrictionDialog({
   courseTitle,
   enrolledStudents,
 }: CreateRestrictionDialogProps) {
-  const [studentId, setStudentId] = useState<string>("");
+  const [studentId, setStudentId] = useState<number>(0);
   const [reason, setReason] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -52,8 +52,8 @@ export default function CreateRestrictionDialog({
     setIsLoading(true);
     try {
       const data: CreateRestrictionData = {
-        student: parseInt(studentId),
-        course: parseInt(courseId),
+        student: studentId,
+        course: courseId,
         reason: reason.trim(),
       };
 
@@ -84,7 +84,7 @@ export default function CreateRestrictionDialog({
   };
 
   const resetForm = () => {
-    setStudentId("");
+    setStudentId(0);
     setReason("");
   };
 
@@ -119,8 +119,8 @@ export default function CreateRestrictionDialog({
           <div>
             <Label htmlFor="student">Student *</Label>
             <Select
-              value={studentId}
-              onValueChange={setStudentId}
+              value={studentId.toString()}
+              onValueChange={(value) => setStudentId(parseInt(value))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a student to restrict" />

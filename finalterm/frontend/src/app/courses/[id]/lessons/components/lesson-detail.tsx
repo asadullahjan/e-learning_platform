@@ -13,7 +13,7 @@ import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 interface LessonDetailProps {
   lesson: CourseLesson;
-  courseId: string;
+  courseId: number;
   isTeacher?: boolean;
 }
 

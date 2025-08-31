@@ -10,7 +10,7 @@ import { useToast } from "@/components/hooks/use-toast";
 interface FeedbackDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  courseId: string;
+  courseId: number;
   existingFeedback?: Feedback | null;
   onSuccess: () => void;
 }

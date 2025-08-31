@@ -17,11 +17,13 @@ interface LessonPageProps {
 
 export default async function LessonPage({ params }: LessonPageProps) {
   const { id, lessonId } = await params;
+  const idNumber = parseInt(id);
+  const lessonIdNumber = parseInt(lessonId);
   const user = await getServerUser();
   const [course, lesson, lessonsResponse] = await Promise.all([
-    courseService.server.getCourse(id),
-    lessonService.server.getLesson(id, lessonId),
-    lessonService.server.getCourseLessons(id),
+    courseService.server.getCourse(idNumber),
+    lessonService.server.getLesson(idNumber, lessonIdNumber),
+    lessonService.server.getCourseLessons(idNumber),
   ]);
 
   if (!course || !lesson) {
@@ -37,7 +39,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
           size="sm"
           asChild
         >
-          <Link href={`/courses/${id}?tab=content`}>
+          <Link href={`/courses/${idNumber}?tab=content`}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Course
           </Link>
@@ -50,8 +52,8 @@ export default async function LessonPage({ params }: LessonPageProps) {
         <div className="lg:col-span-1 order-2 lg:order-1">
           <LessonSidebar
             lessons={lessonsResponse.results}
-            courseId={id}
-            currentLessonId={lessonId}
+            courseId={idNumber}
+            currentLessonId={lessonIdNumber}
           />
         </div>
 
@@ -59,7 +61,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
         <div className="lg:col-span-3 order-1 lg:order-2">
           <LessonDetail
             lesson={lesson}
-            courseId={id}
+            courseId={idNumber}
             isTeacher={course.teacher.username === user?.username}
           />
         </div>

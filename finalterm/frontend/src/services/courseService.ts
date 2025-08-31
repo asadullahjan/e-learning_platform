@@ -15,13 +15,13 @@ export interface UpdateCourseData extends Partial<CreateCourseData> {
 
 export const courseService = {
   getCourses: async (searchParams?: {
-    [key: string]: string | string[] | undefined;
+    [key: string]: string | string[] | number | undefined;
   }): Promise<ListResponse<Course>> => {
     const response = await api.get<ListResponse<Course>>("/courses/", { params: searchParams });
     return response.data;
   },
 
-  getCourse: async (courseId: string): Promise<Course> => {
+  getCourse: async (courseId: number): Promise<Course> => {
     const response = await api.get<Course>(`/courses/${courseId}/`);
     return response.data;
   },
@@ -31,23 +31,23 @@ export const courseService = {
     return response.data;
   },
 
-  updateCourse: async (courseId: string, course: UpdateCourseData): Promise<Course> => {
+  updateCourse: async (courseId: number, course: UpdateCourseData): Promise<Course> => {
     const response = await api.patch<Course>(`/courses/${courseId}/`, course);
     return response.data;
   },
 
-  deleteCourse: async (courseId: string): Promise<void> => {
+  deleteCourse: async (courseId: number): Promise<void> => {
     await api.delete(`/courses/${courseId}/`);
   },
 
   // Additional methods for better course management
-  publishCourse: async (courseId: string): Promise<Course> => {
+  publishCourse: async (courseId: number): Promise<Course> => {
     return courseService.updateCourse(courseId, {
       published_at: new Date().toISOString(),
     });
   },
 
-  unpublishCourse: async (courseId: string): Promise<Course> => {
+  unpublishCourse: async (courseId: number): Promise<Course> => {
     return courseService.updateCourse(courseId, {
       published_at: undefined,
     });
@@ -64,7 +64,7 @@ export const courseService = {
   // Server-side methods (GET operations only)
   server: {
     getCourses: async (searchParams?: {
-      [key: string]: string | string[] | undefined;
+      [key: string]: string | string[] | number | undefined;
     }): Promise<ListResponse<Course>> => {
       const serverApi = await createServerApi();
       const response = await serverApi.get<ListResponse<Course>>("/courses/", {
@@ -73,7 +73,7 @@ export const courseService = {
       return response.data;
     },
 
-    getCourse: async (courseId: string): Promise<Course> => {
+    getCourse: async (courseId: number): Promise<Course> => {
       const serverApi = await createServerApi();
       const response = await serverApi.get<Course>(`/courses/${courseId}/`);
       return response.data;

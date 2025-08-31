@@ -16,7 +16,7 @@ const MessageList = ({
   initialNextUrl,
 }: {
   chat_type: Chat["chat_type"];
-  chatId: string;
+  chatId: number;
   initialMessages: Message[];
   initialHasNextPage: boolean;
   initialNextUrl: string | null;

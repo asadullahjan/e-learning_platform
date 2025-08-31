@@ -6,7 +6,7 @@ import Input from "@/components/ui/Input";
 import Typography from "@/components/ui/Typography";
 import { chatService } from "@/services/chatService";
 
-const MessageInput = ({ id }: { id: string }) => {
+const MessageInput = ({ id }: { id: number }) => {
   const [message, setMessage] = useState("");
   const [sending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +14,7 @@ const MessageInput = ({ id }: { id: string }) => {
   const handleSend = () => {
     if (!message.trim()) return;
 
-    startTransition(async () => {
+    startTransition(async () => { 
       try {
         // Send message via HTTP API
         await chatService.createMessage({ id, content: message });

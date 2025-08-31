@@ -9,7 +9,7 @@ import { useEffect, useState, useCallback } from "react";
 import { LessonFormDialog } from "./lesson-form-dialog";
 
 interface LessonListProps {
-  courseId: string;
+  courseId: number;
   initialLessons?: CourseLesson[];
   initialHasNextPage?: boolean;
   isTeacher?: boolean;
