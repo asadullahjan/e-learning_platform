@@ -19,6 +19,7 @@ from elearning.serializers import (
 from django.middleware.csrf import get_token
 from django.views.decorators.cache import never_cache
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 
 class AuthViewSet(viewsets.GenericViewSet):
@@ -245,6 +246,7 @@ class AuthViewSet(viewsets.GenericViewSet):
         ],
     )
     @method_decorator(never_cache)
+    @method_decorator(ensure_csrf_cookie)
     @action(detail=False, methods=["get"])
     def csrf_token(self, request):
         """

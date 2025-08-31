@@ -1,4 +1,5 @@
 import axios from "axios";
+import Cookies from "js-cookie";
 
 const API_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URL}/api/`;
 
@@ -7,18 +8,8 @@ const getIsServer = () => typeof window === "undefined";
 
 // Client-side cookie parsing
 const getClientCookie = (name: string) => {
-  let cookieValue = null;
-  if (!getIsServer() && document.cookie && document.cookie !== "") {
-    const cookies = document.cookie.split(";");
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === name + "=") {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
+  const cookie = Cookies.get(name);
+  return cookie;
 };
 
 // Track if cookies have been initialized
