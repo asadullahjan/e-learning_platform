@@ -23,6 +23,7 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ssh-asadullah.alwaysdata.net >> ~/.ssh/known_hosts
 
-      - name: Deploy backend only
+      - name: Deploy to AlwaysData
         run: |
-          rsync -av --exclude='.git' finalterm/backend/ asadullah@ssh-asadullah.alwaysdata.net:~/project/
+          git remote add deploy asadullah@ssh-asadullah.alwaysdata.net:~/project.git
+          git push deploy main --force
