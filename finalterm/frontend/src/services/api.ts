@@ -33,7 +33,7 @@ const initializeCookies = async (): Promise<void> => {
     console.log("Initializing cookies...");
 
     // Make a simple GET request to set cookies
-    const response = await axios.get(`${API_BASE_URL}auth/csrf-token/`, {
+    const response = await axios.get(`${API_BASE_URL}auth/csrf_token/`, {
       withCredentials: true,
       headers: {
         Accept: "application/json",

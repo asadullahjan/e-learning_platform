@@ -20,7 +20,9 @@ if not SECRET_KEY:
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 ALLOWED_HOSTS = (
-    os.environ.get("ALLOWED_HOSTS", "").split(",") if os.environ.get("ALLOWED_HOSTS") else []
+    os.environ.get("ALLOWED_HOSTS", "").split(",")
+    if os.environ.get("ALLOWED_HOSTS")
+    else []
 )
 if DEBUG:
     ALLOWED_HOSTS.extend(["localhost", "127.0.0.1"])
@@ -50,7 +52,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "corsheaders.middleware.CorsMiddleware",  # CORS headers before common & CSRF
+    "corsheaders.middleware.CorsMiddleware",  # CORS headers
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",  # CSRF protection
@@ -96,10 +98,27 @@ DATABASES = {
 # Password validation
 # -----------------------------
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {
+        "NAME": (
+            "django.contrib.auth.password_validation"
+            ".UserAttributeSimilarityValidator"
+        ),
+    },
+    {
+        "NAME": (
+            "django.contrib.auth.password_validation.MinimumLengthValidator"
+        ),
+    },
+    {
+        "NAME": (
+            "django.contrib.auth.password_validation.CommonPasswordValidator"
+        ),
+    },
+    {
+        "NAME": (
+            "django.contrib.auth.password_validation.NumericPasswordValidator"
+        ),
+    },
 ]
 
 # -----------------------------
@@ -128,13 +147,23 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # -----------------------------
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer" if "test" in sys.argv else "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {} if "test" in sys.argv else {
-            "hosts": [os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")],
-            "prefix": ENVIRONMENT_PREFIX,
-            "capacity": 1500,
-            "expiry": 3600,
-        },
+        "BACKEND": (
+            "channels.layers.InMemoryChannelLayer"
+            if "test" in sys.argv
+            else "channels_redis.core.RedisChannelLayer"
+        ),
+        "CONFIG": (
+            {}
+            if "test" in sys.argv
+            else {
+                "hosts": [
+                    os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")
+                ],
+                "prefix": ENVIRONMENT_PREFIX,
+                "capacity": 1500,
+                "expiry": 3600,
+            }
+        ),
     },
 }
 
@@ -146,7 +175,9 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.BasicAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_PAGINATION_CLASS": (
+        "rest_framework.pagination.PageNumberPagination"
+    ),
     "PAGE_SIZE": 10,
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
@@ -159,14 +190,19 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "E-Learning Platform API",
-    "DESCRIPTION": "A comprehensive e-learning platform with courses, lessons, chat, and user management",
+    "DESCRIPTION": (
+        "A comprehensive e-learning platform with courses, lessons, chat, and "
+        "user management"
+    ),
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
     "SCHEMA_PATH_PREFIX": "/api/",
     "ENUM_NAME_OVERRIDES": {
         "UserRoleEnum": "elearning.models.User.ROLE_CHOICES",
-        "ChatParticipantRoleEnum": "elearning.models.ChatParticipant.ROLE_CHOICES",
+        "ChatParticipantRoleEnum": (
+            "elearning.models.ChatParticipant.ROLE_CHOICES"
+        ),
     },
 }
 
@@ -229,5 +265,11 @@ if not DEBUG:
                 "filename": BASE_DIR / "logs" / "django.log",
             },
         },
-        "loggers": {"django": {"handlers": ["file"], "level": "INFO", "propagate": True}},
+        "loggers": {
+            "django": {
+                "handlers": ["file"],
+                "level": "INFO",
+                "propagate": True,
+            }
+        },
     }
