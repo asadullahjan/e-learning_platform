@@ -1,0 +1,3 @@
+{
+  "ignoreCommand": "git diff --quiet HEAD~1 HEAD -- finalterm/frontend/ || echo 'Frontend changed, proceeding with build'"
+}
