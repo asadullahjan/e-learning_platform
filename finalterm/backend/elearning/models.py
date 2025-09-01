@@ -278,6 +278,9 @@ class ChatMessage(models.Model):
     class Meta:
         db_table = "chat_messages"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["chat_room", "created_at"]),
+        ]
 
 
 class ChatParticipant(models.Model):

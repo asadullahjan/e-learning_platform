@@ -58,7 +58,7 @@ export default function LoginForm() {
           <div className="rounded-md space-y-2">
             <div>
               <label
-                htmlFor="Email"
+                htmlFor="email"
                 className="sr-only"
               >
                 email

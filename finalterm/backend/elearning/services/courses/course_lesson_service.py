@@ -22,11 +22,6 @@ class CourseLessonService:
             teacher, course, raise_exception=True
         )
 
-        # Check if teacher can upload files
-        CourseFilePolicy.check_can_upload_file(
-            teacher, course, raise_exception=True
-        )
-
         # Create the lesson
         lesson = CourseLesson.objects.create(
             course=course,
@@ -70,10 +65,6 @@ class CourseLessonService:
 
         # Update file if provided
         if file_data:
-            # Check if teacher can upload files
-            CourseFilePolicy.check_can_upload_file(
-                teacher, lesson.course, raise_exception=True
-            )
 
             # Update existing file or create new one
             if lesson.file:

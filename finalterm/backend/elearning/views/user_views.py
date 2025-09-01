@@ -36,14 +36,14 @@ class UserViewSet(ModelViewSet):
     """
     ViewSet for user operations with automatic pagination and search
 
-    Users can view all users, view their own profile, update their profile,
-    and retrieve other users by username.
+    Any authenticated user can view all users and any user's profile.
+    Users can only update their own profile.
 
     **Actions:**
-    - list: View all users
-    - retrieve: View a specific user
+    - list: View all users (any authenticated user)
+    - retrieve: View a specific user (any authenticated user)
     - me: View current user profile
-    - profile_update: Update current user profile
+    - profile_update: Update current user profile (owner only)
     """
 
     permission_classes = [IsUserAuthenticatedAndOwner]

@@ -5,6 +5,7 @@ This module contains permission classes that control access to file
 operations including upload, download, and deletion.
 """
 
+from elearning.models import Enrollment
 from elearning.exceptions import ServiceError
 
 
@@ -17,9 +18,7 @@ class CourseFilePolicy:
     """
 
     @staticmethod
-    def check_can_upload_file(
-        user, course=None, raise_exception=False
-    ):
+    def check_can_upload_file(user, course=None, raise_exception=False):
         """
         Check if user can upload a file.
 
@@ -62,9 +61,7 @@ class CourseFilePolicy:
         return False
 
     @staticmethod
-    def check_can_download_file(
-        user, file_obj, raise_exception=False
-    ):
+    def check_can_download_file(user, file_obj, raise_exception=False):
         """
         Check if user can download a file.
 
@@ -90,25 +87,12 @@ class CourseFilePolicy:
         if file_obj.uploaded_by == user:
             return True
 
-        # Course teachers can download files from their courses
-        # Check through lesson relationship
-        if file_obj.lessons.exists():
-            lesson = file_obj.lessons.first()
-            if lesson.course.teacher == user:
+        # Students can download files from courses they're enrolled in
+        if user.role == "student":
+            if Enrollment.objects.filter(
+                user=user, course=file_obj.course, is_active=True
+            ).exists():
                 return True
-
-            # Students can download files from courses they're enrolled in if
-            # both lesson and course are published
-            if (
-                user.role == "student"
-                and lesson.published_at
-                and lesson.course.published_at  # Course must be published
-            ):
-                from elearning.models import Enrollment
-                if Enrollment.objects.filter(
-                    user=user, course=lesson.course, is_active=True
-                ).exists():
-                    return True
 
         error_msg = "You don't have permission to download this file"
         if raise_exception:
@@ -116,9 +100,7 @@ class CourseFilePolicy:
         return False
 
     @staticmethod
-    def check_can_delete_file(
-        user, file_obj, raise_exception=False
-    ):
+    def check_can_delete_file(user, file_obj, raise_exception=False):
         """
         Check if user can delete a file.
 
@@ -144,11 +126,11 @@ class CourseFilePolicy:
         if file_obj.uploaded_by == user:
             return True
 
-        # Course teachers can delete files from their courses
-        # Check through lesson relationship
-        if file_obj.lessons.exists():
-            lesson = file_obj.lessons.first()
-            if lesson.course.teacher == user:
+        # Students can delete files from courses they're enrolled in
+        if user.role == "student":
+            if Enrollment.objects.filter(
+                user=user, course=file_obj.course, is_active=True
+            ).exists():
                 return True
 
         error_msg = "You don't have permission to delete this file"

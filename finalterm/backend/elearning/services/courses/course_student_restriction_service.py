@@ -155,11 +155,7 @@ class CourseStudentRestrictionService:
         - Deactivate enrollments
         - Deactivate chat participants
         """
-        print(
-            "apply_restriction_effects",
-            restriction.course,
-            restriction.student,
-        )
+        
         if restriction.course:
             # Course-specific restriction
             enrollments = Enrollment.objects.filter(

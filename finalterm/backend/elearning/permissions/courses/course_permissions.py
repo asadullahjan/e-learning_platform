@@ -18,7 +18,7 @@ class CoursePermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
         # Anyone can list or retrieve courses (object-level checks apply later)
-        if view.action in ["list", "retrieve"]:
+        if view.action in permissions.SAFE_METHODS:
             return True
 
         # Only teachers can create new courses

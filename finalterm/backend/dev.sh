@@ -130,6 +130,7 @@ collect_static() {
 # Create superuser
 create_superuser() {
     print_status "Creating superuser..."
+    activate_venv
     python manage.py createsuperuser
 }
 
@@ -208,6 +209,7 @@ show_help() {
     echo "Usage: ./dev.sh {setup|runserver|daphne|test [test_path]|migrate|makemigrations|shell|clean|help}"
     echo ""
     echo "Commands:"
+    echo "  create_superuser - Create superuser"
     echo "  check_python   - Check Python version"
     echo "  setup          - Create venv, install requirements, run migrations"
     echo "  runserver      - Start Django development server (port 8000)"
@@ -228,6 +230,9 @@ show_help() {
 
 # Main script logic
 case $1 in
+    "create_superuser")
+        create_superuser
+        ;;
     "check_python")
         check_python
         ;;

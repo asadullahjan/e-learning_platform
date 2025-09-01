@@ -15,8 +15,8 @@ class IsUserAuthenticatedAndOwner(BasePermission):
     """
     Permission class for user profile operations.
 
-    Users can only view and modify their own profiles.
-    This ensures privacy and data security.
+    Any authenticated user can view any profile.
+    Users can only modify their own profiles.
     """
 
     def has_permission(self, request, view):
@@ -27,14 +27,20 @@ class IsUserAuthenticatedAndOwner(BasePermission):
         return True
 
     def has_object_permission(self, request, view, obj):
-        """Check if user is the owner of the profile"""
+        """Check if user can access the profile object"""
         if not request.user.is_authenticated:
             self.message = "You must be logged in to access user profiles"
             raise NotAuthenticated(self.message)
 
-        if obj != request.user:
-            self.message = "You can only view and modify your own profile"
-            return False
+        # For read operations, any authenticated user can access
+        if view.action in ["list", "retrieve"]:
+            return True
+
+        # For write operations, only the profile owner can access
+        if view.action in ["update", "partial_update", "destroy"]:
+            if obj != request.user:
+                self.message = "You can only modify your own profile"
+                return False
 
         return True
 
@@ -57,9 +63,7 @@ class UserPolicy:
         """
         Check if a user can view another user's profile.
 
-        This method can be used by both permissions and services:
-        - For permissions: returns boolean and sets custom message
-        - For services: raises ServiceError with detailed message
+        Any authenticated user can view any profile.
 
         Args:
             user: User attempting to view profile
@@ -82,24 +86,8 @@ class UserPolicy:
                 permission_obj.message = error_msg
             return False
 
-        # Users can view their own profile
-        if user == target_user:
-            return True
-
-        # Teachers can view student profiles (for course management)
-        if user.role == "teacher" and target_user.role == "student":
-            return True
-
-        # Students can view teacher profiles (for course selection)
-        if user.role == "student" and target_user.role == "teacher":
-            return True
-
-        error_msg = "You do not have permission to view this profile"
-        if raise_exception:
-            raise ServiceError.permission_denied(error_msg)
-        if permission_obj:
-            permission_obj.message = error_msg
-        return False
+        # Any authenticated user can view any profile
+        return True
 
     @staticmethod
     def check_can_modify_profile(

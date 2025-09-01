@@ -182,6 +182,20 @@ export default function Header() {
               Courses
             </Link>
 
+            {user?.role === "teacher" && (
+              <Link
+                href="/restrictions"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive("/restrictions")
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
+                }`}
+              >
+                <ShieldIcon className="w-4 h-4 inline mr-2" />
+                Manage Restrictions
+              </Link>
+            )}
+
             <Link
               href="/chats"
               className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${

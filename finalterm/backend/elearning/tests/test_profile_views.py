@@ -20,10 +20,20 @@ class UserProfileTest(BaseAPITestCase):
             first_name="John",
             last_name="Doe",
         )
+        self.other_user = User.objects.create_user(
+            username="otheruser",
+            email="other@example.com",
+            password="testpass123",
+            role="teacher",
+            first_name="Jane",
+            last_name="Smith",
+        )
         self.client.force_authenticate(user=self.user)
 
         self.profile_url = "/api/users/me/"
         self.update_url = "/api/users/profile_update/"
+        self.users_list_url = "/api/users/"
+        self.other_user_url = f"/api/users/{self.other_user.username}/"
 
     @debug_on_failure
     def test_get_user_profile(self):
@@ -57,3 +67,56 @@ class UserProfileTest(BaseAPITestCase):
 
         response = self.log_response(self.client.get(self.profile_url))
         self.assertStatusCode(response, status.HTTP_401_UNAUTHORIZED)
+
+    @debug_on_failure
+    def test_any_user_can_view_all_users(self):
+        """Test that any authenticated user can view all users"""
+        response = self.log_response(self.client.get(self.users_list_url))
+        self.assertStatusCode(response, status.HTTP_200_OK)
+
+        # Should see both users
+        self.assertEqual(len(response.data["results"]), 2)
+        usernames = [user["username"] for user in response.data["results"]]
+        self.assertIn("testuser", usernames)
+        self.assertIn("otheruser", usernames)
+
+    @debug_on_failure
+    def test_any_user_can_view_other_user_profile(self):
+        """
+        Test that any authenticated user can view any other user's profile
+        """
+        response = self.log_response(self.client.get(self.other_user_url))
+        self.assertStatusCode(response, status.HTTP_200_OK)
+
+        data = response.data
+        self.assertEqual(data["username"], "otheruser")
+        self.assertEqual(data["email"], "other@example.com")
+        self.assertEqual(data["first_name"], "Jane")
+        self.assertEqual(data["role"], "teacher")
+
+    @debug_on_failure
+    def test_user_search_functionality(self):
+        """Test that users can search for other users"""
+        # Search by username
+        response = self.log_response(
+            self.client.get(f"{self.users_list_url}?search=otheruser")
+        )
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["username"], "otheruser")
+
+        # Search by first name
+        response = self.log_response(
+            self.client.get(f"{self.users_list_url}?search=Jane")
+        )
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["first_name"], "Jane")
+
+        # Search by last name
+        response = self.log_response(
+            self.client.get(f"{self.users_list_url}?search=Smith")
+        )
+        self.assertStatusCode(response, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["last_name"], "Smith")

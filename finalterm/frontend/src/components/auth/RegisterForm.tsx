@@ -98,6 +98,12 @@ export default function RegisterForm() {
               )}
             </div>
             <div>
+              <label
+                htmlFor="username"
+                className="sr-only"
+              >
+                Username
+              </label>
               <Input
                 {...register("username", {
                   required: "Username is required",
@@ -124,6 +130,12 @@ export default function RegisterForm() {
               )}
             </div>
             <div>
+              <label
+                htmlFor="email"
+                className="sr-only"
+              >
+                Email
+              </label>
               <Input
                 {...register("email", {
                   required: "Email is required",
@@ -150,6 +162,12 @@ export default function RegisterForm() {
             </div>
 
             <div>
+              <label
+                htmlFor="password"
+                className="sr-only"
+              >
+                Password
+              </label>
               <Input
                 {...register("password", {
                   required: "Password is required",

@@ -53,7 +53,6 @@ class CourseStudentRestrictionViewSet(viewsets.ModelViewSet):
     permission_classes = [CourseStudentRestrictionPermission]
     filterset_class = CourseStudentRestrictionFilter
 
-
     def get_serializer_class(self):
         """Return appropriate serializer class based on action."""
         if self.action in ["create", "update", "partial_update"]:
