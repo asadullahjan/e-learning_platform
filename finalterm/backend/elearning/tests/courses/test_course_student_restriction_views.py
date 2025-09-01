@@ -120,18 +120,17 @@ class CourseStudentRestrictionViewsTestCase(BaseAPITestCase):
         # Enrollment inactive
         self.enrollment1.refresh_from_db()
         self.assertFalse(self.enrollment1.is_active)
-        print("enrollment1", self.enrollment1.is_active, self.enrollment1.id)
+
         # Chat inactive
         self.chat_participant1.refresh_from_db()
         self.assertFalse(self.chat_participant1.is_active)
-        print("chat_participant1", self.chat_participant1.is_active)
+
         # Other enrollment/chat unaffected
         self.enrollment2.refresh_from_db()
         self.assertTrue(self.enrollment2.is_active)
-        print("enrollment2", self.enrollment2.is_active)
         self.chat_participant2.refresh_from_db()
         self.assertTrue(self.chat_participant2.is_active)
-        print("chat_participant2", self.chat_participant2.is_active)
+
 
     @debug_on_failure
     def test_student_cannot_create_restriction(self, mock_notification):

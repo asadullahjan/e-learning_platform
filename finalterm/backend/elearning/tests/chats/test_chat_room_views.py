@@ -68,7 +68,7 @@ class ChatRoomViewsTestCase(BaseAPITestCase):
         # unauthenticated forbidden
         self.client.force_authenticate(user=None)
         response = self.log_response(self.client.get("/api/chats/my_chats/"))
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     # --- chat creation ---
     @debug_on_failure

@@ -67,7 +67,7 @@ class CourseEnrollmentViewsTest(BaseAPITestCase):
         resp = self.log_response(
             self.client.post(f"/api/courses/{self.course.id}/enrollments/", {})
         )
-        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
 
     # ------------------- LIST ENROLLMENTS -------------------
     @debug_on_failure

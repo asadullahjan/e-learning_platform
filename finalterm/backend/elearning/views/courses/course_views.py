@@ -80,7 +80,7 @@ class CourseViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         # For list actions, filter by permissions
-        if self.action == "list":
+        if self.action == "list" and self.request.user.is_authenticated:
             return CourseService.get_courses_for_user(self.request.user)
         # For detail actions (retrieve, update, delete), get all courses
         # Permission checks will be done in service layer to return proper 403

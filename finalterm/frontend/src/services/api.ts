@@ -314,9 +314,14 @@ export const createServerApi = async () => {
     const cookieString = cookieStore.toString();
     const csrfToken = cookieStore.get("csrftoken")?.value;
 
+    // For server-side, we need the full server URL
+    const serverBaseURL = process.env.NEXT_PUBLIC_SERVER_URL 
+      ? `${process.env.NEXT_PUBLIC_SERVER_URL}/api/`
+      : "http://localhost:8000/api/"; // Fallback for local development
+
     // Create server API instance with cookies
     const serverApi = axios.create({
-      baseURL: API_BASE_URL,
+      baseURL: serverBaseURL,
       withCredentials: false,
       timeout: 10000,
       headers: {

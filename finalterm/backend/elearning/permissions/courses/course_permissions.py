@@ -36,6 +36,10 @@ class CoursePermission(permissions.BasePermission):
         # For safe methods: show only published courses,
         # unless user is the teacher
         if request.method in permissions.SAFE_METHODS:
+            # Unauthenticated users can only see published courses
+            if not request.user.is_authenticated:
+                return obj.published_at is not None
+            # Authenticated users can see published courses or their own courses
             return obj.published_at is not None or obj.teacher == request.user
 
         # For write actions: only the teacher (owner) can modify/delete

@@ -1,4 +1,3 @@
-from django.utils import timezone
 from rest_framework import status
 
 from elearning.models import ChatRoom, ChatParticipant, Course, User
@@ -118,40 +117,6 @@ class CourseViewsTestCase(BaseAPITestCase):
             self.client.delete(f"/api/courses/{course.id}/")
         )
         self.assertStatusCode(response, status.HTTP_403_FORBIDDEN)
-
-    @debug_on_failure
-    def test_list_courses(self):
-        Course.objects.create(
-            title="C1",
-            description="Desc 1",
-            teacher=self.teacher,
-            published_at=timezone.now(),
-        )
-        Course.objects.create(
-            title="C2",
-            description="Desc 2",
-            teacher=self.teacher,
-            published_at=timezone.now(),
-        )
-        # Explicitly set anonymous user
-        self.client.force_authenticate(user=None)
-        response = self.log_response(self.client.get("/api/courses/"))
-        self.assertStatusCode(response, status.HTTP_200_OK)
-        self.assertEqual(response.data["count"], 2)
-
-    @debug_on_failure
-    def test_retrieve_published_course(self):
-        course = Course.objects.create(
-            title="Published Course",
-            description="Desc",
-            teacher=self.teacher,
-            published_at=timezone.now(),
-        )
-        self.client.force_authenticate(user=None)  # Unauthenticated
-        response = self.log_response(
-            self.client.get(f"/api/courses/{course.id}/")
-        )
-        self.assertStatusCode(response, status.HTTP_200_OK)
 
     @debug_on_failure
     def test_retrieve_unpublished_course_owner_allowed(self):

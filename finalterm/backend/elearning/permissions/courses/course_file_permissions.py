@@ -89,10 +89,13 @@ class CourseFilePolicy:
 
         # Students can download files from courses they're enrolled in
         if user.role == "student":
-            if Enrollment.objects.filter(
-                user=user, course=file_obj.course, is_active=True
-            ).exists():
-                return True
+            # Get the course through the lesson relationship
+            if file_obj.lessons.exists():
+                lesson = file_obj.lessons.first()
+                if Enrollment.objects.filter(
+                    user=user, course=lesson.course, is_active=True
+                ).exists():
+                    return True
 
         error_msg = "You don't have permission to download this file"
         if raise_exception:
@@ -128,10 +131,13 @@ class CourseFilePolicy:
 
         # Students can delete files from courses they're enrolled in
         if user.role == "student":
-            if Enrollment.objects.filter(
-                user=user, course=file_obj.course, is_active=True
-            ).exists():
-                return True
+            # Get the course through the lesson relationship
+            if file_obj.lessons.exists():
+                lesson = file_obj.lessons.first()
+                if Enrollment.objects.filter(
+                    user=user, course=lesson.course, is_active=True
+                ).exists():
+                    return True
 
         error_msg = "You don't have permission to delete this file"
         if raise_exception:
