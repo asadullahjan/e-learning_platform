@@ -237,7 +237,6 @@ CSRF_COOKIE_DOMAIN = None  # Let Django set the domain automatically
 CSRF_COOKIE_PATH = "/"  # Available on all paths
 
 # Session Cookie Settings
-SESSION_COOKIE_HTTPONLY = False  # Allow JS to access session cookie
 # Lax for dev, None for prod
 SESSION_COOKIE_SAMESITE = "Lax" if DEBUG else "None"
 SESSION_COOKIE_SECURE = not DEBUG  # Use secure cookies in production
@@ -261,6 +260,8 @@ CORS_EXPOSE_HEADERS = [
     "set-cookie",
     "x-csrftoken",
 ]
+
+
 
 # -----------------------------
 # Production security headers

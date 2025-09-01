@@ -235,24 +235,11 @@
 
 import axios from "axios";
 
-const API_BASE_URL = "/api/"; // always through Next.js proxy
+const API_BASE_URL = `/api/`; // always through Next.js proxy
 const getIsServer = () => typeof window === "undefined";
 
 // Track if CSRF initialized
 let csrfInitialized = false;
-
-// Fetch CSRF cookie (needed before first unsafe request)
-const fetchCSRFToken = async () => {
-  if (csrfInitialized) return;
-  try {
-    await axios.get(`${API_BASE_URL}auth/csrf_token/`, {
-      headers: { Accept: "application/json" },
-    });
-    csrfInitialized = true;
-  } catch (err) {
-    console.error("Failed to fetch CSRF token:", err);
-  }
-};
 
 // Axios instance
 const api = axios.create({
@@ -265,14 +252,22 @@ const api = axios.create({
   },
 });
 
+// Fetch CSRF cookie (needed before first unsafe request)
+const fetchCSRFToken = async () => {
+  if (csrfInitialized) return;
+  try {
+    await api.get(`/auth/csrf_token`);
+    csrfInitialized = true;
+  } catch (err) {
+    console.error("Failed to fetch CSRF token:", err);
+  }
+};
+
 // Request interceptor
 api.interceptors.request.use(async (config) => {
   const method = config.method?.toLowerCase();
 
   if (["post", "put", "patch", "delete"].includes(method || "")) {
-    // Ensure CSRF token is present
-    await fetchCSRFToken();
-
     // Grab csrftoken from cookie (browser-managed)
     const csrfMatch = document.cookie.split("; ").find((row) => row.startsWith("csrftoken="));
     const csrfToken = csrfMatch?.split("=")[1];
@@ -315,7 +310,7 @@ export const createServerApi = async () => {
     const csrfToken = cookieStore.get("csrftoken")?.value;
 
     // For server-side, we need the full server URL
-    const serverBaseURL = process.env.NEXT_PUBLIC_SERVER_URL 
+    const serverBaseURL = process.env.NEXT_PUBLIC_SERVER_URL
       ? `${process.env.NEXT_PUBLIC_SERVER_URL}/api/`
       : "http://localhost:8000/api/"; // Fallback for local development
 
