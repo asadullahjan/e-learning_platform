@@ -109,8 +109,57 @@ export function LessonFormDialog({ courseId, lesson, mode = "create" }: LessonFo
       setSelectedFile(null);
       setRemoveExistingFile(false);
       setIsOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.log(error);
+
+      // Handle backend validation errors
+      if (error.response?.data) {
+        const errorData = error.response.data;
+
+        // Handle field-specific validation errors
+        if (errorData.title) {
+          toast({
+            title: "Validation Error",
+            description: Array.isArray(errorData.title) ? errorData.title[0] : errorData.title,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (errorData.description) {
+          toast({
+            title: "Validation Error",
+            description: Array.isArray(errorData.description)
+              ? errorData.description[0]
+              : errorData.description,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (errorData.content) {
+          toast({
+            title: "Validation Error",
+            description: Array.isArray(errorData.content)
+              ? errorData.content[0]
+              : errorData.content,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Handle non-field errors
+        if (errorData.detail) {
+          toast({
+            title: "Error",
+            description: Array.isArray(errorData.detail) ? errorData.detail[0] : errorData.detail,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Generic error fallback
       toast({
         title: "Error",
         description: `Failed to ${mode === "edit" ? "update" : "create"} lesson. Please try again.`,

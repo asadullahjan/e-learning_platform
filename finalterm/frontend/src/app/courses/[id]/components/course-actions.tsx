@@ -15,6 +15,8 @@ import { showToast } from "@/lib/toast";
 import { Course } from "@/lib/types";
 import CourseFormDialog from "../../components/course-form-dialog";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
+import Typography from "@/components/ui/Typography";
+import { LessonFormDialog } from "../lessons/components/lesson-form-dialog";
 
 interface CourseActionsProps {
   isTeacher: boolean;
@@ -154,6 +156,11 @@ const CourseActions = ({
           >
             Manage Restrictions
           </Button>
+          {isTeacher && (
+            <div className="flex justify-between items-center">
+              <LessonFormDialog courseId={courseId} />
+            </div>
+          )}
 
           {/* Delete Course Button */}
           <Dialog

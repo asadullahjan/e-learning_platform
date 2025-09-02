@@ -277,6 +277,11 @@ api.interceptors.request.use(async (config) => {
     }
   }
 
+  // Remove Content-Type header for FormData to let browser set multipart boundary
+  if (config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
+  }
+
   return config;
 });
 

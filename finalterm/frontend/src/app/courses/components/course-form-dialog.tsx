@@ -83,10 +83,45 @@ const CourseFormDialog = ({ mode, course, width }: CourseFormDialogProps) => {
         setIsOpen(false);
         router.refresh(); // Refresh to show updated data
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error(error);
+
+      // Handle backend validation errors
+      if (error.response?.data) {
+        const errorData = error.response.data;
+
+        // Handle field-specific validation errors
+        if (errorData.title) {
+          form.setError("title", {
+            type: "manual",
+            message: Array.isArray(errorData.title) ? errorData.title[0] : errorData.title,
+          });
+        }
+
+        if (errorData.description) {
+          form.setError("description", {
+            type: "manual",
+            message: Array.isArray(errorData.description)
+              ? errorData.description[0]
+              : errorData.description,
+          });
+        }
+
+        // If there are field errors, don't show generic toast
+        if (errorData.title || errorData.description) {
+          return;
+        }
+
+        // Handle non-field errors
+        if (errorData.detail) {
+          showToast.error(Array.isArray(errorData.detail) ? errorData.detail[0] : errorData.detail);
+          return;
+        }
+      }
+
+      // Generic error fallback
       const action = mode === "create" ? "create" : "update";
       showToast.error(`Failed to ${action} course`);
-      console.error(error);
     }
   };
 
