@@ -192,7 +192,7 @@ export default function UserProfilePage({ params }: UserProfilePageProps) {
         </Typography>
       </div>
 
-      <CreateStatusButton onStatusCreated={handleStatusCreated} />
+      {isOwnProfile && <CreateStatusButton onStatusCreated={handleStatusCreated} />}
       <UserStatusList
         ref={statusListRef}
         user={user}
