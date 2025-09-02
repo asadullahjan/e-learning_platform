@@ -182,6 +182,16 @@ class ChatParticipantPolicy:
                 raise ServiceError.permission_denied(error_msg)
             return False
 
+
+        # Admins can not be deactivated
+        if user == target_user and ChatParticipant.objects.filter(
+            chat_room=chat_room, user=user, role="admin"
+        ).exists():
+            error_msg = "Admins cannot be deactivated"
+            if raise_exception:
+                raise ServiceError.permission_denied(error_msg)
+            return False
+
         # Users can deactivate themselves
         if user == target_user:
             return True
