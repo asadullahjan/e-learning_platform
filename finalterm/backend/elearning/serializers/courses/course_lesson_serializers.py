@@ -76,6 +76,7 @@ class CourseLessonReadOnlySerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "title",
+            "description",
             "content",
             "course",
             "file",
@@ -105,6 +106,7 @@ class CourseLessonListReadOnlySerializer(CourseLessonReadOnlySerializer):
         fields = [
             "id",
             "title",
+            "description",
             "course",
             "created_at",
             "updated_at",
