@@ -1,6 +1,7 @@
 from elearning.models import ChatParticipant, ChatRoom, User
 from elearning.exceptions import ServiceError
 from elearning.permissions.chats import ChatParticipantPolicy
+from elearning.services.notification_service import NotificationService
 
 
 class ChatParticipantsService:
@@ -40,13 +41,24 @@ class ChatParticipantsService:
         if ChatParticipant.objects.filter(
             chat_room=chat_room, user=user
         ).exists():
-            raise ServiceError.conflict(
-                f"User '{user.username}' is already a participant in this chat"
+            # Reactivate participant
+            participant = ChatParticipant.objects.filter(
+                chat_room=chat_room, user=user
+            ).first()
+            participant.is_active = True
+            participant.save()
+        else:
+            # Create new participant
+            participant = ChatParticipant.objects.create(
+                chat_room=chat_room, user=user, role="participant"
             )
-
-        # Create new participant
-        participant = ChatParticipant.objects.create(
-            chat_room=chat_room, user=user, role="participant"
+        
+        # Send notification to user
+        NotificationService.create_notifications_and_send(
+            [user.id],
+            f"Added to chat '{chat_room.name}'",
+            f"You have been added to the chat '{chat_room.name}' by {requesting_user.username}",
+            f"/chats/{chat_room.id}",
         )
 
         return participant
