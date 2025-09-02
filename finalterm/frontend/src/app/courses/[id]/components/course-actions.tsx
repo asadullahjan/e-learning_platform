@@ -91,9 +91,12 @@ const CourseActions = ({
       router.refresh();
       showToast.success("Enrolled in course successfully");
       setIsEnrollConfirmOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error enrolling in course:", error);
-      showToast.error("Error enrolling in course");
+      
+      // Show specific error message if available
+      const errorMessage = error.response?.data?.detail || "Error enrolling in course";
+      showToast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
