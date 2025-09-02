@@ -39,7 +39,9 @@ export default async function LessonPage({ params }: LessonPageProps) {
           size="sm"
           asChild
         >
-          <Link href={`/courses/${idNumber}?tab=content`}>
+          <Link
+            href={`/courses/${idNumber}?tab=${user?.role === "teacher" ? "lessons" : "content"}`}
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Course
           </Link>
