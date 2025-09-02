@@ -122,7 +122,14 @@ class CourseLessonWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CourseLesson
-        fields = ["title", "description", "content", "file", "published_at"]
+        fields = [
+            "id",
+            "title",
+            "description",
+            "content",
+            "file",
+            "published_at",
+        ]
 
     def validate_title(self, value):
         if len(value) < 3:
