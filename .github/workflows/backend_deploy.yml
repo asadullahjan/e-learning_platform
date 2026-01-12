@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "finalterm/backend/**" # Backend changes
+      - "backend/**" # Backend changes
       - ".github/workflows/backend_deploy.yml" # Workflow changes
 
 jobs:
