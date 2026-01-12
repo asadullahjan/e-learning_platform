@@ -1,6 +1,6 @@
 # E-Learning Platform
 
-A full-stack learning management system with real-time chat supporting 100+ concurrent WebSocket connections. Built with Django REST Framework and Next.js.
+A full-stack learning management system featuring real-time course-based chat, role-based access control, and seamless content management. Built with Django REST Framework and Next.js for a scalable, modern web experience.
 
 **[Live Demo](https://advanced-web-development-pearl.vercel.app/auth/login)** • **[API Docs](https://asadullah.alwaysdata.net/api/docs/)**
 
